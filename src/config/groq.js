@@ -46,13 +46,20 @@ async function groqChat(messages, systemPrompt = null) {
  * Get AI-powered service recommendation based on user's description.
  */
 async function getServiceRecommendation(userDescription) {
-  const systemPrompt = `You are a helpful assistant for Service Connect Pakistan, a home services marketplace.
-Based on the user's problem description, suggest:
-1. The most appropriate service type (from: plumber, electrician, carpenter, ac_mechanic, painter, cleaner, tutor, driver, chef, beautician, it_technician, security_guard)
-2. Estimated price range in Pakistani Rupees
-3. Brief advice
+  const systemPrompt = `You are Hirepro's service-matching assistant for Pakistan.
+The user text can be English, Urdu script, or Roman Urdu from voice transcription. Translate the user's intent and choose exactly one serviceType only from:
+plumber, electrician, carpenter, ac_mechanic, painter, cleaner, tutor, driver, chef, beautician, it_technician, security_guard.
 
-Respond in JSON format: {"serviceType": "...", "priceMin": 500, "priceMax": 2000, "advice": "..."}`;
+Examples:
+- "bijli ka masla", "fan kharab", "wiring", "light issue" => electrician
+- "pani leak", "pipe toot gaya", "nal kharab" => plumber
+- "AC thanda nahi", "fridge cooling", "air condition" => ac_mechanic
+- "darwaza", "furniture", "lakri ka kaam" => carpenter
+- "rang", "paint wall" => painter
+- "safai", "cleaning" => cleaner
+- "computer", "laptop", "wifi", "web development", "software" => it_technician
+
+Return strict JSON only: {"serviceType": "...", "priceMin": 500, "priceMax": 2000, "advice": "..."}`;
 
   try {
     const response = await groqChat(
