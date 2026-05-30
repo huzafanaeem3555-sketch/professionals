@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter/services.dart';
 import '../models/professional_model.dart';
 import '../utils/constants.dart';
 import '../services/api_service.dart';
@@ -50,12 +50,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   bool _voiceListening = false;
 
   late AnimationController _animCtrl;
-  late final stt.SpeechToText _speech;
+  static const MethodChannel _voiceChannel =
+      MethodChannel('hirepro/voice_search');
 
   @override
   void initState() {
     super.initState();
-    _speech = stt.SpeechToText();
     _animCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -67,7 +67,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   @override
   void dispose() {
     _aiSuggestDebounce?.cancel();
-    _speech.stop();
     _searchCtrl.dispose();
     _animCtrl.dispose();
     super.dispose();
@@ -227,64 +226,43 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   Future<void> _startVoiceSearch() async {
     if (_voiceListening) return;
+    setState(() {
+      _voiceListening = true;
+      _voiceAvailable = true;
+      _voiceStatus = 'Listening... Urdu, Roman Urdu, or English bolain.';
+    });
     try {
-      final available = await _speech.initialize(
-        onStatus: (status) {
-          if (!mounted) return;
-          final done = status == 'done' || status == 'notListening';
-          if (done) {
-            setState(() => _voiceListening = false);
-          }
-        },
-        onError: (error) {
-          if (!mounted) return;
-          setState(() {
-            _voiceListening = false;
-            _voiceStatus = 'Voice search unavailable. Type your service.';
-          });
-        },
-      );
+      final words = await _voiceChannel.invokeMethod<String>('listen');
       if (!mounted) return;
-      if (!available) {
+      final spokenText = words?.trim() ?? '';
+      if (spokenText.isEmpty) {
         setState(() {
-          _voiceAvailable = false;
-          _voiceStatus = 'Microphone permission needed for voice search.';
+          _voiceListening = false;
+          _voiceStatus = 'No voice detected. Try again or type service.';
         });
         return;
       }
-
-      _voiceAvailable = true;
-      final localeId = await _bestSpeechLocale();
-      if (!mounted) return;
       setState(() {
-        _voiceListening = true;
-        _voiceStatus = 'Listening... Urdu, Roman Urdu, or English bolain.';
+        _searchCtrl.text = spokenText;
+        _searchCtrl.selection =
+            TextSelection.collapsed(offset: spokenText.length);
+        _filterService = null;
+        _voiceListening = false;
+        _voiceStatus = 'Searching for "$spokenText"...';
+        _buildSuggestions(spokenText);
+        _applyFilter();
       });
-      await _speech.listen(
-        localeId: localeId,
-        listenMode: stt.ListenMode.search,
-        partialResults: true,
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 2),
-        onResult: (result) {
-          final words = result.recognizedWords.trim();
-          if (words.isEmpty || !mounted) return;
-          setState(() {
-            _searchCtrl.text = words;
-            _searchCtrl.selection =
-                TextSelection.collapsed(offset: words.length);
-            _filterService = null;
-            _voiceStatus = result.finalResult
-                ? 'Searching for "$words"...'
-                : 'Heard: $words';
-            _buildSuggestions(words);
-            _applyFilter();
-          });
-          if (result.finalResult) {
-            _applyVoiceSearchText(words);
-          }
-        },
-      );
+      await _applyVoiceSearchText(spokenText);
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      final needsPermission = e.code == 'permission_denied';
+      setState(() {
+        _voiceListening = false;
+        _voiceAvailable = !needsPermission;
+        _voiceStatus = needsPermission
+            ? 'Microphone permission needed for voice search.'
+            : 'Voice search unavailable. Type your service.';
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -295,25 +273,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   }
 
   Future<void> _stopVoiceSearch() async {
-    await _speech.stop();
+    await _voiceChannel.invokeMethod<void>('stop');
     if (!mounted) return;
     setState(() {
       _voiceListening = false;
       _voiceStatus = null;
     });
-  }
-
-  Future<String?> _bestSpeechLocale() async {
-    final locales = await _speech.locales();
-    String? firstEnglish;
-    for (final locale in locales) {
-      final id = locale.localeId.toLowerCase();
-      if (id.startsWith('ur')) return locale.localeId;
-      if (firstEnglish == null && id.startsWith('en')) {
-        firstEnglish = locale.localeId;
-      }
-    }
-    return firstEnglish;
   }
 
   Future<void> _applyVoiceSearchText(String words) async {

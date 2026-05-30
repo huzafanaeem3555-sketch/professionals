@@ -51,7 +51,6 @@ dependencies:
 
   # Permissions
   permission_handler: ^11.3.1
-  speech_to_text: ^6.6.2
 
 dev_dependencies:
   flutter_test:
