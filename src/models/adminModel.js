@@ -64,6 +64,76 @@ const AdminModel = {
     });
   },
 
+  async createUser(payload) {
+    const role = String(payload.role || '').trim().toLowerCase();
+    if (!['customer', 'professional'].includes(role)) {
+      throw new Error('role must be customer or professional');
+    }
+    const now = Date.now();
+    const uid = String(payload.uid || `admin_${role}_${now}`).trim();
+    const displayName = String(payload.displayName || payload.name || role).trim();
+    const phoneNumber = String(payload.phoneNumber || payload.phone || '').trim();
+    const email = String(payload.email || `${uid}@hirepro.local`).trim();
+
+    const user = {
+      uid,
+      email,
+      displayName,
+      photoURL: String(payload.photoURL || ''),
+      phoneNumber,
+      role,
+      profileCompleted: true,
+      createdAt: now,
+      _createdAt: now,
+      _updatedAt: now,
+    };
+    await dbSet(`users/${uid}`, user);
+
+    if (role === 'professional') {
+      const serviceTypes = Array.isArray(payload.serviceTypes)
+        ? payload.serviceTypes.map(String).filter(Boolean)
+        : String(payload.serviceTypes || payload.services || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+      const customServices = Array.isArray(payload.customServices)
+        ? payload.customServices.map(String).filter(Boolean)
+        : String(payload.customServices || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+      const professional = {
+        uid,
+        name: displayName,
+        phone: phoneNumber,
+        phoneNumber,
+        services: serviceTypes,
+        serviceTypes,
+        customServices,
+        description: String(payload.description || ''),
+        experienceYears: Math.max(0, Number(payload.experienceYears) || 0),
+        hourlyRate: Math.max(0, Number(payload.hourlyRate) || 0),
+        isAvailable: payload.isAvailable !== false,
+        isAvailableNow: payload.isAvailableNow !== false,
+        rating: Math.max(0, Math.min(5, Number(payload.rating) || 0)),
+        totalRatings: Math.max(0, Number(payload.totalRatings) || 0),
+        completedJobs: Math.max(0, Number(payload.completedJobs) || 0),
+        photoURL: String(payload.photoURL || ''),
+        location: {
+          lat: Number(payload.lat) || 0,
+          lng: Number(payload.lng) || 0,
+          address: String(payload.address || ''),
+        },
+        createdAt: now,
+        updatedAt: now,
+      };
+      await dbSet(`professionals/${uid}`, professional);
+      return { user, professional };
+    }
+
+    return { user };
+  },
+
   async listBookings() {
     const bookings = await dbGetAll('bookings') || [];
     const users = await dbGetAll('users') || [];

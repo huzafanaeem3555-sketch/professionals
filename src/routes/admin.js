@@ -10,6 +10,7 @@ router.patch('/professionals/:uid', verifyAdminToken, AdminController.updateProf
 router.get('/professionals/:uid/reviews', verifyAdminToken, AdminController.getProfessionalReviews);
 router.delete('/professionals/:uid/reviews/:reviewId', verifyAdminToken, AdminController.deleteProfessionalReview);
 router.get('/customers', verifyAdminToken, AdminController.getCustomers);
+router.post('/users', verifyAdminToken, AdminController.createUser);
 router.get('/bookings', verifyAdminToken, AdminController.getBookings);
 router.get('/transactions', verifyAdminToken, AdminController.getTransactions);
 router.delete('/users/clear-all', verifyAdminToken, AdminController.clearAllData);

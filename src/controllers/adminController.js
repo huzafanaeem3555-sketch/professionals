@@ -82,6 +82,19 @@ const AdminController = {
     }
   },
 
+  async createUser(req, res) {
+    try {
+      const data = await AdminModel.createUser(req.body || {});
+      return res.status(201).json({ success: true, data });
+    } catch (error) {
+      console.error('admin createUser error:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to create user.',
+      });
+    }
+  },
+
   async getBookings(req, res) {
     try {
       const bookings = await AdminModel.listBookings();
