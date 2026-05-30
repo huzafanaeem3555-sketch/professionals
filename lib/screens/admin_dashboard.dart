@@ -486,18 +486,112 @@ class _AdminDashboardState extends State<AdminDashboard>
           ],
         ),
       ),
-      body: adminProv.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildStatsTab(adminProv),
-                _buildProfessionalsTab(adminProv),
-                _buildCustomersTab(adminProv),
-                _buildBookingsTab(adminProv),
-                _buildTransactionsTab(adminProv),
-              ],
+      body: adminProv.isLoading && !adminProv.hasAnyData
+          ? _adminLoadingState()
+          : adminProv.error != null && !adminProv.hasAnyData
+              ? _adminRetryState(adminProv.error!)
+              : Column(
+                  children: [
+                    if (adminProv.error != null)
+                      _adminWarningBanner(adminProv.error!),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildStatsTab(adminProv),
+                          _buildProfessionalsTab(adminProv),
+                          _buildCustomersTab(adminProv),
+                          _buildBookingsTab(adminProv),
+                          _buildTransactionsTab(adminProv),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+    );
+  }
+
+  Widget _adminLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 14),
+          Text(
+            'Opening admin panel...',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _adminRetryState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppLogo(size: 90, padding: 6),
+            const SizedBox(height: 18),
+            const Text(
+              'Admin data is still loading',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _refreshData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _adminWarningBanner(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: AppColors.warning.withValues(alpha: 0.12),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: AppColors.warning, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _refreshData,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -506,7 +600,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     if (stats == null) {
       return const Center(
           child: Text('No stats available',
-              style: TextStyle(color: Colors.white)));
+              style: TextStyle(color: AppColors.textPrimary)));
     }
 
     return RefreshIndicator(

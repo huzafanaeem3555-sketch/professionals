@@ -15,9 +15,9 @@ class ApiService {
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      sendTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 25),
+      receiveTimeout: const Duration(seconds: 35),
+      sendTimeout: const Duration(seconds: 25),
       headers: {'Content-Type': 'application/json'},
       validateStatus: (status) => status != null,
     ));
@@ -858,11 +858,19 @@ class ApiService {
 
   // ─── ADMIN ────────────────────────────────────────────────────────────────────
 
+  Options get _adminOptions => Options(
+        sendTimeout: const Duration(seconds: 45),
+        receiveTimeout: const Duration(seconds: 75),
+      );
+
   Future<Map<String, dynamic>> adminLogin(String username) async {
     try {
-      final response = await _dio.post(
-        ApiConstants.adminLogin,
-        data: {'username': username},
+      final response = await _withRetry(
+        () => _dio.post(
+          ApiConstants.adminLogin,
+          data: {'username': username},
+          options: _adminOptions,
+        ),
       );
       if (response.data is Map<String, dynamic>) {
         final map = response.data as Map<String, dynamic>;
@@ -879,7 +887,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAdminStats() async {
     try {
-      final response = await _dio.get(ApiConstants.adminStats);
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminStats, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -888,7 +898,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAdminProfessionals() async {
     try {
-      final response = await _dio.get(ApiConstants.adminProfessionals);
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminProfessionals, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -897,7 +909,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAdminCustomers() async {
     try {
-      final response = await _dio.get(ApiConstants.adminCustomers);
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminCustomers, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -906,7 +920,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAdminBookings() async {
     try {
-      final response = await _dio.get(ApiConstants.adminBookings);
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminBookings, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -915,7 +931,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAdminTransactions() async {
     try {
-      final response = await _dio.get(ApiConstants.adminTransactions);
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminTransactions, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -924,7 +942,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> deleteAdminUser(String uid) async {
     try {
-      final response = await _dio.delete('${ApiConstants.adminUsers}/$uid');
+      final response = await _withRetry(
+        () => _dio.delete('${ApiConstants.adminUsers}/$uid',
+            options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -935,7 +956,10 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     try {
-      final response = await _dio.post(ApiConstants.adminUsers, data: data);
+      final response = await _withRetry(
+        () => _dio.post(ApiConstants.adminUsers,
+            data: data, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -947,8 +971,10 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     try {
-      final response = await _dio
-          .patch('${ApiConstants.adminProfessionals}/$uid', data: data);
+      final response = await _withRetry(
+        () => _dio.patch('${ApiConstants.adminProfessionals}/$uid',
+            data: data, options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -957,8 +983,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> getAdminProfessionalReviews(String uid) async {
     try {
-      final response =
-          await _dio.get('${ApiConstants.adminProfessionals}/$uid/reviews');
+      final response = await _withRetry(
+        () => _dio.get('${ApiConstants.adminProfessionals}/$uid/reviews',
+            options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -970,8 +998,11 @@ class ApiService {
     String reviewId,
   ) async {
     try {
-      final response = await _dio
-          .delete('${ApiConstants.adminProfessionals}/$uid/reviews/$reviewId');
+      final response = await _withRetry(
+        () => _dio.delete(
+            '${ApiConstants.adminProfessionals}/$uid/reviews/$reviewId',
+            options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -980,7 +1011,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> deleteAdminBooking(String id) async {
     try {
-      final response = await _dio.delete('${ApiConstants.adminBookings}/$id');
+      final response = await _withRetry(
+        () => _dio.delete('${ApiConstants.adminBookings}/$id',
+            options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);
@@ -989,8 +1023,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> clearAdminData() async {
     try {
-      final response =
-          await _dio.delete('${ApiConstants.adminUsers}/clear-all');
+      final response = await _withRetry(
+        () => _dio.delete('${ApiConstants.adminUsers}/clear-all',
+            options: _adminOptions),
+      );
       return response.data;
     } catch (e) {
       return _handleError(e);

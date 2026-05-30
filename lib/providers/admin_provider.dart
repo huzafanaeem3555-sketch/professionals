@@ -24,6 +24,12 @@ class AdminProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAdminLoggedIn => _isAdminLoggedIn;
+  bool get hasAnyData =>
+      _stats != null ||
+      _professionals.isNotEmpty ||
+      _customers.isNotEmpty ||
+      _bookings.isNotEmpty ||
+      _transactions.isNotEmpty;
 
   void _setLoading(bool val) {
     _isLoading = val;
@@ -42,7 +48,7 @@ class AdminProvider extends ChangeNotifier {
       final res = await _api.adminLogin(username);
       if (res['success'] == true) {
         _isAdminLoggedIn = true;
-        await fetchAll(showLoading: false);
+        unawaited(fetchAll(showLoading: false));
         startRealtimePolling();
         _setError(null);
         notifyListeners();
@@ -60,7 +66,7 @@ class AdminProvider extends ChangeNotifier {
 
   void startRealtimePolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       fetchAll(showLoading: false);
     });
   }
@@ -78,22 +84,33 @@ class AdminProvider extends ChangeNotifier {
         _api.getAdminTransactions(),
       ]);
 
+      String? firstError;
       if (results[0]['success'] == true && results[0]['data'] != null) {
         _stats = Map<String, dynamic>.from(results[0]['data']);
+      } else {
+        firstError ??= results[0]['message']?.toString();
       }
       if (results[1]['success'] == true && results[1]['data'] != null) {
         _professionals = List<dynamic>.from(results[1]['data']);
+      } else {
+        firstError ??= results[1]['message']?.toString();
       }
       if (results[2]['success'] == true && results[2]['data'] != null) {
         _customers = List<dynamic>.from(results[2]['data']);
+      } else {
+        firstError ??= results[2]['message']?.toString();
       }
       if (results[3]['success'] == true && results[3]['data'] != null) {
         _bookings = List<dynamic>.from(results[3]['data']);
+      } else {
+        firstError ??= results[3]['message']?.toString();
       }
       if (results[4]['success'] == true && results[4]['data'] != null) {
         _transactions = List<dynamic>.from(results[4]['data']);
+      } else {
+        firstError ??= results[4]['message']?.toString();
       }
-      _error = null;
+      _error = firstError;
       notifyListeners();
     } catch (e) {
       _setError('Admin refresh failed: $e');
