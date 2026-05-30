@@ -14,6 +14,7 @@ class AdminLoginScreen extends StatefulWidget {
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _usernameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _showSecret = false;
 
   @override
   void dispose() {
@@ -126,7 +127,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Enter secret: Huzaifa',
+                          'Enter the private admin secret to continue.',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -137,13 +138,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         // Username Input
                         TextFormField(
                           controller: _usernameController,
+                          obscureText: !_showSecret,
+                          enableSuggestions: false,
+                          autocorrect: false,
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: InputDecoration(
                             labelText: 'Admin Secret',
                             labelStyle:
                                 const TextStyle(color: AppColors.textSecondary),
-                            prefixIcon: Icon(Icons.person_outline,
+                            prefixIcon: Icon(Icons.lock_outline,
                                 color: AppColors.primary),
+                            suffixIcon: IconButton(
+                              tooltip:
+                                  _showSecret ? 'Hide secret' : 'Show secret',
+                              onPressed: () =>
+                                  setState(() => _showSecret = !_showSecret),
+                              icon: Icon(
+                                _showSecret
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                             filled: true,
                             fillColor: AppColors.surfaceLight,
                             border: OutlineInputBorder(
@@ -156,7 +172,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                   color: AppColors.primary, width: 1.5),
                             ),
                             floatingLabelBehavior: FloatingLabelBehavior.never,
-                            hintText: 'Huzaifa',
+                            hintText: 'Enter admin secret',
                             hintStyle:
                                 const TextStyle(color: AppColors.textLight),
                           ),
