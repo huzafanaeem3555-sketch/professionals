@@ -1,0 +1,31 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "professionals": {
+      ".read": true,
+      ".write": true,
+      "$phone": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "bookings": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["customerId", "professionalPhone", "professionalId", "status"]
+    },
+    "professionalBookings": {
+      ".read": true,
+      ".write": true
+    },
+    "chats": {
+      ".read": true,
+      ".write": true
+    },
+    "users": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
