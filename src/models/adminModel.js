@@ -4,6 +4,24 @@ const { dbGet, dbGetAll, dbSet, dbUpdate, dbDelete } = require('../config/fireba
 const ADMIN_TOKEN_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'service-connect-secret-change-in-production';
 const ADMIN_TOKEN_EXPIRES = process.env.ADMIN_TOKEN_EXPIRES || '8h';
 
+function itemId(item) {
+  return String(item?.uid || item?.id || item?._key || item?.phone || item?.phoneNumber || '').trim();
+}
+
+function cleanText(value, fallback = '') {
+  const text = value === undefined || value === null ? '' : String(value).trim();
+  return text || fallback;
+}
+
+function toList(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (value && typeof value === 'object') return Object.values(value).map(String).filter(Boolean);
+  return String(value || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
 const AdminModel = {
   createToken(username) {
     return jwt.sign({ username, role: 'admin' }, ADMIN_TOKEN_SECRET, { expiresIn: ADMIN_TOKEN_EXPIRES });
@@ -14,10 +32,26 @@ const AdminModel = {
   },
 
   async getStats() {
-    const professionals = await dbGetAll('professionals');
+    const professionals = await dbGetAll('professionals') || [];
     const users = await dbGetAll('users') || [];
     const bookings = await dbGetAll('bookings') || [];
+    const leads = await dbGetAll('professionalContactLeads') || [];
     const completed = bookings.filter((b) => b.status === 'completed');
+    const customerIds = new Set(
+      users
+        .filter((u) => String(u.role || '').toLowerCase() === 'customer')
+        .map(itemId)
+        .filter(Boolean),
+    );
+    for (const booking of bookings) {
+      if (booking.customerId) customerIds.add(String(booking.customerId));
+    }
+    for (const leadGroup of leads) {
+      for (const [leadId, lead] of Object.entries(leadGroup)) {
+        if (leadId.startsWith('_') || !lead || typeof lead !== 'object') continue;
+        if (lead.customerId) customerIds.add(String(lead.customerId));
+      }
+    }
 
     // Calculate commission as 10% of agreed/proposed price of completed bookings
     const commissionFromBookings = completed.reduce((sum, b) => {
@@ -27,7 +61,7 @@ const AdminModel = {
 
     return {
       totalProfessionals: professionals.length,
-      totalCustomers: users.filter((u) => u.role === 'customer').length,
+      totalCustomers: customerIds.size,
       totalBookings: bookings.length,
       totalCompletedJobs: completed.length,
       totalPendingJobs: bookings.filter((b) => ['pending_acceptance', 'pending_payment', 'confirmed', 'in_progress', 'pending_customer_response', 'pending_professional_response'].includes(b.status)).length,
@@ -39,29 +73,91 @@ const AdminModel = {
     const professionals = await dbGetAll('professionals') || [];
     const users = await dbGetAll('users') || [];
     return professionals.map((pro) => {
-      const user = users.find((u) => u.uid === pro.uid) || {};
+      const uid = itemId(pro);
+      const user = users.find((u) => itemId(u) === uid) || {};
+      const displayName = cleanText(
+        user.displayName || user.name || pro.displayName || pro.name || pro.businessName,
+        'Professional',
+      );
+      const phoneNumber = cleanText(
+        user.phoneNumber || user.phone || pro.phoneNumber || pro.phone,
+        '',
+      );
+      const serviceTypes = toList(pro.serviceTypes || pro.services);
       return {
         ...pro,
-        displayName: user.displayName || 'Professional',
-        email: user.email || '',
-        phoneNumber: user.phoneNumber || '',
+        uid,
+        displayName,
+        name: cleanText(pro.name, displayName),
+        email: cleanText(user.email || pro.email, ''),
+        phoneNumber,
+        phone: cleanText(pro.phone || phoneNumber, phoneNumber),
+        serviceTypes,
+        services: serviceTypes,
+        customServices: toList(pro.customServices),
         rating: user.rating || pro.rating || 0,
-        totalJobs: pro.completedJobs || 0,
+        totalJobs: pro.completedJobs || pro.totalJobs || 0,
+        experienceYears: Number(pro.experienceYears || 0),
+        createdAt: pro.createdAt || user.createdAt || pro._createdAt || user._createdAt || 0,
       };
-    });
+    }).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
   },
 
   async listCustomers() {
     const users = await dbGetAll('users') || [];
     const bookings = await dbGetAll('bookings') || [];
-    const customers = users.filter((user) => user.role === 'customer');
-    return customers.map((c) => {
-      const count = bookings.filter((b) => b.customerId === c.uid).length;
-      return {
-        ...c,
-        totalBookings: count,
-      };
-    });
+    const leads = await dbGetAll('professionalContactLeads') || [];
+    const customerMap = new Map();
+
+    function upsertCustomer(data) {
+      const uid = itemId(data) || cleanText(data?.customerId, '');
+      if (!uid) return;
+      const existing = customerMap.get(uid) || {};
+      customerMap.set(uid, {
+        ...existing,
+        ...data,
+        uid,
+        displayName: cleanText(
+          data.displayName || data.name || data.customerName || existing.displayName,
+          'Customer',
+        ),
+        phoneNumber: cleanText(
+          data.phoneNumber || data.phone || data.customerPhone || existing.phoneNumber,
+          '',
+        ),
+        email: cleanText(data.email || existing.email, ''),
+      });
+    }
+
+    users
+      .filter((user) => String(user.role || '').toLowerCase() === 'customer')
+      .forEach(upsertCustomer);
+
+    for (const booking of bookings) {
+      upsertCustomer({
+        uid: booking.customerId,
+        displayName: booking.customerName,
+        phoneNumber: booking.customerPhone,
+        address: booking.address || booking.customerAddress,
+      });
+    }
+
+    for (const leadGroup of leads) {
+      for (const [leadId, lead] of Object.entries(leadGroup)) {
+        if (leadId.startsWith('_') || !lead || typeof lead !== 'object') continue;
+        upsertCustomer({
+          uid: lead.customerId,
+          displayName: lead.customerName,
+          phoneNumber: lead.customerPhone,
+          address: lead.customerAddress,
+        });
+      }
+    }
+
+    return Array.from(customerMap.values()).map((c) => {
+      const count = bookings.filter((b) => String(b.customerId || '') === c.uid).length;
+      return { ...c, totalBookings: count };
+    }).sort((a, b) => Number(b.createdAt || b._createdAt || 0) - Number(a.createdAt || a._createdAt || 0));
   },
 
   async createUser(payload) {
@@ -137,15 +233,25 @@ const AdminModel = {
   async listBookings() {
     const bookings = await dbGetAll('bookings') || [];
     const users = await dbGetAll('users') || [];
+    const professionals = await dbGetAll('professionals') || [];
     return bookings.map((b) => {
-      const customer = users.find((u) => u.uid === b.customerId) || {};
-      const professional = users.find((u) => u.uid === b.professionalId) || {};
+      const bookingId = cleanText(b.bookingId || b.id || b._key, '');
+      const customer = users.find((u) => itemId(u) === String(b.customerId || '')) || {};
+      const professionalUser = users.find((u) => itemId(u) === String(b.professionalId || '')) || {};
+      const professional = professionals.find((p) => itemId(p) === String(b.professionalId || '')) || {};
       return {
         ...b,
-        customerName: customer.displayName || 'Customer',
-        professionalName: professional.displayName || 'Professional',
+        bookingId,
+        id: bookingId,
+        customerName: cleanText(b.customerName || customer.displayName || customer.name, 'Customer'),
+        customerPhone: cleanText(b.customerPhone || customer.phoneNumber || customer.phone, ''),
+        professionalName: cleanText(
+          b.professionalName || professionalUser.displayName || professionalUser.name || professional.name,
+          'Professional',
+        ),
+        professionalPhone: cleanText(b.professionalPhone || professional.phoneNumber || professional.phone, ''),
       };
-    });
+    }).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
   },
 
   async listTransactions() {
