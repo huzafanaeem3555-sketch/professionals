@@ -1,0 +1,65 @@
+name: service_connect
+description: Hire local professionals near you.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase (Realtime Database + Messaging + Auth)
+  firebase_core: ^2.27.1
+  firebase_database: ^10.5.4
+  firebase_messaging: ^14.9.4
+  firebase_auth: ^4.17.9
+  google_sign_in: ^6.2.1
+
+
+  # State Management (legacy providers in unused screens)
+  provider: ^6.1.2
+
+  # Google Maps
+  google_maps_flutter: ^2.9.0
+  url_launcher: ^6.3.1
+
+  # HTTP Client
+  dio: ^5.4.3+1
+  http: ^1.2.1
+
+  # Location
+  geolocator: ^11.1.0
+  geocoding: ^3.0.0
+
+  # Image
+  image_picker: ^1.1.1
+  cached_network_image: ^3.3.1
+
+  # Notifications
+  flutter_local_notifications: ^21.0.0
+
+  # Text to Speech / Voice Recognition
+
+  # UI
+  flutter_rating_bar: ^4.0.1
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+  shared_preferences: ^2.2.3
+  timeago: ^3.6.1
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
