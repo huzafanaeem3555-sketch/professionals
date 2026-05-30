@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/professional_model.dart';
 import '../utils/constants.dart';
 import '../services/api_service.dart';
@@ -44,12 +45,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   Map<String, String> _userDetails = {};
   String? _aiSuggestedService;
   Timer? _aiSuggestDebounce;
+  String? _voiceStatus;
+  bool _voiceAvailable = false;
+  bool _voiceListening = false;
 
   late AnimationController _animCtrl;
+  late final stt.SpeechToText _speech;
 
   @override
   void initState() {
     super.initState();
+    _speech = stt.SpeechToText();
     _animCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -61,6 +67,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   @override
   void dispose() {
     _aiSuggestDebounce?.cancel();
+    _speech.stop();
     _searchCtrl.dispose();
     _animCtrl.dispose();
     super.dispose();
@@ -168,9 +175,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       }).toList();
     }
     if (q.isNotEmpty) {
-      list = list.where((p) {
+      final searched = list.where((p) {
         return _professionalMatchesQuery(p, q);
       }).toList();
+      if (searched.isNotEmpty || _filterService == null) {
+        list = searched;
+      }
 
       int score(ProfessionalModel p) {
         var points = 0;
@@ -211,16 +221,217 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       return;
     }
     _aiSuggestDebounce = Timer(const Duration(milliseconds: 550), () async {
-      final res = await _api.recommendService(q);
-      if (!mounted) return;
-      if (res['success'] == true && res['data'] is Map) {
-        final data = Map<String, dynamic>.from(res['data'] as Map);
-        final suggested = data['serviceType']?.toString();
-        if (suggested != null && suggested.isNotEmpty) {
-          setState(() => _aiSuggestedService = suggested);
-        }
-      }
+      await _applyAiServiceSearch(q);
     });
+  }
+
+  Future<void> _startVoiceSearch() async {
+    if (_voiceListening) return;
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          if (!mounted) return;
+          final done = status == 'done' || status == 'notListening';
+          if (done) {
+            setState(() => _voiceListening = false);
+          }
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _voiceListening = false;
+            _voiceStatus = 'Voice search unavailable. Type your service.';
+          });
+        },
+      );
+      if (!mounted) return;
+      if (!available) {
+        setState(() {
+          _voiceAvailable = false;
+          _voiceStatus = 'Microphone permission needed for voice search.';
+        });
+        return;
+      }
+
+      _voiceAvailable = true;
+      final localeId = await _bestSpeechLocale();
+      if (!mounted) return;
+      setState(() {
+        _voiceListening = true;
+        _voiceStatus = 'Listening... Urdu, Roman Urdu, or English bolain.';
+      });
+      await _speech.listen(
+        localeId: localeId,
+        listenMode: stt.ListenMode.search,
+        partialResults: true,
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 2),
+        onResult: (result) {
+          final words = result.recognizedWords.trim();
+          if (words.isEmpty || !mounted) return;
+          setState(() {
+            _searchCtrl.text = words;
+            _searchCtrl.selection =
+                TextSelection.collapsed(offset: words.length);
+            _filterService = null;
+            _voiceStatus = result.finalResult
+                ? 'Searching for "$words"...'
+                : 'Heard: $words';
+            _buildSuggestions(words);
+            _applyFilter();
+          });
+          if (result.finalResult) {
+            _applyVoiceSearchText(words);
+          }
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _voiceListening = false;
+        _voiceStatus = 'Voice search could not start. Try typing instead.';
+      });
+    }
+  }
+
+  Future<void> _stopVoiceSearch() async {
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() {
+      _voiceListening = false;
+      _voiceStatus = null;
+    });
+  }
+
+  Future<String?> _bestSpeechLocale() async {
+    final locales = await _speech.locales();
+    String? firstEnglish;
+    for (final locale in locales) {
+      final id = locale.localeId.toLowerCase();
+      if (id.startsWith('ur')) return locale.localeId;
+      if (firstEnglish == null && id.startsWith('en')) {
+        firstEnglish = locale.localeId;
+      }
+    }
+    return firstEnglish;
+  }
+
+  Future<void> _applyVoiceSearchText(String words) async {
+    _aiSuggestDebounce?.cancel();
+    await _applyAiServiceSearch(words, autoApply: true);
+  }
+
+  Future<void> _applyAiServiceSearch(
+    String query, {
+    bool autoApply = false,
+  }) async {
+    final fallback = _inferServiceFromSpeech(query);
+    if (fallback != null && mounted) {
+      setState(() {
+        _aiSuggestedService = fallback;
+        if (autoApply) {
+          _filterService = fallback;
+          _voiceStatus =
+              'Showing ${_displayServiceName(fallback)} professionals.';
+        }
+        _applyFilter();
+      });
+    }
+
+    if (query.trim().length < 4) return;
+    final res = await _api.recommendService(query);
+    if (!mounted) return;
+    if (res['success'] == true && res['data'] is Map) {
+      final data = Map<String, dynamic>.from(res['data'] as Map);
+      final suggested = data['serviceType']?.toString();
+      if (suggested != null && suggested.isNotEmpty) {
+        setState(() {
+          _aiSuggestedService = suggested;
+          if (autoApply) {
+            _filterService = suggested;
+            _voiceStatus =
+                'Showing ${_displayServiceName(suggested)} professionals.';
+          }
+          _applyFilter();
+        });
+      }
+    } else if (autoApply && fallback == null) {
+      setState(() {
+        _voiceStatus = 'No exact service found. Showing closest results.';
+        _applyFilter();
+      });
+    }
+  }
+
+  String? _inferServiceFromSpeech(String value) {
+    final raw = value.toLowerCase();
+    final normalized = _normalizeSearchText(value);
+    final text = '$raw $normalized';
+    const keywords = <String, List<String>>{
+      'electrician': [
+        'electric',
+        'electrician',
+        'bijli',
+        'light',
+        'wiring',
+        'fan',
+        'switch',
+        'بجلی',
+        'پنکھا',
+      ],
+      'plumber': [
+        'plumber',
+        'pani',
+        'pipe',
+        'leak',
+        'nal',
+        'tap',
+        'bathroom',
+        'پانی',
+        'نل',
+      ],
+      'carpenter': [
+        'carpenter',
+        'wood',
+        'furniture',
+        'door',
+        'darwaza',
+        'lakri',
+        'لکڑی',
+      ],
+      'ac_mechanic': [
+        'ac',
+        'a c',
+        'air condition',
+        'cooling',
+        'fridge',
+        'refrigerator',
+        'thanda',
+      ],
+      'painter': ['paint', 'painter', 'rang', 'wall', 'رنگ'],
+      'cleaner': ['clean', 'cleaner', 'safai', 'صفائی'],
+      'tutor': ['teacher', 'tutor', 'study', 'parhai', 'math', 'english'],
+      'driver': ['driver', 'car', 'gaari', 'gari', 'گاڑی'],
+      'chef': ['cook', 'chef', 'cooking', 'khana', 'کھانا'],
+      'beautician': ['beauty', 'salon', 'makeup', 'mehndi', 'bridal'],
+      'it_technician': [
+        'computer',
+        'laptop',
+        'mobile',
+        'wifi',
+        'internet',
+        'network',
+        'software',
+        'web',
+      ],
+      'security_guard': ['security', 'guard', 'chowkidar', 'watchman'],
+    };
+    for (final entry in keywords.entries) {
+      if (entry.value.any((keyword) => text.contains(keyword))) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 
   void _buildSuggestions(String value) {
@@ -831,33 +1042,106 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: _onSearchChanged,
-                        decoration: InputDecoration(
-                          hintText: 'Search by name or service...',
-                          prefixIcon: const Icon(Icons.search,
-                              color: AppColors.primary),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextField(
+                            controller: _searchCtrl,
+                            onChanged: _onSearchChanged,
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              hintText: 'Search or speak a service...',
+                              prefixIcon: const Icon(Icons.search,
+                                  color: AppColors.primary),
+                              suffixIcon: IconButton(
+                                tooltip: _voiceListening
+                                    ? 'Stop voice search'
+                                    : 'Voice search',
+                                onPressed: _loading
+                                    ? null
+                                    : (_voiceListening
+                                        ? _stopVoiceSearch
+                                        : _startVoiceSearch),
+                                icon: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 180),
+                                  child: Icon(
+                                    _voiceListening
+                                        ? Icons.stop_circle
+                                        : Icons.mic,
+                                    key: ValueKey(_voiceListening),
+                                    color: _voiceListening
+                                        ? AppColors.error
+                                        : AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(
+                                    color: AppColors.primary, width: 1.5),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              hintStyle: const TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 14),
+                            ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                                color: AppColors.primary, width: 1.5),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          hintStyle: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 14),
-                        ),
+                          if (_voiceStatus != null || _voiceListening)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: (_voiceAvailable || _voiceListening)
+                                      ? AppColors.primary.withOpacity(0.08)
+                                      : AppColors.error.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _voiceListening
+                                          ? Icons.graphic_eq
+                                          : Icons.auto_awesome,
+                                      size: 18,
+                                      color:
+                                          (_voiceAvailable || _voiceListening)
+                                              ? AppColors.primary
+                                              : AppColors.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _voiceStatus ??
+                                            'Listening for your service...',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: (_voiceAvailable ||
+                                                  _voiceListening)
+                                              ? AppColors.textPrimary
+                                              : AppColors.error,
+                                          fontSize: 12,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
