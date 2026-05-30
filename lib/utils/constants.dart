@@ -136,22 +136,22 @@ class ApiConstants {
 
 /// App Colors
 class AppColors {
-  static const Color primary = Color(0xFF0F4C5C);
-  static const Color primaryLight = Color(0xFF2B6F82);
-  static const Color primaryDark = Color(0xFF0A2F39);
-  static const Color accent = Color(0xFFC68A2B);
-  static const Color success = Color(0xFF10B981);
+  static const Color primary = Color(0xFF145A32);
+  static const Color primaryLight = Color(0xFF2F7D4A);
+  static const Color primaryDark = Color(0xFF0B3D2E);
+  static const Color accent = Color(0xFFD6A437);
+  static const Color success = Color(0xFF168A4A);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
-  static const Color background = Color(0xFFF4F7F6);
-  static const Color surfaceLight = Color(0xFFEAF0EE);
-  static const Color textPrimary = Color(0xFF13212B);
-  static const Color textSecondary = Color(0xFF5D6B74);
-  static const Color textLight = Color(0xFF8C98A0);
-  static const Color divider = Color(0xFFD8E1DE);
+  static const Color background = Color(0xFFF3F7F1);
+  static const Color surfaceLight = Color(0xFFEAF2E8);
+  static const Color textPrimary = Color(0xFF16251B);
+  static const Color textSecondary = Color(0xFF607064);
+  static const Color textLight = Color(0xFF91A094);
+  static const Color divider = Color(0xFFD9E5D7);
   static const Color star = Color(0xFFFBBF24);
   static const Color groqPurple = Color(0xFF7C3AED);
-  static const Color available = Color(0xFF10B981);
+  static const Color available = Color(0xFF168A4A);
   static const Color unavailable = Color(0xFF94A3B8);
 }
 

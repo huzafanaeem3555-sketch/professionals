@@ -338,7 +338,7 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Professional Profile'),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: AppColors.primary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -529,7 +529,7 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
             ElevatedButton(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _saving

@@ -154,9 +154,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: AppColors.primary,
                     side:
-                        const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
+                        const BorderSide(color: AppColors.primary, width: 1.5),
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

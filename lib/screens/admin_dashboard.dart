@@ -64,7 +64,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('User deleted successfully'),
-              backgroundColor: Colors.green),
+              backgroundColor: AppColors.success),
         );
         _refreshData();
       }
@@ -102,7 +102,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Booking deleted successfully'),
-              backgroundColor: Colors.green),
+              backgroundColor: AppColors.success),
         );
         _refreshData();
       }
@@ -142,7 +142,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('All app data cleared successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         _refreshData();
@@ -456,8 +456,8 @@ class _AdminDashboardState extends State<AdminDashboard>
             onPressed: _refreshData,
           ),
           IconButton(
-            icon: const Icon(Icons.delete_sweep_rounded,
-                color: Colors.orangeAccent),
+            icon:
+                const Icon(Icons.delete_sweep_rounded, color: AppColors.accent),
             onPressed: _clearAllData,
             tooltip: 'Clear All Data',
           ),
@@ -617,12 +617,12 @@ class _AdminDashboardState extends State<AdminDashboard>
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white),
+                  color: AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
-            Text(
+            const Text(
               'Realtime insights and financial commission status.',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -639,25 +639,25 @@ class _AdminDashboardState extends State<AdminDashboard>
                   'Total Professionals',
                   stats['totalProfessionals']?.toString() ?? '0',
                   Icons.engineering_rounded,
-                  Colors.blueAccent,
+                  AppColors.primaryLight,
                 ),
                 _buildPremiumStatCard(
                   'Total Customers',
                   stats['totalCustomers']?.toString() ?? '0',
                   Icons.people_alt_rounded,
-                  Colors.purpleAccent,
+                  AppColors.accent,
                 ),
                 _buildPremiumStatCard(
                   'Completed Jobs',
                   stats['totalCompletedJobs']?.toString() ?? '0',
                   Icons.task_alt_rounded,
-                  Colors.greenAccent,
+                  AppColors.success,
                 ),
                 _buildPremiumStatCard(
                   'Commission Earned',
                   'PKR ${stats['totalCommission'] ?? 0}',
                   Icons.payments_rounded,
-                  Colors.orangeAccent,
+                  AppColors.warning,
                 ),
               ],
             ),
@@ -667,20 +667,20 @@ class _AdminDashboardState extends State<AdminDashboard>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF123F4A),
+                color: AppColors.primaryDark,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[800]!),
+                border: Border.all(color: AppColors.primaryLight),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orangeAccent.withValues(alpha: 0.15),
+                      color: AppColors.accent.withValues(alpha: 0.18),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.info_outline_rounded,
-                        color: Colors.orangeAccent),
+                        color: AppColors.accent),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -698,7 +698,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                         Text(
                           'Commission is auto-deducted at a flat 10% rate from the professional\'s wallet balance upon successful completion of booking payments.',
                           style:
-                              TextStyle(fontSize: 13, color: Colors.grey[400]),
+                              TextStyle(fontSize: 13, color: Color(0xFFDCE9D8)),
                         ),
                       ],
                     ),
@@ -716,9 +716,9 @@ class _AdminDashboardState extends State<AdminDashboard>
       String title, String value, IconData icon, Color accentColor) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF123F4A),
+        color: AppColors.primaryDark,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white12, width: 1.2),
+        border: Border.all(color: AppColors.primaryLight, width: 1.2),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -751,7 +751,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             title,
             style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey[500],
+                color: const Color(0xFFC7D8C4),
                 fontWeight: FontWeight.w500),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -818,7 +818,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             : serviceTypesList.toString();
 
         return Card(
-          color: const Color(0xFF123F4A),
+          color: AppColors.primaryDark,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: Colors.white12)),
@@ -884,7 +884,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                                   fontWeight: FontWeight.bold)),
                           const SizedBox(width: 12),
                           Icon(Icons.done_all_rounded,
-                              color: Colors.greenAccent, size: 18),
+                              color: AppColors.success, size: 18),
                           const SizedBox(width: 4),
                           Text('${p['totalJobs'] ?? 0} Completed Jobs',
                               style: const TextStyle(
@@ -945,7 +945,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         final c = list[index];
 
         return Card(
-          color: const Color(0xFF123F4A),
+          color: AppColors.primaryDark,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: Colors.white12)),
@@ -956,11 +956,11 @@ class _AdminDashboardState extends State<AdminDashboard>
               children: [
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: Colors.purple.withValues(alpha: 0.2),
+                  backgroundColor: AppColors.accent.withValues(alpha: 0.18),
                   child: Text(
                     _initial(c['displayName'], 'C'),
                     style: const TextStyle(
-                        color: Colors.purpleAccent,
+                        color: AppColors.accent,
                         fontWeight: FontWeight.bold,
                         fontSize: 20),
                   ),
@@ -988,7 +988,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                       Text(
                         'Total Bookings: ${c['totalBookings'] ?? 0}',
                         style: TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.accent,
                             fontSize: 12,
                             fontWeight: FontWeight.bold),
                       ),
@@ -1013,8 +1013,8 @@ class _AdminDashboardState extends State<AdminDashboard>
     final list = adminProv.bookings;
     if (list.isEmpty) {
       return const Center(
-          child:
-              Text('No bookings found', style: TextStyle(color: Colors.white)));
+          child: Text('No bookings found',
+              style: TextStyle(color: AppColors.textPrimary)));
     }
 
     return ListView.builder(
@@ -1029,7 +1029,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             : 'N/A';
 
         return Card(
-          color: const Color(0xFF123F4A),
+          color: AppColors.primaryDark,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: Colors.white12)),
@@ -1097,7 +1097,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                           Text(
                             'PKR ${b['agreedPrice'] ?? b['proposedPrice'] ?? 0}',
                             style: TextStyle(
-                                color: AppColors.primary,
+                                color: AppColors.accent,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16),
                           ),
@@ -1131,7 +1131,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     if (list.isEmpty) {
       return const Center(
           child: Text('No transactions recorded',
-              style: TextStyle(color: Colors.white)));
+              style: TextStyle(color: AppColors.textPrimary)));
     }
 
     return ListView.builder(
@@ -1146,7 +1146,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             : 'N/A';
 
         return Card(
-          color: const Color(0xFF123F4A),
+          color: AppColors.primaryDark,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: Colors.white12)),
@@ -1207,10 +1207,10 @@ class _AdminDashboardState extends State<AdminDashboard>
                       children: [
                         const Text('Commission Deducted (10%)',
                             style: TextStyle(
-                                color: Colors.orangeAccent, fontSize: 12)),
+                                color: AppColors.accent, fontSize: 12)),
                         Text('PKR ${tx['commission'] ?? 0}',
                             style: const TextStyle(
-                                color: Colors.orangeAccent,
+                                color: AppColors.accent,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold)),
                       ],
@@ -1230,8 +1230,8 @@ class _AdminDashboardState extends State<AdminDashboard>
     Color fg;
     switch (status.toLowerCase()) {
       case 'completed':
-        bg = Colors.green.withValues(alpha: 0.15);
-        fg = Colors.green;
+        bg = AppColors.success.withValues(alpha: 0.15);
+        fg = AppColors.success;
         break;
       case 'cancelled':
       case 'rejected':
@@ -1239,8 +1239,8 @@ class _AdminDashboardState extends State<AdminDashboard>
         fg = Colors.red;
         break;
       case 'confirmed':
-        bg = Colors.blue.withValues(alpha: 0.15);
-        fg = Colors.blue;
+        bg = AppColors.primaryLight.withValues(alpha: 0.15);
+        fg = AppColors.primaryLight;
         break;
       default:
         bg = Colors.orange.withValues(alpha: 0.15);
