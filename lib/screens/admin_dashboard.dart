@@ -1022,6 +1022,10 @@ class _AdminDashboardState extends State<AdminDashboard>
       itemCount: list.length,
       itemBuilder: (context, index) {
         final b = list[index];
+        final bookingIdText = (b['bookingId'] ?? b['id'] ?? '').toString();
+        final shortBookingId = bookingIdText.length > 8
+            ? bookingIdText.substring(0, 8)
+            : bookingIdText;
         final date = b['createdAt'] != null
             ? DateTime.fromMillisecondsSinceEpoch(b['createdAt'])
                 .toString()
@@ -1047,7 +1051,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Booking: ${b['bookingId']?.toString().substring(0, 8) ?? ''}',
+                            'Booking: $shortBookingId',
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey,
