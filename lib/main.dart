@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'utils/app_navigator.dart';
 import 'utils/app_theme.dart';
+import 'utils/constants.dart';
 import 'providers/booking_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/professional_provider.dart';
@@ -71,7 +72,7 @@ class ServiceConnectApp extends StatelessWidget {
       ],
       child: MaterialApp(
         navigatorKey: rootNavigatorKey,
-        title: 'Professionals',
+        title: AppStrings.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         initialRoute: '/',

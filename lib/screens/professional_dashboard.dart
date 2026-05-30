@@ -671,7 +671,7 @@ class _LeadCard extends StatelessWidget {
                                     method: ContactMethod.whatsapp,
                                     phoneNumber: phone,
                                     message:
-                                        'Assalam-o-Alaikum, I received your request on Service Connect.');
+                                        'Assalam-o-Alaikum, I received your request on Hirepro.');
                                 await launchContactUri(uri);
                               }
                             : null,

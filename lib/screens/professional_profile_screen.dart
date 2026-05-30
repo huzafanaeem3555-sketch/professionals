@@ -761,7 +761,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       method: method,
       phoneNumber: pro.phone,
       message:
-          'Assalam-o-Alaikum, I found your profile on Service Connect and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
+          'Assalam-o-Alaikum, I found your profile on Hirepro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
     );
     final launched = await launchContactUri(uri);
     if (!launched && context.mounted) {

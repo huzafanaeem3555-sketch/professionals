@@ -24,7 +24,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     super.initState();
     // Welcome message
     _messages.add(_ChatMsg(
-      text: 'Assalam-o-Alaikum! 👋\n\nMain Service Connect ka AI Assistant hoon (Groq llama3 powered).\n\nMain aapki help kar sakta hoon:\n• Sahi service type find karna\n• EasyPaisa payment process samajhna\n• Booking related questions\n• Professionals ke baare mein\n\nKya poochna hai?',
+      text:
+          'Assalam-o-Alaikum! 👋\n\nMain Hirepro ka AI Assistant hoon (Groq llama3 powered).\n\nMain aapki help kar sakta hoon:\n• Sahi service type find karna\n• EasyPaisa payment process samajhna\n• Booking related questions\n• Professionals ke baare mein\n\nKya poochna hai?',
       isAI: true,
       time: DateTime.now(),
     ));
@@ -52,8 +53,11 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI Assistant', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('llama-3.3-70b (Groq)', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                Text('AI Assistant',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('llama-3.3-70b (Groq)',
+                    style: TextStyle(fontSize: 11, color: Colors.white70)),
               ],
             ),
           ],
@@ -86,10 +90,20 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _QuickChip('💡 Recommend a service', () => _quickSend('Meri nali band ho gayi hai, kya karoon?')),
-                  _QuickChip('💸 EasyPaisa kaise karein?', () => _quickSend('EasyPaisa se payment kaise karte hain?')),
-                  _QuickChip('📋 Booking process?', () => _quickSend('Professional hire karne ka process kya hai?')),
-                  _QuickChip('⭐ Rating system?', () => _quickSend('Rating kaise dete hain?')),
+                  _QuickChip(
+                      '💡 Recommend a service',
+                      () => _quickSend(
+                          'Meri nali band ho gayi hai, kya karoon?')),
+                  _QuickChip(
+                      '💸 EasyPaisa kaise karein?',
+                      () =>
+                          _quickSend('EasyPaisa se payment kaise karte hain?')),
+                  _QuickChip(
+                      '📋 Booking process?',
+                      () => _quickSend(
+                          'Professional hire karne ka process kya hai?')),
+                  _QuickChip('⭐ Rating system?',
+                      () => _quickSend('Rating kaise dete hain?')),
                 ],
               ),
             ),
@@ -130,8 +144,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
                       ),
                     ),
                   ),
@@ -148,9 +162,11 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                       child: _isLoading
                           ? const Padding(
                               padding: EdgeInsets.all(14),
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
                             )
-                          : const Icon(Icons.send, color: Colors.white, size: 22),
+                          : const Icon(Icons.send,
+                              color: Colors.white, size: 22),
                     ),
                   ),
                 ],
@@ -182,13 +198,15 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
 
     try {
       final response = await _api.sendAIMessage(text, _history);
-      final reply = response['data']['reply'] ?? 'Sorry, koi response nahi mila.';
+      final reply =
+          response['data']['reply'] ?? 'Sorry, koi response nahi mila.';
 
       _history.add({'role': 'assistant', 'content': reply});
 
       if (mounted) {
         setState(() {
-          _messages.add(_ChatMsg(text: reply, isAI: true, time: DateTime.now()));
+          _messages
+              .add(_ChatMsg(text: reply, isAI: true, time: DateTime.now()));
           _isLoading = false;
         });
         _scrollToBottom();
@@ -197,7 +215,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
       if (mounted) {
         setState(() {
           _messages.add(_ChatMsg(
-            text: 'AI assistant abhi unavailable hai. Internet connection check karein.',
+            text:
+                'AI assistant abhi unavailable hai. Internet connection check karein.',
             isAI: true,
             time: DateTime.now(),
           ));
@@ -238,15 +257,20 @@ class _MessageBubble extends StatelessWidget {
       alignment: msg.isAI ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         child: Column(
-          crossAxisAlignment: msg.isAI ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+          crossAxisAlignment:
+              msg.isAI ? CrossAxisAlignment.start : CrossAxisAlignment.end,
           children: [
             if (msg.isAI)
               const Padding(
                 padding: EdgeInsets.only(left: 4, bottom: 4),
                 child: Text('🤖 AI Assistant',
-                    style: TextStyle(fontSize: 11, color: AppColors.groqPurple, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.groqPurple,
+                        fontWeight: FontWeight.w600)),
               ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -255,8 +279,12 @@ class _MessageBubble extends StatelessWidget {
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
-                  bottomLeft: msg.isAI ? const Radius.circular(4) : const Radius.circular(18),
-                  bottomRight: msg.isAI ? const Radius.circular(18) : const Radius.circular(4),
+                  bottomLeft: msg.isAI
+                      ? const Radius.circular(4)
+                      : const Radius.circular(18),
+                  bottomRight: msg.isAI
+                      ? const Radius.circular(18)
+                      : const Radius.circular(4),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -279,7 +307,8 @@ class _MessageBubble extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
               child: Text(
                 DateFormat('hh:mm a').format(msg.time),
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
               ),
             ),
           ],
@@ -302,7 +331,10 @@ class _TypingIndicator extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6)],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06), blurRadius: 6)
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -328,13 +360,15 @@ class _DotsAnimation extends StatefulWidget {
   State<_DotsAnimation> createState() => _DotsAnimationState();
 }
 
-class _DotsAnimationState extends State<_DotsAnimation> with SingleTickerProviderStateMixin {
+class _DotsAnimationState extends State<_DotsAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat();
   }
 
@@ -352,15 +386,19 @@ class _DotsAnimationState extends State<_DotsAnimation> with SingleTickerProvide
         final val = (_controller.value * 3).floor();
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (i) => Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: i == val ? AppColors.groqPurple : AppColors.groqPurple.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
-            ),
-          )),
+          children: List.generate(
+              3,
+              (i) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: i == val
+                          ? AppColors.groqPurple
+                          : AppColors.groqPurple.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                    ),
+                  )),
         );
       },
     );
@@ -383,11 +421,15 @@ class _QuickChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.groqPurple.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.groqPurple.withValues(alpha: 0.3)),
+          border:
+              Border.all(color: AppColors.groqPurple.withValues(alpha: 0.3)),
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 12, color: AppColors.groqPurple, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.groqPurple,
+              fontWeight: FontWeight.w500),
         ),
       ),
     );

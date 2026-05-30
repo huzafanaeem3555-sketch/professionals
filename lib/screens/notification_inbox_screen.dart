@@ -10,7 +10,8 @@ class NotificationInboxScreen extends StatefulWidget {
   const NotificationInboxScreen({super.key});
 
   @override
-  State<NotificationInboxScreen> createState() => _NotificationInboxScreenState();
+  State<NotificationInboxScreen> createState() =>
+      _NotificationInboxScreenState();
 }
 
 class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
@@ -24,7 +25,8 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
   }
 
   Future<void> _loadUid() async {
-    final uid = await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
+    final uid =
+        await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
     if (mounted) setState(() => _uid = uid);
   }
 
@@ -56,7 +58,8 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
       value['id'] = entry.key;
       return value;
     }).toList();
-    list.sort((a, b) => _toInt(b['createdAt']).compareTo(_toInt(a['createdAt'])));
+    list.sort(
+        (a, b) => _toInt(b['createdAt']).compareTo(_toInt(a['createdAt'])));
     return list;
   }
 
@@ -98,14 +101,16 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
         actions: [
           TextButton(
             onPressed: _markAllRead,
-            child: const Text('Mark read', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Mark read', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
       body: uid == null || uid.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<DatabaseEvent>(
-              stream: _db.child('userNotifications/$uid').limitToLast(100).onValue,
+              stream:
+                  _db.child('userNotifications/$uid').limitToLast(100).onValue,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -119,11 +124,14 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.notifications_none_rounded, size: 64, color: AppColors.textLight),
+                        Icon(Icons.notifications_none_rounded,
+                            size: 64, color: AppColors.textLight),
                         SizedBox(height: 12),
-                        Text('No notifications yet', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('No notifications yet',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         SizedBox(height: 6),
-                        Text('Customer and professional alerts will appear here.'),
+                        Text(
+                            'Customer and professional alerts will appear here.'),
                       ],
                     ),
                   );
@@ -136,13 +144,14 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                   itemBuilder: (context, index) {
                     final item = notifications[index];
                     final id = item['id']?.toString() ?? '';
-                    final title = item['title']?.toString() ?? 'Service Connect';
+                    final title = item['title']?.toString() ?? 'Hirepro';
                     final body = item['body']?.toString() ?? '';
                     final type = item['type']?.toString() ?? '';
                     final read = item['read'] == true;
                     final createdAt = _toInt(item['createdAt']);
                     final time = createdAt > 0
-                        ? DateFormat('dd MMM, h:mm a').format(DateTime.fromMillisecondsSinceEpoch(createdAt))
+                        ? DateFormat('dd MMM, h:mm a').format(
+                            DateTime.fromMillisecondsSinceEpoch(createdAt))
                         : '';
 
                     return Dismissible(
@@ -155,14 +164,17 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                           color: AppColors.error,
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(Icons.delete_outline, color: Colors.white),
+                        child: const Icon(Icons.delete_outline,
+                            color: Colors.white),
                       ),
                       onDismissed: (_) => _deleteNotification(id),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: () async {
                           if (!read) {
-                            await _db.child('userNotifications/$uid/$id/read').set(true);
+                            await _db
+                                .child('userNotifications/$uid/$id/read')
+                                .set(true);
                           }
                         },
                         child: Container(
@@ -171,7 +183,9 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: read ? AppColors.divider : AppColors.primary.withOpacity(0.35),
+                              color: read
+                                  ? AppColors.divider
+                                  : AppColors.primary.withOpacity(0.35),
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -188,7 +202,10 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                                 backgroundColor: read
                                     ? AppColors.textLight.withOpacity(0.14)
                                     : AppColors.primary.withOpacity(0.12),
-                                child: Icon(_iconForType(type), color: read ? AppColors.textSecondary : AppColors.primary),
+                                child: Icon(_iconForType(type),
+                                    color: read
+                                        ? AppColors.textSecondary
+                                        : AppColors.primary),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -201,7 +218,9 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                                           child: Text(
                                             title,
                                             style: TextStyle(
-                                              fontWeight: read ? FontWeight.w600 : FontWeight.w800,
+                                              fontWeight: read
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w800,
                                               color: AppColors.textPrimary,
                                             ),
                                           ),
@@ -219,11 +238,17 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                                     ),
                                     if (body.isNotEmpty) ...[
                                       const SizedBox(height: 4),
-                                      Text(body, style: const TextStyle(color: AppColors.textSecondary, height: 1.3)),
+                                      Text(body,
+                                          style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              height: 1.3)),
                                     ],
                                     if (time.isNotEmpty) ...[
                                       const SizedBox(height: 8),
-                                      Text(time, style: const TextStyle(color: AppColors.textLight, fontSize: 12)),
+                                      Text(time,
+                                          style: const TextStyle(
+                                              color: AppColors.textLight,
+                                              fontSize: 12)),
                                     ],
                                   ],
                                 ),

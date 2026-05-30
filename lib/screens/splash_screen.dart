@@ -17,7 +17,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const Duration _minSplashDuration = Duration(seconds: 3);
+  static const Duration _minSplashDuration = Duration(seconds: 4);
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -96,10 +96,11 @@ class _SplashScreenState extends State<SplashScreen>
         }
         final freshIdToken = await currentUser.getIdToken(true) ?? '';
         if (freshIdToken.isNotEmpty) {
-          final Map<String, dynamic> syncResult = await ApiService().signInWithToken(freshIdToken).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => <String, dynamic>{'success': false},
-          );
+          final Map<String, dynamic> syncResult =
+              await ApiService().signInWithToken(freshIdToken).timeout(
+                    const Duration(seconds: 15),
+                    onTimeout: () => <String, dynamic>{'success': false},
+                  );
           if (syncResult['success'] == true) {
             final data = syncResult['data'];
             if (data is Map) {
@@ -155,7 +156,7 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.primary, AppColors.primaryDark],
+            colors: [Color(0xFF0E3B2E), AppColors.primaryDark],
           ),
         ),
         child: Center(
@@ -171,26 +172,33 @@ class _SplashScreenState extends State<SplashScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  width: 142,
+                  height: 142,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.16),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.24),
-                      width: 2,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.handyman_rounded,
-                    size: 80,
                     color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 28,
+                        offset: const Offset(0, 14),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Image.asset(
+                      'assets/images/logo.jpg',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 const Text(
                   AppStrings.appName,
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 34,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     letterSpacing: 1.0,
@@ -198,7 +206,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Trusted Service Experts',
+                  AppStrings.appTagline,
                   style: TextStyle(
                     fontSize: 15,
                     color: Colors.white.withValues(alpha: 0.86),

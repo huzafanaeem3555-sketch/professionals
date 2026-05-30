@@ -7,6 +7,7 @@ import '../utils/constants.dart';
 import '../services/api_service.dart';
 import '../services/firebase_service.dart';
 import '../services/location_service.dart';
+import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../utils/helpers.dart';
@@ -23,7 +24,7 @@ class CustomerHomeScreen extends StatefulWidget {
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     with SingleTickerProviderStateMixin {
-  static const double _nearbyRadiusKm = 20;
+  static const double _maxRadiusKm = 100;
   final _firebase = FirebaseService();
   final _api = ApiService();
   final _searchCtrl = TextEditingController();
@@ -39,6 +40,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   bool _loading = true;
   bool _booking = false;
   String? _locationError;
+  double _distanceFilterKm = 0;
   Map<String, String> _userDetails = {};
   String? _aiSuggestedService;
   Timer? _aiSuggestDebounce;
@@ -85,7 +87,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           .timeout(const Duration(seconds: 4), onTimeout: () => '');
     } catch (e) {
       _locationError =
-          'Location unavailable. Enable location to see professionals within 20 km.';
+          'Location unavailable. Enable GPS to sort professionals by distance.';
     }
 
     _userDetails = await userDetailsFuture;
@@ -99,7 +101,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       final api = await ApiService().getNearbyProfessionals(
         lat: _lat,
         lng: _lng,
-        radius: _nearbyRadiusKm,
+        radius: _maxRadiusKm,
       );
       if (api['success'] == true && api['data'] != null) {
         final data = api['data'];
@@ -124,9 +126,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       }
       final dist = LocationService.haversineKm(
           _lat, _lng, model.location.lat, model.location.lng);
-      if (dist <= _nearbyRadiusKm) {
-        list.add(model.copyWith(distance: dist));
-      }
+      list.add(model.copyWith(distance: dist));
     }
     list.sort((a, b) => (a.distance ?? 999).compareTo(b.distance ?? 999));
 
@@ -156,8 +156,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   void _applyFilter() {
     var list = List<ProfessionalModel>.from(_all);
     final q = _searchCtrl.text.trim().toLowerCase();
-    if (_lat != 0 && _lng != 0) {
-      list = list.where((p) => (p.distance ?? 999) <= _nearbyRadiusKm).toList();
+    if (_lat != 0 && _lng != 0 && _distanceFilterKm > 0) {
+      list =
+          list.where((p) => (p.distance ?? 999) <= _distanceFilterKm).toList();
     }
     if (_filterService != null && _filterService!.isNotEmpty) {
       list = list.where((p) {
@@ -438,7 +439,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         method: method,
         phoneNumber: pro.phone,
         message:
-            'Assalam-o-Alaikum, I found your profile on Service Connect and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
+            'Assalam-o-Alaikum, I found your profile on Hirepro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
       );
 
       final launched = await launchContactUri(uri);
@@ -477,6 +478,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       }
 
       if (mounted) {
+        if (method == ContactMethod.whatsapp) {
+          unawaited(NotificationService.showLocal(
+            title: 'WhatsApp opened',
+            body:
+                '${pro.name} ko message ready hai. Professional ko aapki details mil gayi hain.',
+          ));
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -922,6 +930,100 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     ),
 
                   // ── Category filter chips ───────────────────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.social_distance_rounded,
+                                    size: 18, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Distance Filter',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    _distanceFilterKm == 0
+                                        ? 'All'
+                                        : '${_distanceFilterKm.round()} km',
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: AppColors.primary,
+                                inactiveTrackColor:
+                                    AppColors.primary.withOpacity(0.14),
+                                thumbColor: AppColors.primary,
+                                overlayColor:
+                                    AppColors.primary.withOpacity(0.12),
+                              ),
+                              child: Slider(
+                                value: _distanceFilterKm,
+                                min: 0,
+                                max: _maxRadiusKm,
+                                divisions: 20,
+                                label: _distanceFilterKm == 0
+                                    ? 'All professionals'
+                                    : '${_distanceFilterKm.round()} km',
+                                onChanged: (value) {
+                                  setState(() {
+                                    _distanceFilterKm = value.roundToDouble();
+                                    _applyFilter();
+                                  });
+                                },
+                              ),
+                            ),
+                            Text(
+                              _distanceFilterKm == 0
+                                  ? '0 km par all professionals show honge. Slider increase karein to selected km ke andar professionals filter honge.'
+                                  : 'Showing professionals within ${_distanceFilterKm.round()} km.',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: 48,
@@ -1509,76 +1611,132 @@ class _ProfessionalCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onViewProfile,
-                      icon: const Icon(Icons.person),
-                      label: const Text(
-                        'Profile',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.accent),
-                        foregroundColor: AppColors.accent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 355;
+                final buttons = [
+                  _CardActionButton(
+                    label: 'Profile',
+                    icon: Icons.person,
+                    onPressed: onViewProfile,
+                    foreground: AppColors.accent,
+                    outlined: true,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: isAvailable ? onCall : null,
-                      icon: const Icon(Icons.call),
-                      label: const Text(
-                        'Call Now',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: isAvailable
-                              ? AppColors.primary
-                              : Colors.grey.shade300,
-                        ),
-                        foregroundColor:
-                            isAvailable ? AppColors.primary : Colors.grey,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                  _CardActionButton(
+                    label: 'Call',
+                    icon: Icons.call,
+                    onPressed: isAvailable ? onCall : null,
+                    foreground: isAvailable ? AppColors.primary : Colors.grey,
+                    outlined: true,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isAvailable ? onWhatsApp : null,
-                      icon: const Icon(Icons.chat),
-                      label: const Text(
-                        'WhatsApp',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            isAvailable ? const Color(0xFF25D366) : Colors.grey,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: isAvailable ? 2 : 0,
-                      ),
-                    ),
+                  _CardActionButton(
+                    label: 'WhatsApp',
+                    icon: Icons.chat,
+                    onPressed: isAvailable ? onWhatsApp : null,
+                    foreground: Colors.white,
+                    background:
+                        isAvailable ? const Color(0xFF25D366) : Colors.grey,
                   ),
-                ],
-              ),
+                ];
+                if (compact) {
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: buttons[0]),
+                          const SizedBox(width: 8),
+                          Expanded(child: buttons[1]),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(width: double.infinity, child: buttons[2]),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: buttons[0]),
+                    const SizedBox(width: 8),
+                    Expanded(child: buttons[1]),
+                    const SizedBox(width: 8),
+                    Expanded(child: buttons[2]),
+                  ],
+                );
+              },
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CardActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Color foreground;
+  final Color? background;
+  final bool outlined;
+
+  const _CardActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    required this.foreground,
+    this.background,
+    this.outlined = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final child = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+
+    if (outlined) {
+      return SizedBox(
+        height: 42,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: foreground.withOpacity(0.65)),
+            foregroundColor: foreground,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: child,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 42,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: foreground,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: onPressed == null ? 0 : 2,
+        ),
+        child: child,
       ),
     );
   }

@@ -20,7 +20,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'service_connect_channel',
-    'Service Connect Alerts',
+    'Hirepro Alerts',
     description: 'Notifications for customer and professional actions',
     importance: Importance.high,
   );
@@ -115,7 +115,7 @@ class NotificationService {
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
     final title = message.notification?.title ??
         message.data['title']?.toString() ??
-        'Service Connect';
+        'Hirepro';
     final body =
         message.notification?.body ?? message.data['body']?.toString() ?? '';
 
@@ -141,5 +141,26 @@ class NotificationService {
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
     navigator.pushNamed('/notifications');
+  }
+
+  static Future<void> showLocal({
+    required String title,
+    required String body,
+  }) async {
+    await _localNotifications.show(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: 'ic_notification',
+        ),
+      ),
+    );
   }
 }

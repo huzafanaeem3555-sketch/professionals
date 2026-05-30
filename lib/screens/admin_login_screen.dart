@@ -22,10 +22,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final username = _usernameController.text.trim();
     final adminProvider = Provider.of<AdminProvider>(context, listen: false);
-    
+
     final success = await adminProvider.login(username);
     if (success) {
       if (mounted) {
@@ -53,7 +53,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Container(
-            constraints: BoxConstraints(minHeight: size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom),
+            constraints: BoxConstraints(
+                minHeight: size.height -
+                    MediaQuery.of(context).padding.top -
+                    MediaQuery.of(context).padding.bottom),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
             decoration: const BoxDecoration(
@@ -70,26 +73,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo / Icon Section
-                   Center(
-                     child: Container(
-                       padding: const EdgeInsets.all(20),
-                       decoration: BoxDecoration(
-                         color: AppColors.primary.withValues(alpha: 0.15),
-                         shape: BoxShape.circle,
-                         border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
-                       ),
-                       child: Icon(
-                         Icons.admin_panel_settings_rounded,
-                         size: 72,
-                         color: AppColors.primary,
-                       ),
-                     ),
-                   ),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            width: 2),
+                      ),
+                      child: Icon(
+                        Icons.admin_panel_settings_rounded,
+                        size: 72,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
-                  
+
                   // Title Section
                   Text(
-                    'Professionals',
+                    AppStrings.appName,
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -111,18 +116,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
                   // Login Form Card
                   Container(
-                     decoration: BoxDecoration(
-                       color: Colors.white,
-                       borderRadius: BorderRadius.circular(24),
-                       border: Border.all(color: AppColors.divider, width: 1.5),
-                       boxShadow: [
-                         BoxShadow(
-                           color: AppColors.primary.withValues(alpha: 0.09),
-                           blurRadius: 20,
-                           offset: const Offset(0, 10),
-                         ),
-                       ],
-                     ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.divider, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.09),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
                     padding: const EdgeInsets.all(32),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -151,8 +156,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: InputDecoration(
                             labelText: 'Admin Username',
-                            labelStyle: const TextStyle(color: AppColors.textSecondary),
-                            prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
+                            labelStyle:
+                                const TextStyle(color: AppColors.textSecondary),
+                            prefixIcon: Icon(Icons.person_outline,
+                                color: AppColors.primary),
                             filled: true,
                             fillColor: AppColors.surfaceLight,
                             border: OutlineInputBorder(
@@ -161,11 +168,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                              borderSide: BorderSide(
+                                  color: AppColors.primary, width: 1.5),
                             ),
                             floatingLabelBehavior: FloatingLabelBehavior.never,
                             hintText: 'Enter admin username',
-                            hintStyle: const TextStyle(color: AppColors.textLight),
+                            hintStyle:
+                                const TextStyle(color: AppColors.textLight),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -210,7 +219,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Portal Version
                   Text(
                     'Version 1.0.0 (Pakistan)',

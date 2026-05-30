@@ -11,7 +11,8 @@ class ApiConstants {
   // ============================================================
   // ✅ RAILWAY PRODUCTION URL (LIVE - DO NOT CHANGE)
   // ============================================================
-  static const String railwayBaseUrl = 'https://professionals-production-c9b2.up.railway.app/api';
+  static const String railwayBaseUrl =
+      'https://professionals-production-c9b2.up.railway.app/api';
 
   // ============================================================
   // LOCAL DEVELOPMENT URLs (For testing only)
@@ -24,7 +25,7 @@ class ApiConstants {
   // 🔥 IMPORTANT: Set this to FALSE for Railway Production
   // 🔥 Set this to TRUE for Local Testing
   // ============================================================
-  static const bool isDevelopment = false;  // ✅ PRODUCTION MODE
+  static const bool isDevelopment = false; // ✅ PRODUCTION MODE
 
   static String get baseUrl {
     // For local development testing
@@ -105,7 +106,8 @@ class ApiConstants {
 
   // Geolocation
   static const String nearbyByLocation = '/geolocation/nearby';
-  static const String professionalLocation = '/geolocation/professional-location';
+  static const String professionalLocation =
+      '/geolocation/professional-location';
   static const String updateLocation = '/geolocation/update-location';
 
   // Users
@@ -155,8 +157,8 @@ class AppColors {
 
 /// App Strings
 class AppStrings {
-  static const String appName = 'Professionals';
-  static const String appTagline = 'Find trusted professionals near you';
+  static const String appName = 'Hirepro';
+  static const String appTagline = 'Your trusted professional network';
 
   static const List<Map<String, dynamic>> serviceCategories = [
     {'name': 'Plumber', 'icon': '🔧', 'key': 'plumber'},
@@ -191,7 +193,7 @@ class AppStrings {
 class ServiceLabels {
   static Map<String, dynamic> labelFor(String key) {
     final cat = AppStrings.serviceCategories.firstWhere(
-          (c) => c['key'] == key,
+      (c) => c['key'] == key,
       orElse: () => {'name': key, 'icon': '📌', 'key': key},
     );
     return cat;

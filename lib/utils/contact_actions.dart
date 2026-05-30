@@ -27,8 +27,7 @@ Uri contactUriFor({
       return Uri.parse('tel:$normalized');
     case ContactMethod.whatsapp:
       final encodedMessage = Uri.encodeComponent(
-        message ??
-            'Assalam-o-Alaikum, I want to contact you from Service Connect.',
+        message ?? 'Assalam-o-Alaikum, I want to contact you from Hirepro.',
       );
       return Uri.parse('https://wa.me/$digits?text=$encodedMessage');
   }
