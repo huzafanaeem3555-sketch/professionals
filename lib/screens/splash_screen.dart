@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../utils/constants.dart';
 import '../utils/auth_navigation.dart';
+import '../widgets/app_logo.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -171,29 +172,7 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 142,
-                  height: 142,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 28,
-                        offset: const Offset(0, 14),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: Image.asset(
-                      'assets/images/logo.jpg',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
+                const AppLogo(size: 142, radius: 30, padding: 10),
                 const SizedBox(height: 24),
                 const Text(
                   AppStrings.appName,

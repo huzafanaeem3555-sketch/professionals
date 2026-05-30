@@ -4,6 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
+import '../widgets/app_logo.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -111,17 +112,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child:
-                      Icon(Icons.handyman, size: 72, color: AppColors.primary),
-                ),
-              ),
+              const Center(child: AppLogo(size: 122, padding: 7)),
               const SizedBox(height: 24),
               Text(
                 AppStrings.appName,

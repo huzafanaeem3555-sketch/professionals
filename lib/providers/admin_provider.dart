@@ -128,6 +128,25 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createUser(Map<String, dynamic> data) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final res = await _api.createAdminUser(data);
+      if (res['success'] == true) {
+        await fetchAll(showLoading: false);
+        return true;
+      }
+      _setError(res['message'] ?? 'Failed to add user.');
+      return false;
+    } catch (e) {
+      _setError('Error adding user: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<bool> updateProfessional(
     String uid,
     Map<String, dynamic> data,

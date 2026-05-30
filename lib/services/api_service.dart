@@ -931,6 +931,17 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createAdminUser(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.post(ApiConstants.adminUsers, data: data);
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> updateAdminProfessional(
     String uid,
     Map<String, dynamic> data,

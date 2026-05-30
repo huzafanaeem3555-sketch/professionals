@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import '../utils/constants.dart';
+import '../widgets/app_logo.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -149,6 +150,105 @@ class _AdminDashboardState extends State<AdminDashboard>
     }
   }
 
+  Future<void> _addAdminUser(String role) async {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final servicesCtrl = TextEditingController();
+    final customCtrl = TextEditingController();
+    final expCtrl = TextEditingController(text: '0');
+    final rateCtrl = TextEditingController(text: '0');
+    final addressCtrl = TextEditingController();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          role == 'professional' ? 'Add Professional' : 'Add Customer',
+          style: const TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _adminField(nameCtrl, 'Name'),
+                const SizedBox(height: 10),
+                _adminField(phoneCtrl, 'Phone'),
+                const SizedBox(height: 10),
+                _adminField(emailCtrl, 'Email'),
+                if (role == 'professional') ...[
+                  const SizedBox(height: 10),
+                  _adminField(servicesCtrl, 'Services comma separated'),
+                  const SizedBox(height: 10),
+                  _adminField(customCtrl, 'Custom services comma separated'),
+                  const SizedBox(height: 10),
+                  _adminField(expCtrl, 'Experience Years',
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 10),
+                  _adminField(rateCtrl, 'Hourly Rate',
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 10),
+                  _adminField(addressCtrl, 'Address'),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.add),
+            label: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (saved == true && mounted) {
+      final success =
+          await Provider.of<AdminProvider>(context, listen: false).createUser({
+        'role': role,
+        'displayName': nameCtrl.text.trim(),
+        'phoneNumber': phoneCtrl.text.trim(),
+        'email': emailCtrl.text.trim(),
+        if (role == 'professional') ...{
+          'serviceTypes': servicesCtrl.text.trim(),
+          'customServices': customCtrl.text.trim(),
+          'experienceYears': int.tryParse(expCtrl.text.trim()) ?? 0,
+          'hourlyRate': double.tryParse(rateCtrl.text.trim()) ?? 0,
+          'address': addressCtrl.text.trim(),
+        },
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success
+                ? '${role == 'professional' ? 'Professional' : 'Customer'} added'
+                : Provider.of<AdminProvider>(context, listen: false).error ??
+                    'Add failed'),
+            backgroundColor: success ? AppColors.success : AppColors.error,
+          ),
+        );
+      }
+    }
+    nameCtrl.dispose();
+    phoneCtrl.dispose();
+    emailCtrl.dispose();
+    servicesCtrl.dispose();
+    customCtrl.dispose();
+    expCtrl.dispose();
+    rateCtrl.dispose();
+    addressCtrl.dispose();
+  }
+
   Future<void> _editProfessional(Map<String, dynamic> p) async {
     final nameCtrl =
         TextEditingController(text: p['displayName']?.toString() ?? '');
@@ -158,13 +258,21 @@ class _AdminDashboardState extends State<AdminDashboard>
         TextEditingController(text: (p['rating'] ?? 0).toString());
     final experienceCtrl =
         TextEditingController(text: (p['experienceYears'] ?? 0).toString());
+    final services = p['serviceTypes'] ?? p['services'] ?? [];
+    final customServices = p['customServices'] ?? [];
+    final servicesCtrl = TextEditingController(
+        text: services is List ? services.join(', ') : services.toString());
+    final customCtrl = TextEditingController(
+        text: customServices is List
+            ? customServices.join(', ')
+            : customServices.toString());
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: Colors.white,
         title: const Text('Edit Professional',
-            style: TextStyle(color: Colors.white)),
+            style: TextStyle(color: AppColors.textPrimary)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -178,13 +286,17 @@ class _AdminDashboardState extends State<AdminDashboard>
               const SizedBox(height: 10),
               _adminField(experienceCtrl, 'Experience Years',
                   keyboardType: TextInputType.number),
+              const SizedBox(height: 10),
+              _adminField(servicesCtrl, 'Services comma separated'),
+              const SizedBox(height: 10),
+              _adminField(customCtrl, 'Custom services comma separated'),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -201,6 +313,8 @@ class _AdminDashboardState extends State<AdminDashboard>
         'phoneNumber': phoneCtrl.text.trim(),
         'rating': double.tryParse(ratingCtrl.text.trim()) ?? 0,
         'experienceYears': int.tryParse(experienceCtrl.text.trim()) ?? 0,
+        'serviceTypes': servicesCtrl.text.trim(),
+        'customServices': customCtrl.text.trim(),
       });
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -212,6 +326,8 @@ class _AdminDashboardState extends State<AdminDashboard>
     phoneCtrl.dispose();
     ratingCtrl.dispose();
     experienceCtrl.dispose();
+    servicesCtrl.dispose();
+    customCtrl.dispose();
   }
 
   Widget _adminField(
@@ -222,18 +338,25 @@ class _AdminDashboardState extends State<AdminDashboard>
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        filled: true,
+        fillColor: AppColors.surfaceLight,
         enabledBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white24),
+          borderSide: BorderSide(color: AppColors.divider),
         ),
         focusedBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.primary),
         ),
       ),
     );
+  }
+
+  String _initial(dynamic value, String fallback) {
+    final text = value?.toString().trim() ?? '';
+    return (text.isEmpty ? fallback : text).substring(0, 1).toUpperCase();
   }
 
   Future<void> _showProfessionalReviews(Map<String, dynamic> p) async {
@@ -298,14 +421,36 @@ class _AdminDashboardState extends State<AdminDashboard>
     final adminProv = Provider.of<AdminProvider>(context);
 
     return Scaffold(
-      backgroundColor: AppColors.primaryDark,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Admin Console',
-            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppLogo(size: 34, padding: 2, shadow: false),
+            SizedBox(width: 10),
+            Text('Admin Console',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+            tooltip: 'Add User',
+            onSelected: _addAdminUser,
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'professional',
+                child: Text('Add Professional'),
+              ),
+              PopupMenuItem(
+                value: 'customer',
+                child: Text('Add Customer'),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _refreshData,
@@ -329,9 +474,9 @@ class _AdminDashboardState extends State<AdminDashboard>
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          labelColor: AppColors.primary,
+          labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          indicatorColor: AppColors.primary,
+          indicatorColor: AppColors.accent,
           tabs: const [
             Tab(icon: Icon(Icons.dashboard_rounded), text: 'Stats'),
             Tab(icon: Icon(Icons.engineering_rounded), text: 'Professionals'),
@@ -522,12 +667,50 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  Widget _emptyAdminState(
+    String message,
+    IconData icon,
+    VoidCallback onAdd,
+  ) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppLogo(size: 88, padding: 6),
+            const SizedBox(height: 18),
+            Icon(icon, color: AppColors.primary, size: 32),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Add New'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfessionalsTab(AdminProvider adminProv) {
     final list = adminProv.professionals;
     if (list.isEmpty) {
-      return const Center(
-          child: Text('No professionals registered',
-              style: TextStyle(color: Colors.white)));
+      return _emptyAdminState(
+        'No professionals registered',
+        Icons.engineering_rounded,
+        () => _addAdminUser('professional'),
+      );
     }
 
     return ListView.builder(
@@ -555,7 +738,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                   radius: 26,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                   child: Text(
-                    (p['displayName'] ?? 'P').substring(0, 1).toUpperCase(),
+                    _initial(p['displayName'], 'P'),
                     style: TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.bold,
@@ -654,9 +837,11 @@ class _AdminDashboardState extends State<AdminDashboard>
   Widget _buildCustomersTab(AdminProvider adminProv) {
     final list = adminProv.customers;
     if (list.isEmpty) {
-      return const Center(
-          child: Text('No customers registered',
-              style: TextStyle(color: Colors.white)));
+      return _emptyAdminState(
+        'No customers registered',
+        Icons.people_alt_rounded,
+        () => _addAdminUser('customer'),
+      );
     }
 
     return ListView.builder(
@@ -679,7 +864,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                   radius: 26,
                   backgroundColor: Colors.purple.withValues(alpha: 0.2),
                   child: Text(
-                    (c['displayName'] ?? 'C').substring(0, 1).toUpperCase(),
+                    _initial(c['displayName'], 'C'),
                     style: const TextStyle(
                         color: Colors.purpleAccent,
                         fontWeight: FontWeight.bold,

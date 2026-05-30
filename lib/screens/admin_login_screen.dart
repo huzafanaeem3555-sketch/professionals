@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import '../utils/constants.dart';
+import '../widgets/app_logo.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -72,24 +73,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo / Icon Section
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            width: 2),
-                      ),
-                      child: Icon(
-                        Icons.admin_panel_settings_rounded,
-                        size: 72,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
+                  const Center(child: AppLogo(size: 132, padding: 8)),
                   const SizedBox(height: 24),
 
                   // Title Section
@@ -142,7 +126,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Enter your administrator username to access the dashboard.',
+                          'Enter secret: Huzaifa',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -155,7 +139,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           controller: _usernameController,
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: InputDecoration(
-                            labelText: 'Admin Username',
+                            labelText: 'Admin Secret',
                             labelStyle:
                                 const TextStyle(color: AppColors.textSecondary),
                             prefixIcon: Icon(Icons.person_outline,
@@ -172,13 +156,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                   color: AppColors.primary, width: 1.5),
                             ),
                             floatingLabelBehavior: FloatingLabelBehavior.never,
-                            hintText: 'Enter admin username',
+                            hintText: 'Huzaifa',
                             hintStyle:
                                 const TextStyle(color: AppColors.textLight),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Username is required';
+                              return 'Admin secret is required';
                             }
                             return null;
                           },
