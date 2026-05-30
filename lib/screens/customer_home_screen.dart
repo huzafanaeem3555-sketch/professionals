@@ -232,7 +232,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       _voiceStatus = 'Listening... Urdu, Roman Urdu, or English bolain.';
     });
     try {
-      final words = await _voiceChannel.invokeMethod<String>('listen');
+      final words = await _voiceChannel
+          .invokeMethod<String>('listen')
+          .timeout(const Duration(seconds: 16), onTimeout: () async {
+        try {
+          await _voiceChannel.invokeMethod<void>('stop');
+        } catch (_) {}
+        return '';
+      });
       if (!mounted) return;
       final spokenText = words?.trim() ?? '';
       if (spokenText.isEmpty) {
@@ -273,7 +280,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   }
 
   Future<void> _stopVoiceSearch() async {
-    await _voiceChannel.invokeMethod<void>('stop');
+    try {
+      await _voiceChannel.invokeMethod<void>('stop');
+    } catch (_) {}
     if (!mounted) return;
     setState(() {
       _voiceListening = false;

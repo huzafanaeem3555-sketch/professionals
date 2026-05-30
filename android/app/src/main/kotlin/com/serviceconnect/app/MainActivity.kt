@@ -17,6 +17,7 @@ class MainActivity : FlutterActivity() {
     private val audioPermissionRequest = 4102
     private var speechRecognizer: SpeechRecognizer? = null
     private var pendingResult: MethodChannel.Result? = null
+    private var resultSubmitted = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -27,6 +28,7 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "listen" -> startVoiceSearch(result)
                 "stop" -> {
+                    finishVoiceSearch("")
                     stopVoiceSearch()
                     result.success(null)
                 }
@@ -53,6 +55,7 @@ class MainActivity : FlutterActivity() {
     private fun listenWithRecognizer(result: MethodChannel.Result) {
         pendingResult?.error("cancelled", "A new voice search was started.", null)
         pendingResult = result
+        resultSubmitted = false
         speechRecognizer?.destroy()
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
@@ -80,9 +83,7 @@ class MainActivity : FlutterActivity() {
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ur-PK")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ur-PK")
-            putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(
@@ -94,6 +95,8 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun finishVoiceSearch(text: String) {
+        if (resultSubmitted) return
+        resultSubmitted = true
         pendingResult?.success(text)
         pendingResult = null
         stopVoiceSearch()
