@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_navigator.dart';
+import 'api_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -107,6 +108,7 @@ class NotificationService {
         'platform': defaultTargetPlatform.name,
         '_updatedAt': DateTime.now().millisecondsSinceEpoch,
       });
+      await ApiService().updateFcmToken(uid, token);
     } catch (e) {
       debugPrint('Failed to save FCM token: $e');
     }
