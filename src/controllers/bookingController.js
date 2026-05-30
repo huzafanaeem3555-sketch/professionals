@@ -71,23 +71,30 @@ const BookingController = {
         contactMethod: req.body?.contactMethod || 'direct_contact',
       });
 
-      // Send notification to professional
+      // Send phone notification to professional. Android shows this even when
+      // the Flutter app is closed because the payload includes notification.
       const customerName = customerUser?.displayName || req.user.displayName || 'A customer';
       const contactLabel =
         contactMethod === 'whatsapp'
           ? 'WhatsApp Now'
           : contactMethod === 'call'
             ? 'Call Now'
-            : 'contact request';
+            : 'booking request';
       await sendNotificationToUser(
         proUid,
-        '📣 New Contact Request!',
-        `${customerName} tapped ${contactLabel} on your profile.`,
+        'New Booking Request',
+        `${customerName} sent a ${contactLabel} for ${String(serviceType).replace(/_/g, ' ')}.`,
         {
-          type: 'contact_request',
+          type: 'new_booking',
           bookingId: booking.bookingId,
           contactMethod: contactMethod || '',
+          serviceType: serviceType || '',
+          customerName,
+          customerPhone: customerUser?.phoneNumber || '',
           customerId,
+          screen: 'notifications',
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          timestamp: Date.now().toString(),
         }
       );
 

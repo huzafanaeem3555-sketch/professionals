@@ -25,10 +25,20 @@ function initializeFirebase() {
   }
 
   try {
-    // Initialize with ONLY database URL (NO service account needed)
-    admin.initializeApp({
-      databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://serviceconnect-dea35-default-rtdb.firebaseio.com/'
-    });
+    const databaseURL = process.env.FIREBASE_DATABASE_URL || 'https://serviceconnect-dea35-default-rtdb.firebaseio.com/';
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      || (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+        ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
+        : '');
+    const appConfig = { databaseURL };
+
+    if (serviceAccountJson) {
+      appConfig.credential = admin.credential.cert(JSON.parse(serviceAccountJson));
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      appConfig.credential = admin.credential.applicationDefault();
+    }
+
+    admin.initializeApp(appConfig);
     
     firebaseReady = true;
     console.log('✅ Firebase initialized successfully');

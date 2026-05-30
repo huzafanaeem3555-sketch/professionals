@@ -12,7 +12,7 @@ function normalizeData(data = {}) {
 async function saveNotificationInboxItem(userId, title, body, data = {}) {
   if (!userId) return null;
   return await dbPush(`userNotifications/${userId}`, {
-    title: title || 'Service Connect',
+    title: title || 'Hirepro',
     body: body || '',
     data: normalizeData(data),
     type: data?.type || 'general',
@@ -25,10 +25,11 @@ async function saveNotificationInboxItem(userId, title, body, data = {}) {
 
 async function sendRawNotification(token, title, body, data = {}) {
   if (!token) return { success: false, error: 'No token found' };
+  if (!messaging) return { success: false, error: 'Firebase messaging is not initialized' };
 
   const message = {
     notification: {
-      title: title || 'Service Connect',
+      title: title || 'Hirepro',
       body: body || '',
     },
     data: normalizeData(data),
@@ -38,6 +39,7 @@ async function sendRawNotification(token, title, body, data = {}) {
       notification: {
         sound: 'default',
         channelId: 'service_connect_channel',
+        clickAction: 'FLUTTER_NOTIFICATION_CLICK',
       },
     },
     apns: {
@@ -102,7 +104,7 @@ async function sendNotificationToMultipleUsers(userIds, title, body, data = {}) 
 
     const response = await messaging.sendEachForMulticast({
       notification: {
-        title: title || 'Service Connect',
+        title: title || 'Hirepro',
         body: body || '',
       },
       data: normalizedData,
@@ -112,6 +114,7 @@ async function sendNotificationToMultipleUsers(userIds, title, body, data = {}) 
         notification: {
           sound: 'default',
           channelId: 'service_connect_channel',
+          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
         },
       },
       apns: {
@@ -159,7 +162,13 @@ async function sendNewBookingNotification(professionalId, customerName, bookingI
     professionalId,
     'New Booking Request',
     `${customerName} has requested your service. Tap to view details.`,
-    { type: 'new_booking', bookingId, timestamp: Date.now().toString() },
+    {
+      type: 'new_booking',
+      bookingId,
+      screen: 'notifications',
+      click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      timestamp: Date.now().toString(),
+    },
   );
 }
 
