@@ -818,6 +818,166 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createComplaint(
+      Map<String, dynamic> data) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(ApiConstants.marketplaceComplaints, data: data),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getFavorites() async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.marketplaceFavorites),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> toggleFavorite(
+    String professionalId, {
+    bool favorite = true,
+  }) async {
+    try {
+      final response = await _withRetry(
+        () => favorite
+            ? _dio.post('${ApiConstants.marketplaceFavorites}/$professionalId',
+                data: {'favorite': true})
+            : _dio
+                .delete('${ApiConstants.marketplaceFavorites}/$professionalId'),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> createReferral(Map<String, dynamic> data) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(ApiConstants.marketplaceReferrals, data: data),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> applyReferral(String code) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post('${ApiConstants.marketplaceReferrals}/apply',
+            data: {'code': code}),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getMyReferrals() async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.marketplaceReferrals),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> createJobPost(Map<String, dynamic> data) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(ApiConstants.marketplaceJobs, data: data),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getJobPosts() async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.marketplaceJobs),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> createJobOffer(
+    String postId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post('${ApiConstants.marketplaceJobs}/$postId/offers',
+            data: data),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getJobOffers(String postId) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get('${ApiConstants.marketplaceJobs}/$postId/offers'),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> requestFeaturedListing() async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(ApiConstants.marketplaceFeaturedRequest, data: {}),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadCertificate(
+      Map<String, dynamic> data) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(ApiConstants.marketplaceCertificates, data: data),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getCertificates({String? professionalId}) async {
+    try {
+      final suffix = professionalId != null && professionalId.isNotEmpty
+          ? '/$professionalId'
+          : '';
+      final response = await _withRetry(
+        () => _dio.get('${ApiConstants.marketplaceCertificates}$suffix'),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
   // ─── GEOLOCATION ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getNearbyProfessionalsByLocation({
@@ -988,6 +1148,67 @@ class ApiService {
     try {
       final response = await _withRetry(
         () => _dio.get(ApiConstants.adminTransactions, options: _adminOptions),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getAdminComplaints() async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminComplaints, options: _adminOptions),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> updateAdminComplaint(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.patch('${ApiConstants.adminComplaints}/$id',
+            data: data, options: _adminOptions),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteAdminComplaint(String id) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.delete('${ApiConstants.adminComplaints}/$id',
+            options: _adminOptions),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getAdminMarketplace() async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(ApiConstants.adminMarketplace, options: _adminOptions),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> updateCleanupSettings(int hours) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.patch(ApiConstants.adminCleanupSettings,
+            data: {'hours': hours}, options: _adminOptions),
       );
       return response.data;
     } catch (e) {

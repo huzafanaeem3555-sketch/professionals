@@ -21,6 +21,8 @@ class ProfessionalModel {
   final String gender;
   final String verificationStatus;
   final bool isActive;
+  final bool isFeatured;
+  final int reliabilityScore;
 
   ProfessionalModel({
     required this.uid,
@@ -45,6 +47,8 @@ class ProfessionalModel {
     this.gender = 'male',
     this.verificationStatus = 'verified',
     this.isActive = true,
+    this.isFeatured = false,
+    this.reliabilityScore = 0,
   });
 
   factory ProfessionalModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +115,8 @@ class ProfessionalModel {
           (json['verificationStatus'] ?? json['verification'] ?? 'verified')
               .toString(),
       isActive: json['isActive'] != false,
+      isFeatured: json['isFeatured'] == true,
+      reliabilityScore: toInt(json['reliabilityScore']),
     );
   }
 
@@ -137,6 +143,8 @@ class ProfessionalModel {
       'gender': gender,
       'verificationStatus': verificationStatus,
       'isActive': isActive,
+      'isFeatured': isFeatured,
+      'reliabilityScore': reliabilityScore,
     };
   }
 
@@ -163,6 +171,8 @@ class ProfessionalModel {
     String? gender,
     String? verificationStatus,
     bool? isActive,
+    bool? isFeatured,
+    int? reliabilityScore,
   }) {
     return ProfessionalModel(
       uid: uid ?? this.uid,
@@ -187,6 +197,8 @@ class ProfessionalModel {
       gender: gender ?? this.gender,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       isActive: isActive ?? this.isActive,
+      isFeatured: isFeatured ?? this.isFeatured,
+      reliabilityScore: reliabilityScore ?? this.reliabilityScore,
     );
   }
 
@@ -207,6 +219,12 @@ class ProfessionalModel {
 
   String get serviceText =>
       allServices.isNotEmpty ? allServices.join(', ') : 'No services';
+  int get trustScore => reliabilityScore > 0
+      ? reliabilityScore
+      : ((rating * 12) + (completedJobs * 2) + totalRatings)
+          .round()
+          .clamp(0, 100)
+          .toInt();
 
   List<String> get serviceTypes => allServices;
   bool get isAvailableNow => isAvailable;

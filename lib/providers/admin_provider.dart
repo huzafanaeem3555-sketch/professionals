@@ -10,6 +10,8 @@ class AdminProvider extends ChangeNotifier {
   List<dynamic> _customers = [];
   List<dynamic> _bookings = [];
   List<dynamic> _transactions = [];
+  List<dynamic> _complaints = [];
+  Map<String, dynamic> _marketplace = {};
   bool _isLoading = false;
   String? _error;
   bool _isAdminLoggedIn = false;
@@ -21,6 +23,8 @@ class AdminProvider extends ChangeNotifier {
   List<dynamic> get customers => _customers;
   List<dynamic> get bookings => _bookings;
   List<dynamic> get transactions => _transactions;
+  List<dynamic> get complaints => _complaints;
+  Map<String, dynamic> get marketplace => _marketplace;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAdminLoggedIn => _isAdminLoggedIn;
@@ -29,7 +33,9 @@ class AdminProvider extends ChangeNotifier {
       _professionals.isNotEmpty ||
       _customers.isNotEmpty ||
       _bookings.isNotEmpty ||
-      _transactions.isNotEmpty;
+      _transactions.isNotEmpty ||
+      _complaints.isNotEmpty ||
+      _marketplace.isNotEmpty;
 
   void _setLoading(bool val) {
     _isLoading = val;
@@ -92,6 +98,8 @@ class AdminProvider extends ChangeNotifier {
         safeCall(_api.getAdminCustomers()),
         safeCall(_api.getAdminBookings()),
         safeCall(_api.getAdminTransactions()),
+        safeCall(_api.getAdminComplaints()),
+        safeCall(_api.getAdminMarketplace()),
       ]);
 
       String? firstError;
@@ -120,6 +128,16 @@ class AdminProvider extends ChangeNotifier {
       } else {
         firstError ??= results[4]['message']?.toString();
       }
+      if (results[5]['success'] == true && results[5]['data'] != null) {
+        _complaints = List<dynamic>.from(results[5]['data']);
+      } else {
+        firstError ??= results[5]['message']?.toString();
+      }
+      if (results[6]['success'] == true && results[6]['data'] != null) {
+        _marketplace = Map<String, dynamic>.from(results[6]['data']);
+      } else {
+        firstError ??= results[6]['message']?.toString();
+      }
       _error = firstError;
       notifyListeners();
     } catch (e) {
@@ -135,6 +153,7 @@ class AdminProvider extends ChangeNotifier {
   Future<void> fetchCustomers() => fetchAll();
   Future<void> fetchBookings() => fetchAll();
   Future<void> fetchTransactions() => fetchAll();
+  Future<void> fetchComplaints() => fetchAll();
 
   Future<bool> deleteUser(String uid) async {
     _setLoading(true);
@@ -257,6 +276,54 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateComplaint(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final res = await _api.updateAdminComplaint(id, data);
+      if (res['success'] == true) {
+        await fetchAll(showLoading: false);
+        return true;
+      }
+      _setError(res['message'] ?? 'Failed to update complaint.');
+      return false;
+    } catch (e) {
+      _setError('Complaint update error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteComplaint(String id) async {
+    try {
+      final res = await _api.deleteAdminComplaint(id);
+      if (res['success'] == true) {
+        await fetchAll(showLoading: false);
+        return true;
+      }
+      _setError(res['message'] ?? 'Failed to delete complaint.');
+      return false;
+    } catch (e) {
+      _setError('Complaint delete error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateCleanupHours(int hours) async {
+    try {
+      final res = await _api.updateCleanupSettings(hours);
+      if (res['success'] == true) {
+        await fetchAll(showLoading: false);
+        return true;
+      }
+      _setError(res['message'] ?? 'Failed to update cleanup setting.');
+      return false;
+    } catch (e) {
+      _setError('Cleanup setting error: $e');
+      return false;
+    }
+  }
+
   Future<bool> clearAllData() async {
     _setLoading(true);
     _setError(null);
@@ -286,6 +353,8 @@ class AdminProvider extends ChangeNotifier {
     _customers = [];
     _bookings = [];
     _transactions = [];
+    _complaints = [];
+    _marketplace = {};
     _error = null;
     notifyListeners();
   }

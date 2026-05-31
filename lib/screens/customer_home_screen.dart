@@ -36,6 +36,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   List<ProfessionalModel> _filtered = [];
   List<_SearchSuggestion> _suggestions = [];
   Map<String, int> _servicePopularity = {};
+  Set<String> _favoriteIds = {};
   int _activeBookingsCount = 0;
   String? _filterService;
   String _myArea = '';
@@ -85,6 +86,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final customerIdFuture = StorageService.getUid();
     final professionalsFuture = _firebase.getAllProfessionals();
     final popularServicesFuture = _api.getPopularServices(limit: 80);
+    final favoritesFuture = _api.getFavorites();
 
     try {
       final pos = await LocationService()
@@ -145,6 +147,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final bookings = await bookingsFuture;
     final servicePopularity =
         await _resolveServicePopularity(popularServicesFuture);
+    final favoriteIds = await _resolveFavoriteIds(favoritesFuture);
     final activeCount = bookings
         .where((b) => [
               'pending',
@@ -159,6 +162,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       setState(() {
         _all = visibleList;
         _servicePopularity = servicePopularity;
+        _favoriteIds = favoriteIds;
         _activeBookingsCount = activeCount;
         _applyFilter();
         _buildSuggestions(_searchCtrl.text);
@@ -386,6 +390,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final raw = value.toLowerCase();
     final normalized = _normalizeSearchText(value);
     final text = '$raw $normalized';
+    final synonym = _serviceFromSynonym(text);
+    if (synonym != null) return synonym;
     const keywords = <String, List<String>>{
       'electrician': [
         'electric',
@@ -449,6 +455,187 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       if (entry.value.any((keyword) => text.contains(keyword))) {
         return entry.key;
       }
+    }
+    return null;
+  }
+
+  String? _serviceFromSynonym(String text) {
+    final groups = <String, List<String>>{
+      'plumber': [
+        'pani leak',
+        'nal kharab',
+        'pipe masla',
+        'pipe issue',
+        'water leakage',
+        'drain block',
+        'sewerage',
+        'gutter',
+        'flush',
+        'commode',
+        'wash basin',
+        'sink',
+        'tank overflow',
+        'motor pump',
+        'valve',
+        'shower',
+        'tooti',
+        'nali',
+        'pani band'
+      ],
+      'electrician': [
+        'bijli ka masla',
+        'light nahi',
+        'fan slow',
+        'switch board',
+        'socket',
+        'breaker',
+        'ups wiring',
+        'inverter',
+        'short circuit',
+        'fuse',
+        'spark',
+        'meter',
+        'voltage',
+        'plug',
+        'tube light',
+        'led light',
+        'phase',
+        'wire jal gai'
+      ],
+      'ac_mechanic': [
+        'ac thanda nahi',
+        'ac cooling',
+        'ac gas',
+        'split ac',
+        'window ac',
+        'compressor',
+        'fridge cooling',
+        'deep freezer',
+        'freezer',
+        'water dispenser',
+        'outdoor unit',
+        'indoor unit'
+      ],
+      'carpenter': [
+        'darwaza',
+        'almari',
+        'wardrobe',
+        'cabinet',
+        'kitchen cabinet',
+        'bed repair',
+        'furniture repair',
+        'chair repair',
+        'table repair',
+        'drawer',
+        'hinge',
+        'wood work',
+        'polish'
+      ],
+      'painter': [
+        'rang',
+        'wall paint',
+        'safedi',
+        'distemper',
+        'emulsion',
+        'ceiling paint',
+        'wallpaper',
+        'texture',
+        'door paint'
+      ],
+      'cleaner': [
+        'safai',
+        'deep cleaning',
+        'bathroom cleaning',
+        'kitchen cleaning',
+        'sofa cleaning',
+        'carpet cleaning',
+        'floor wash',
+        'maid',
+        'housekeeping',
+        'office cleaning'
+      ],
+      'tutor': [
+        'parhai',
+        'math teacher',
+        'english teacher',
+        'home tuition',
+        'quran teacher',
+        'physics',
+        'chemistry',
+        'biology',
+        'computer class',
+        'academy'
+      ],
+      'driver': [
+        'driver chahiye',
+        'car driver',
+        'pick and drop',
+        'school van',
+        'rent a car',
+        'chauffeur',
+        'airport drop',
+        'daily driver'
+      ],
+      'chef': [
+        'khana pakana',
+        'cook chahiye',
+        'bawarchi',
+        'roti',
+        'biryani',
+        'catering',
+        'home cook',
+        'party food'
+      ],
+      'beautician': [
+        'mehndi',
+        'bridal',
+        'salon',
+        'facial',
+        'hair cut',
+        'hair color',
+        'threading',
+        'wax',
+        'party makeup',
+        'nails'
+      ],
+      'it_technician': [
+        'laptop repair',
+        'mobile repair',
+        'wifi issue',
+        'internet problem',
+        'cctv',
+        'printer',
+        'router',
+        'windows install',
+        'data recovery',
+        'screen repair',
+        'charging jack',
+        'keyboard issue',
+        'pc repair'
+      ],
+      'security_guard': [
+        'chowkidar',
+        'watchman',
+        'night guard',
+        'gate keeper',
+        'body guard',
+        'security guard'
+      ],
+      'gardener': ['garden', 'gardener', 'lawn', 'plants', 'grass', 'mali'],
+      'mechanic': [
+        'car repair',
+        'bike repair',
+        'engine',
+        'oil change',
+        'brake',
+        'clutch',
+        'puncture'
+      ],
+      'welder': ['welding', 'gate welding', 'grill', 'iron work', 'steel'],
+      'mason': ['mistri', 'tiles', 'brick work', 'cement', 'wall repair'],
+    };
+    for (final entry in groups.entries) {
+      if (entry.value.any((word) => text.contains(word))) return entry.key;
     }
     return null;
   }
@@ -583,6 +770,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       return score > best ? score : best;
     });
     return (p.rating * 1000).round() +
+        (p.isFeatured ? 10000 : 0) +
+        (p.trustScore * 18) +
         (p.totalRatings * 12) +
         (p.completedJobs * 8) +
         (serviceScore * 4);
@@ -627,8 +816,290 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     }
   }
 
+  Future<Set<String>> _resolveFavoriteIds(
+    Future<Map<String, dynamic>> future,
+  ) async {
+    try {
+      final res = await future.timeout(const Duration(seconds: 8));
+      final data = res['data'];
+      if (res['success'] != true || data is! List) return {};
+      return data
+          .whereType<Map>()
+          .map((item) => (item['professionalId'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
   Future<void> _trackServiceSearch({String? query, String? serviceType}) async {
     await _api.trackServiceSearch(query: query, serviceType: serviceType);
+  }
+
+  Future<void> _toggleFavorite(ProfessionalModel pro) async {
+    final currentlySaved = _favoriteIds.contains(pro.uid);
+    setState(() {
+      if (currentlySaved) {
+        _favoriteIds.remove(pro.uid);
+      } else {
+        _favoriteIds.add(pro.uid);
+      }
+    });
+    final res = await _api.toggleFavorite(pro.uid, favorite: !currentlySaved);
+    if (res['success'] != true && mounted) {
+      setState(() {
+        if (currentlySaved) {
+          _favoriteIds.add(pro.uid);
+        } else {
+          _favoriteIds.remove(pro.uid);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(res['message']?.toString() ?? 'Favorite failed')),
+      );
+    }
+  }
+
+  Future<void> _submitComplaint(ProfessionalModel pro) async {
+    final controller = TextEditingController();
+    final sent = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Complaint: ${pro.name}'),
+        content: TextField(
+          controller: controller,
+          minLines: 3,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'Issue detail',
+            hintText: 'Write what happened...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+    final reason = controller.text.trim();
+    controller.dispose();
+    if (sent != true || reason.isEmpty) return;
+    final res = await _api.createComplaint({
+      'professionalId': pro.uid,
+      'reason': reason,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res['success'] == true
+            ? 'Complaint sent to admin.'
+            : res['message']?.toString() ?? 'Complaint failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  Future<void> _createReferral(ProfessionalModel pro) async {
+    final res = await _api.createReferral({
+      'professionalId': pro.uid,
+      'discountPercent': 10,
+    });
+    if (!mounted) return;
+    if (res['success'] == true && res['data'] is Map) {
+      final data = Map<String, dynamic>.from(res['data'] as Map);
+      final code = data['code']?.toString() ?? '';
+      await Clipboard.setData(ClipboardData(text: code));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Referral code copied: $code'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(res['message']?.toString() ?? 'Referral failed')),
+      );
+    }
+  }
+
+  Future<void> _applyReferralDialog() async {
+    final controller = TextEditingController();
+    final apply = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Apply Referral Code'),
+        content: TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            labelText: 'Referral code',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+    final code = controller.text.trim();
+    controller.dispose();
+    if (apply != true || code.isEmpty) return;
+    final res = await _api.applyReferral(code);
+    if (!mounted) return;
+    if (res['success'] == true && res['data'] is Map) {
+      final data = Map<String, dynamic>.from(res['data'] as Map);
+      final proId = data['professionalId']?.toString() ?? '';
+      final discount = data['discountPercent']?.toString() ?? '10';
+      setState(() {
+        if (proId.isNotEmpty) {
+          _filtered = _all.where((p) => p.uid == proId).toList();
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Referral applied. Discount: $discount%'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message']?.toString() ?? 'Invalid code')),
+      );
+    }
+  }
+
+  Future<void> _postJobDialog() async {
+    final serviceCtrl = TextEditingController(text: _filterService ?? '');
+    final descCtrl = TextEditingController();
+    final budgetCtrl = TextEditingController();
+    final radiusCtrl = TextEditingController(text: '10');
+    final post = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Post a Job'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: serviceCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Service',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: descCtrl,
+                minLines: 3,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Work details',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: budgetCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Budget PKR',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: radiusCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Radius KM',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Post'),
+          ),
+        ],
+      ),
+    );
+    final service = serviceCtrl.text.trim();
+    final desc = descCtrl.text.trim();
+    final budget = double.tryParse(budgetCtrl.text.trim()) ?? 0;
+    final radius = double.tryParse(radiusCtrl.text.trim()) ?? 10;
+    serviceCtrl.dispose();
+    descCtrl.dispose();
+    budgetCtrl.dispose();
+    radiusCtrl.dispose();
+    if (post != true || service.isEmpty || desc.isEmpty) return;
+    final contactLocation = await _resolveCustomerContactLocation();
+    final res = await _api.createJobPost({
+      'serviceType': service,
+      'description': desc,
+      'budget': budget,
+      'radiusKm': radius,
+      'location': contactLocation['location'],
+      'address': contactLocation['address'],
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res['success'] == true
+            ? 'Job posted. Nearby professionals can send offers.'
+            : res['message']?.toString() ?? 'Job post failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  void _autoMatchBest() {
+    if (_filtered.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a service or search first.')),
+      );
+      return;
+    }
+    _sortProfessionals(_filtered);
+    final best = _filtered.first;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('Best match: ${best.name} (${best.trustScore}% reliable)'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+    Navigator.pushNamed(
+      context,
+      '/professional-profile',
+      arguments: {'uid': best.uid},
+    );
   }
 
   bool _matchesQuery(String source, String query) {
@@ -1481,6 +1952,44 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
                   SliverToBoxAdapter(
                     child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _autoMatchBest,
+                            icon: const Icon(Icons.auto_awesome_rounded),
+                            label: const Text('Auto Match'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _postJobDialog,
+                            icon: const Icon(Icons.post_add_rounded),
+                            label: const Text('Post Job'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _applyReferralDialog,
+                            icon: const Icon(Icons.card_giftcard_rounded),
+                            label: const Text('Referral'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _filtered = _all
+                                    .where((p) => _favoriteIds.contains(p.uid))
+                                    .toList();
+                              });
+                            },
+                            icon: const Icon(Icons.bookmark_rounded),
+                            label: Text('Saved (${_favoriteIds.length})'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SliverToBoxAdapter(
+                    child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                       child: Row(
                         children: const [
@@ -1627,11 +2136,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             duration: Duration(milliseconds: 300 + i * 60),
                             child: _ProfessionalCard(
                               professional: pro,
+                              isFavorite: _favoriteIds.contains(pro.uid),
                               onViewProfile: () => Navigator.pushNamed(
                                 context,
                                 '/professional-profile',
                                 arguments: {'uid': pro.uid},
                               ),
+                              onFavorite: () => _toggleFavorite(pro),
+                              onComplaint: () => _submitComplaint(pro),
+                              onReferral: () => _createReferral(pro),
                               onCall: _booking
                                   ? null
                                   : () => _contactProfessional(
@@ -1807,12 +2320,20 @@ class _ProfessionalCard extends StatelessWidget {
   final VoidCallback? onCall;
   final VoidCallback? onWhatsApp;
   final VoidCallback? onViewProfile;
+  final VoidCallback? onFavorite;
+  final VoidCallback? onComplaint;
+  final VoidCallback? onReferral;
+  final bool isFavorite;
 
   const _ProfessionalCard({
     required this.professional,
     this.onCall,
     this.onWhatsApp,
     this.onViewProfile,
+    this.onFavorite,
+    this.onComplaint,
+    this.onReferral,
+    this.isFavorite = false,
   });
 
   String _serviceLabel(String key) {
@@ -1891,7 +2412,9 @@ class _ProfessionalCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              professional.name,
+                              professional.isFeatured
+                                  ? '${professional.name}  Featured'
+                                  : professional.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1933,6 +2456,16 @@ class _ProfessionalCard extends StatelessWidget {
                                           : Colors.grey),
                                 ),
                               ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: isFavorite ? 'Remove saved' : 'Save',
+                            onPressed: onFavorite,
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.bookmark_rounded
+                                  : Icons.bookmark_border_rounded,
+                              color: AppColors.primary,
                             ),
                           ),
                         ],
@@ -2002,6 +2535,24 @@ class _ProfessionalCard extends StatelessWidget {
                     ],
                   ),
                 ],
+                const SizedBox(width: 16),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_user_outlined,
+                      color: AppColors.success,
+                      size: 15,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${professional.trustScore}%',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
                 const Spacer(),
               ],
             ),
@@ -2063,16 +2614,68 @@ class _ProfessionalCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       SizedBox(width: double.infinity, child: buttons[2]),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CardActionButton(
+                              label: 'Refer',
+                              icon: Icons.card_giftcard_rounded,
+                              onPressed: onReferral,
+                              foreground: AppColors.primary,
+                              outlined: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _CardActionButton(
+                              label: 'Complaint',
+                              icon: Icons.report_problem_outlined,
+                              onPressed: onComplaint,
+                              foreground: AppColors.error,
+                              outlined: true,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   );
                 }
-                return Row(
+                return Column(
                   children: [
-                    Expanded(child: buttons[0]),
-                    const SizedBox(width: 8),
-                    Expanded(child: buttons[1]),
-                    const SizedBox(width: 8),
-                    Expanded(child: buttons[2]),
+                    Row(
+                      children: [
+                        Expanded(child: buttons[0]),
+                        const SizedBox(width: 8),
+                        Expanded(child: buttons[1]),
+                        const SizedBox(width: 8),
+                        Expanded(child: buttons[2]),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CardActionButton(
+                            label: 'Refer',
+                            icon: Icons.card_giftcard_rounded,
+                            onPressed: onReferral,
+                            foreground: AppColors.primary,
+                            outlined: true,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _CardActionButton(
+                            label: 'Complaint',
+                            icon: Icons.report_problem_outlined,
+                            onPressed: onComplaint,
+                            foreground: AppColors.error,
+                            outlined: true,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 );
               },

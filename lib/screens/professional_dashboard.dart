@@ -4,6 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/storage_service.dart';
 import '../services/firebase_service.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../utils/constants.dart';
 import '../utils/contact_actions.dart';
@@ -19,6 +20,7 @@ class ProfessionalDashboard extends StatefulWidget {
 
 class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   final _firebase = FirebaseService();
+  final _api = ApiService();
   final _db = FirebaseDatabase.instance.ref();
 
   String? _phone;
@@ -30,6 +32,8 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   StreamSubscription<DatabaseEvent>? _bookingsSub;
   StreamSubscription<DatabaseEvent>? _profileSub;
   List<Map<String, dynamic>> _leads = [];
+  List<Map<String, dynamic>> _jobPosts = [];
+  List<Map<String, dynamic>> _certificates = [];
 
   @override
   void initState() {
@@ -110,6 +114,27 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
       }
       if (mounted) setState(() => _leads = list);
     });
+    unawaited(_loadMarketplaceTools());
+  }
+
+  Future<void> _loadMarketplaceTools() async {
+    final jobsRes = await _api.getJobPosts();
+    final certRes = await _api.getCertificates();
+    if (!mounted) return;
+    setState(() {
+      if (jobsRes['success'] == true && jobsRes['data'] is List) {
+        _jobPosts = (jobsRes['data'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      if (certRes['success'] == true && certRes['data'] is List) {
+        _certificates = (certRes['data'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+    });
   }
 
   int _toInt(dynamic value) {
@@ -140,7 +165,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 5,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: NestedScrollView(
@@ -165,13 +190,16 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                 ),
               ],
               bottom: const TabBar(
+                isScrollable: true,
                 indicatorColor: Colors.white,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 tabs: [
                   Tab(icon: Icon(Icons.dashboard_rounded), text: 'Home'),
                   Tab(icon: Icon(Icons.people_alt_rounded), text: 'Customers'),
+                  Tab(icon: Icon(Icons.work_outline_rounded), text: 'Jobs'),
                   Tab(icon: Icon(Icons.person_rounded), text: 'Profile'),
+                  Tab(icon: Icon(Icons.campaign_rounded), text: 'Growth'),
                 ],
               ),
             ),
@@ -180,7 +208,9 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
             children: [
               _buildHomeTab(),
               _buildLeadsList(showAll: true),
+              _buildJobsTab(),
               _buildProfileTab(),
+              _buildGrowthTab(),
             ],
           ),
         ),
@@ -469,6 +499,238 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     );
   }
 
+  Widget _buildJobsTab() {
+    if (_jobPosts.isEmpty) {
+      return const Center(
+        child: Text(
+          'No open job posts right now',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadMarketplaceTools,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _jobPosts.length,
+        itemBuilder: (ctx, i) {
+          final job = _jobPosts[i];
+          final postId = job['postId']?.toString() ?? '';
+          final service = (job['serviceType'] ?? 'service').toString();
+          final desc = (job['description'] ?? '').toString();
+          final budget = (job['budget'] ?? 0).toString();
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  service.replaceAll('_', ' '),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(desc,
+                    style: const TextStyle(color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                Text('Budget: PKR $budget',
+                    style: const TextStyle(color: AppColors.primary)),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: postId.isEmpty ? null : () => _sendOffer(postId),
+                    icon: const Icon(Icons.local_offer_rounded),
+                    label: const Text('Send Offer'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _sendOffer(String postId) async {
+    final priceCtrl = TextEditingController();
+    final msgCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Offer'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: priceCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Price PKR',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: msgCtrl,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Send')),
+        ],
+      ),
+    );
+    final price = double.tryParse(priceCtrl.text.trim()) ?? 0;
+    final message = msgCtrl.text.trim();
+    priceCtrl.dispose();
+    msgCtrl.dispose();
+    if (ok != true || price <= 0) return;
+    final res = await _api.createJobOffer(postId, {
+      'price': price,
+      'message': message.isEmpty ? 'I can do this work.' : message,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res['success'] == true
+            ? 'Offer sent to customer.'
+            : res['message']?.toString() ?? 'Offer failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  Widget _buildGrowthTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _ToolCard(
+          title: 'Featured Listing',
+          subtitle:
+              'Paid top listing ke liye WhatsApp 03195682936 par admin se contact karein.',
+          icon: Icons.campaign_rounded,
+          button: 'Request Featured',
+          onPressed: _requestFeatured,
+        ),
+        const SizedBox(height: 12),
+        _ToolCard(
+          title: 'Skill Certificate',
+          subtitle:
+              'License/certificate link add karein. Admin review ke liye save ho jayega.',
+          icon: Icons.workspace_premium_rounded,
+          button: 'Upload Certificate',
+          onPressed: _uploadCertificate,
+        ),
+        if (_certificates.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          const Text(
+            'Certificates',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._certificates.map((c) => ListTile(
+                title: Text(c['title']?.toString() ?? 'Certificate'),
+                subtitle: Text(c['status']?.toString() ?? 'pending'),
+              )),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _requestFeatured() async {
+    final res = await _api.requestFeaturedListing();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res['success'] == true
+            ? 'Request sent. Contact 03195682936 on WhatsApp for paid plan.'
+            : res['message']?.toString() ?? 'Request failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  Future<void> _uploadCertificate() async {
+    final titleCtrl = TextEditingController();
+    final issuerCtrl = TextEditingController();
+    final urlCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Certificate Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(labelText: 'Title')),
+            TextField(
+                controller: issuerCtrl,
+                decoration: const InputDecoration(labelText: 'Issuer')),
+            TextField(
+                controller: urlCtrl,
+                decoration: const InputDecoration(labelText: 'File URL')),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    final title = titleCtrl.text.trim();
+    final issuer = issuerCtrl.text.trim();
+    final url = urlCtrl.text.trim();
+    titleCtrl.dispose();
+    issuerCtrl.dispose();
+    urlCtrl.dispose();
+    if (ok != true || title.isEmpty) return;
+    final res = await _api.uploadCertificate({
+      'title': title,
+      'issuer': issuer,
+      'fileUrl': url,
+    });
+    if (res['success'] == true) await _loadMarketplaceTools();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text(res['success'] == true ? 'Certificate saved.' : 'Save failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
   Future<void> _deleteLead(String leadId) async {
     final uid =
         await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
@@ -716,6 +978,67 @@ class _LeadCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final String button;
+  final VoidCallback onPressed;
+
+  const _ToolCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.button,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.primary.withOpacity(0.1),
+            child: Icon(icon, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton(onPressed: onPressed, child: Text(button)),
         ],
       ),
     );

@@ -101,6 +101,15 @@ class ApiConstants {
   static const String searchPopular = '/search/popular';
   static const String searchTrack = '/search/track';
 
+  // Marketplace / engagement
+  static const String marketplaceComplaints = '/marketplace/complaints';
+  static const String marketplaceFavorites = '/marketplace/favorites';
+  static const String marketplaceReferrals = '/marketplace/referrals';
+  static const String marketplaceJobs = '/marketplace/jobs';
+  static const String marketplaceFeaturedRequest =
+      '/marketplace/featured/request';
+  static const String marketplaceCertificates = '/marketplace/certificates';
+
   // Chat
   static const String sendMessage = '/chat/send';
   static const String getMessages = '/chat/messages';
@@ -134,6 +143,9 @@ class ApiConstants {
   static const String adminBookings = '/admin/bookings';
   static const String adminTransactions = '/admin/transactions';
   static const String adminUsers = '/admin/users';
+  static const String adminComplaints = '/admin/complaints';
+  static const String adminMarketplace = '/admin/marketplace';
+  static const String adminCleanupSettings = '/admin/settings/contact-cleanup';
 }
 
 /// App Colors

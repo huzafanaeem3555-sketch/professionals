@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import '../utils/constants.dart';
+import '../utils/contact_actions.dart';
 import '../widgets/app_logo.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -22,7 +23,7 @@ class _AdminDashboardState extends State<AdminDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -563,6 +564,15 @@ class _AdminDashboardState extends State<AdminDashboard>
         .toList();
   }
 
+  List<Map<String, dynamic>> _filteredComplaints(AdminProvider adminProv) {
+    final query = _searchQuery.trim().toLowerCase();
+    return adminProv.complaints
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .where((item) =>
+            query.isEmpty || _flatten(item).toLowerCase().contains(query))
+        .toList();
+  }
+
   void _resetFilters() {
     setState(() {
       _searchController.clear();
@@ -826,6 +836,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             Tab(icon: Icon(Icons.engineering_rounded), text: 'Professionals'),
             Tab(icon: Icon(Icons.people_alt_rounded), text: 'Customers'),
             Tab(icon: Icon(Icons.book_online_rounded), text: 'Bookings'),
+            Tab(icon: Icon(Icons.report_problem_rounded), text: 'Complaints'),
             Tab(icon: Icon(Icons.receipt_long_rounded), text: 'Transactions'),
           ],
         ),
@@ -847,6 +858,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                           _buildProfessionalsTab(adminProv),
                           _buildCustomersTab(adminProv),
                           _buildBookingsTab(adminProv),
+                          _buildComplaintsTab(adminProv),
                           _buildTransactionsTab(adminProv),
                         ],
                       ),
@@ -1010,6 +1022,8 @@ class _AdminDashboardState extends State<AdminDashboard>
 
             _buildServiceUsagePanel(stats['serviceUsage']),
             const SizedBox(height: 24),
+            _buildCleanupControl(adminProv),
+            const SizedBox(height: 24),
 
             // Commission Summary Card
             Container(
@@ -1063,6 +1077,53 @@ class _AdminDashboardState extends State<AdminDashboard>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCleanupControl(AdminProvider adminProv) {
+    final settings = adminProv.marketplace['cleanupSettings'] is Map
+        ? Map<String, dynamic>.from(adminProv.marketplace['cleanupSettings'])
+        : <String, dynamic>{};
+    final current = int.tryParse(settings['hours']?.toString() ?? '') ?? 5;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Customer Lead Auto Cleanup',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Professional ke customers/leads kitne hours baad auto remove hon.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: [4, 5, 24].map((hours) {
+              final selected = current == hours;
+              return ChoiceChip(
+                selected: selected,
+                label: Text('${hours}h'),
+                onSelected: (_) => adminProv
+                    .updateCleanupHours(hours)
+                    .then((_) => _refreshData()),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -1929,6 +1990,126 @@ class _AdminDashboardState extends State<AdminDashboard>
                       color: Colors.redAccent),
                   onPressed: () =>
                       _deleteBooking(b['bookingId'] ?? b['id'] ?? ''),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildComplaintsTab(AdminProvider adminProv) {
+    final list = _filteredComplaints(adminProv);
+    if (adminProv.complaints.isEmpty) {
+      return const Center(
+        child: Text(
+          'No customer complaints yet',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+      );
+    }
+    if (list.isEmpty) {
+      return _emptyFilteredState(
+        'No complaints match the current search',
+        Icons.manage_search_rounded,
+        _resetFilters,
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        final c = list[index];
+        final id = c['complaintId']?.toString() ?? c['_key']?.toString() ?? '';
+        final proId = c['professionalId']?.toString() ?? '';
+        final proPhone = c['professionalPhone']?.toString() ?? '';
+        final reason = c['reason']?.toString() ?? '';
+        return Card(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.divider),
+          ),
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        c['professionalName']?.toString() ?? 'Professional',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    _buildStatusBadge(c['status']?.toString() ?? 'open'),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SelectableText(
+                  'Pro ID: $proId',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Customer: ${c['customerName'] ?? 'Customer'} (${c['customerPhone'] ?? ''})',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  reason,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: proPhone.isEmpty
+                          ? null
+                          : () => launchContactUri(contactUriFor(
+                                method: ContactMethod.whatsapp,
+                                phoneNumber: proPhone,
+                                message:
+                                    'Hirepro admin: customer complaint received. Please respond about complaint ID $id.',
+                              )),
+                      icon: const Icon(Icons.chat_rounded),
+                      label: const Text('WhatsApp Pro'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: proId.isEmpty
+                          ? null
+                          : () => _verifyUser(proId, true, isActive: false),
+                      icon: const Icon(Icons.block_rounded),
+                      label: const Text('Block Pro'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: id.isEmpty
+                          ? null
+                          : () => adminProv.updateComplaint(
+                                id,
+                                {'status': 'resolved'},
+                              ),
+                      icon: const Icon(Icons.done_rounded),
+                      label: const Text('Resolve'),
+                    ),
+                    IconButton(
+                      tooltip: 'Delete complaint',
+                      onPressed: id.isEmpty
+                          ? null
+                          : () => adminProv.deleteComplaint(id),
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: AppColors.error),
+                    ),
+                  ],
                 ),
               ],
             ),
