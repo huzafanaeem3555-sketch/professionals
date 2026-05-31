@@ -176,9 +176,12 @@ const AdminModel = {
       email,
       displayName,
       photoURL: String(payload.photoURL || ''),
-      phoneNumber,
-      role,
-      profileCompleted: true,
+        phoneNumber,
+        role,
+        gender: String(payload.gender || 'male').toLowerCase() === 'female' ? 'female' : 'male',
+        verificationStatus: String(payload.gender || '').toLowerCase() === 'female' ? 'pending' : 'verified',
+        isActive: String(payload.gender || '').toLowerCase() !== 'female',
+        profileCompleted: true,
       createdAt: now,
       _createdAt: now,
       _updatedAt: now,
@@ -211,6 +214,9 @@ const AdminModel = {
         hourlyRate: Math.max(0, Number(payload.hourlyRate) || 0),
         isAvailable: payload.isAvailable !== false,
         isAvailableNow: payload.isAvailableNow !== false,
+        gender: user.gender,
+        verificationStatus: user.verificationStatus,
+        isActive: user.isActive,
         rating: Math.max(0, Math.min(5, Number(payload.rating) || 0)),
         totalRatings: Math.max(0, Number(payload.totalRatings) || 0),
         completedJobs: Math.max(0, Number(payload.completedJobs) || 0),
@@ -267,6 +273,13 @@ const AdminModel = {
   },
 
   async deleteUser(uid) {
+    const user = await dbGet(`users/${uid}`);
+    const professional = await dbGet(`professionals/${uid}`);
+    if (professional || String(user?.role || '').toLowerCase() === 'professional') {
+      await dbUpdate(`users/${uid}`, { isActive: false, _updatedAt: Date.now() });
+      await dbUpdate(`professionals/${uid}`, { isActive: false, _updatedAt: Date.now() });
+      return { protectedProfessional: true, message: 'Professional preserved and deactivated.' };
+    }
     const bookings = await dbGetAll('bookings') || [];
     const payments = await dbGetAll('payments') || [];
     const transactions = await dbGetAll('transactions') || [];
@@ -314,6 +327,19 @@ const AdminModel = {
     if (payload.totalRatings !== undefined) proUpdates.totalRatings = Math.max(0, Number(payload.totalRatings) || 0);
     if (payload.experienceYears !== undefined) proUpdates.experienceYears = Math.max(0, Number(payload.experienceYears) || 0);
     if (payload.isAvailableNow !== undefined) proUpdates.isAvailableNow = Boolean(payload.isAvailableNow);
+    if (payload.gender !== undefined) {
+      const gender = String(payload.gender || 'male').toLowerCase() === 'female' ? 'female' : 'male';
+      proUpdates.gender = gender;
+      userUpdates.gender = gender;
+    }
+    if (payload.verificationStatus !== undefined) {
+      const status = String(payload.verificationStatus || '').trim() || 'pending';
+      proUpdates.verificationStatus = status;
+      userUpdates.verificationStatus = status;
+      const active = status === 'verified';
+      proUpdates.isActive = active;
+      userUpdates.isActive = active;
+    }
     if (payload.serviceTypes !== undefined) {
       proUpdates.serviceTypes = Array.isArray(payload.serviceTypes)
         ? payload.serviceTypes.map(String).filter(Boolean)
@@ -328,6 +354,22 @@ const AdminModel = {
     if (Object.keys(userUpdates).length) await dbUpdate(`users/${uid}`, userUpdates);
     if (Object.keys(proUpdates).length) await dbUpdate(`professionals/${uid}`, proUpdates);
     return { uid, ...userUpdates, ...proUpdates };
+  },
+
+  async verifyUser(uid, verified = true) {
+    const status = verified ? 'verified' : 'pending';
+    const updates = {
+      verificationStatus: status,
+      isActive: verified,
+      femaleVerificationRequired: !verified,
+      verifiedAt: verified ? Date.now() : null,
+    };
+    await dbUpdate(`users/${uid}`, updates);
+    const pro = await dbGet(`professionals/${uid}`);
+    if (pro) {
+      await dbUpdate(`professionals/${uid}`, updates);
+    }
+    return { uid, ...updates };
   },
 
   async listProfessionalReviews(uid) {

@@ -33,6 +33,7 @@ function normalizeServiceList(value) {
 
 async function formatProfessional(pro, { includePhone = false, phoneRevealed = false, includeReviews = false } = {}) {
   const reviews = includeReviews ? await ProfessionalModel.getReviews(pro.uid) : [];
+  const isFemale = String(pro.gender || '').toLowerCase() === 'female';
   return {
     uid: pro.uid,
     name: pro.name,
@@ -44,9 +45,12 @@ async function formatProfessional(pro, { includePhone = false, phoneRevealed = f
     completedJobs: Number(pro.completedJobs || 0),
     experienceYears: Number(pro.experienceYears || 0),
     isAvailable: pro.isAvailable !== false,
+    gender: pro.gender || 'male',
+    verificationStatus: pro.verificationStatus || (isFemale ? 'pending' : 'verified'),
+    isActive: pro.isActive !== false,
     photoURL: pro.photoURL || '',
     hourlyRate: pro.hourlyRate || 500,
-    phoneNumber: includePhone && phoneRevealed ? (pro.phoneNumber || pro.phone || '') : 'Hidden until agreement',
+    phoneNumber: includePhone && phoneRevealed && !isFemale ? (pro.phoneNumber || pro.phone || '') : 'Hidden until agreement',
     description: pro.description || '',
     brochureImages: Array.isArray(pro.brochureImages) ? pro.brochureImages : [],
     portfolio: Array.isArray(pro.portfolio) ? pro.portfolio : [],
@@ -60,7 +64,8 @@ const ProfessionalController = {
     try {
       const professionals = await ProfessionalModel.getAll();
       
-      const formatted = await Promise.all(professionals.map(pro => formatProfessional(pro)));
+      const visible = professionals.filter((pro) => pro.isActive !== false && (String(pro.gender || '').toLowerCase() !== 'female' || pro.verificationStatus === 'verified'));
+      const formatted = await Promise.all(visible.map(pro => formatProfessional(pro)));
       
       return res.json({ success: true, data: formatted, count: formatted.length });
     } catch (error) {
@@ -88,9 +93,10 @@ const ProfessionalController = {
         radiusKm,
         serviceType
       });
+      const visible = professionals.filter((pro) => pro.isActive !== false && (String(pro.gender || '').toLowerCase() !== 'female' || pro.verificationStatus === 'verified'));
       
       // Map and hide phone numbers
-      const formatted = professionals.map(pro => ({
+      const formatted = visible.map(pro => ({
         ...pro,
         services: normalizeServiceList(pro.services),
         customServices: normalizeServiceList(pro.customServices),
@@ -169,6 +175,9 @@ const ProfessionalController = {
       }
       
       const existing = await ProfessionalModel.getById(uid);
+      const user = await UserModel.getById(uid, true);
+      const gender = user?.gender || existing?.gender || 'male';
+      const isFemale = String(gender).toLowerCase() === 'female';
       
       const profileData = {
         name,
@@ -190,6 +199,9 @@ const ProfessionalController = {
         completedJobs: existing ? existing.completedJobs : 0,
         rating: existing ? existing.rating : 0,
         totalRatings: existing ? existing.totalRatings : 0,
+        gender,
+        verificationStatus: user?.verificationStatus || existing?.verificationStatus || (isFemale ? 'pending' : 'verified'),
+        isActive: isFemale ? (user?.isActive === true || existing?.isActive === true) : true,
       };
       
       const saved = await ProfessionalModel.upsert(uid, profileData);

@@ -14,6 +14,7 @@ router.post('/users', verifyAdminToken, AdminController.createUser);
 router.get('/bookings', verifyAdminToken, AdminController.getBookings);
 router.get('/transactions', verifyAdminToken, AdminController.getTransactions);
 router.delete('/users/clear-all', verifyAdminToken, AdminController.clearAllData);
+router.patch('/users/:uid/verify', verifyAdminToken, AdminController.verifyUser);
 router.delete('/users/:uid', verifyAdminToken, AdminController.deleteUser);
 router.delete('/bookings/:id', verifyAdminToken, AdminController.deleteBooking);
 

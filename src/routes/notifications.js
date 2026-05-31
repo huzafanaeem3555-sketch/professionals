@@ -10,6 +10,7 @@ async function saveProfessionalLead({
   customerId,
   customerName,
   customerPhone,
+  customerGender,
   customerAddress,
   customerLocation,
   serviceType,
@@ -19,19 +20,22 @@ async function saveProfessionalLead({
   body,
 }) {
   const now = Date.now();
+  const isFemaleCustomer = String(customerGender || '').toLowerCase() === 'female';
+  const visiblePhone = isFemaleCustomer ? 'Hidden' : (customerPhone || '');
   return await dbPush(`professionalContactLeads/${targetUserId}`, {
     customerId: customerId || '',
     customerName: customerName || 'Customer',
-    customerPhone: customerPhone || '',
+    customerPhone: visiblePhone,
+    customerGender: isFemaleCustomer ? 'female' : 'male',
     customerAddress: customerAddress || '',
     customerLocation: customerLocation || null,
     serviceType: serviceType || '',
     contactMethod: contactMethod || '',
     type: type || (contactMethod === 'whatsapp' ? 'direct_whatsapp' : 'direct_call'),
     title: title || 'Customer contacted you',
-    body: body || `${customerName || 'A customer'} contacted you. Phone: ${customerPhone || ''}`,
+    body: body || `${customerName || 'A customer'} contacted you. Phone: ${visiblePhone}`,
     createdAt: now,
-    expiresAt: now + 30 * 24 * 60 * 60 * 1000,
+    expiresAt: now + 5 * 60 * 60 * 1000,
   });
 }
 
@@ -69,6 +73,7 @@ router.post('/contact', verifyToken, async (req, res) => {
       contactMethod,
       serviceType,
       customerPhone,
+      customerGender,
       customerAddress,
       customerLocation,
       leadAlreadySaved,
@@ -96,6 +101,7 @@ router.post('/contact', verifyToken, async (req, res) => {
         customerId: senderId,
         customerName: sender?.displayName || sender?.name || req.user.displayName || 'Customer',
         customerPhone: customerPhone || sender?.phoneNumber || '',
+        customerGender: customerGender || sender?.gender || 'male',
         customerAddress: customerAddress || sender?.address || '',
         customerLocation: customerLocation || sender?.location || null,
         serviceType: serviceType || '',
@@ -137,6 +143,7 @@ router.post('/contact-public', async (req, res) => {
       customerId,
       customerName,
       customerPhone,
+      customerGender,
       customerAddress,
       customerLocation,
       serviceType,
@@ -159,6 +166,7 @@ router.post('/contact-public', async (req, res) => {
         customerId,
         customerName,
         customerPhone,
+        customerGender,
         customerAddress,
         customerLocation,
         serviceType,

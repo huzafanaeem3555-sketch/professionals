@@ -481,7 +481,7 @@ const AuthController = {
   async setRole(req, res) {
     try {
       const { uid } = req.user;
-      const { role } = req.body;
+      const { role, gender } = req.body;
 
       if (!role || !['customer', 'professional'].includes(role)) {
         return res.status(400).json({
@@ -495,7 +495,24 @@ const AuthController = {
         return res.status(404).json({ success: false, message: 'User not found.' });
       }
 
+      const normalizedGender = ['male', 'female'].includes(String(gender || '').toLowerCase())
+        ? String(gender).toLowerCase()
+        : 'male';
+      const currentStatus = user.verificationStatus || '';
+      const verificationStatus = normalizedGender === 'female'
+        ? (currentStatus === 'verified' ? 'verified' : 'pending')
+        : 'verified';
+      const isActive = normalizedGender !== 'female' || verificationStatus === 'verified';
+
       await UserModel.updateRole(uid, role);
+      const { db } = require('../config/firebase');
+      await db.ref(`users/${uid}`).update({
+        gender: normalizedGender,
+        verificationStatus,
+        isActive,
+        femaleVerificationRequired: normalizedGender === 'female' && !isActive,
+        _updatedAt: Date.now(),
+      });
 
       if (role === 'professional') {
         const ProfessionalModel = require('../models/professionalModel');
@@ -505,6 +522,16 @@ const AuthController = {
             walletBalance: 5000,
             profileCreated: false,
             profileCompleted: false,
+            gender: normalizedGender,
+            verificationStatus,
+            isActive,
+          });
+        } else {
+          await ProfessionalModel.upsert(uid, {
+            ...pro,
+            gender: normalizedGender,
+            verificationStatus,
+            isActive,
           });
         }
       }

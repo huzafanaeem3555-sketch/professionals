@@ -121,8 +121,8 @@ const AdminController = {
       if (!uid) {
         return res.status(400).json({ success: false, message: 'uid parameter is required.' });
       }
-      await AdminModel.deleteUser(uid);
-      return res.status(200).json({ success: true, data: { message: 'User deleted successfully.' } });
+      const data = await AdminModel.deleteUser(uid);
+      return res.status(200).json({ success: true, data: data || { message: 'User deleted successfully.' } });
     } catch (error) {
       console.error('admin deleteUser error:', error);
       return res.status(500).json({ success: false, message: 'Failed to delete user.' });
@@ -140,6 +140,21 @@ const AdminController = {
     } catch (error) {
       console.error('admin updateProfessional error:', error);
       return res.status(500).json({ success: false, message: 'Failed to update professional.' });
+    }
+  },
+
+  async verifyUser(req, res) {
+    try {
+      const { uid } = req.params;
+      if (!uid) {
+        return res.status(400).json({ success: false, message: 'uid parameter is required.' });
+      }
+      const verified = req.body?.verified !== false;
+      const data = await AdminModel.verifyUser(uid, verified);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      console.error('admin verifyUser error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to update verification.' });
     }
   },
 
