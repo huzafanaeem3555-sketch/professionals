@@ -380,12 +380,15 @@ const AdminModel = {
     return { uid, ...userUpdates, ...proUpdates };
   },
 
-  async verifyUser(uid, verified = true) {
+  async verifyUser(uid, verified = true, activeOverride = undefined) {
     const status = verified ? 'verified' : 'pending';
+    const isActive = activeOverride === undefined
+      ? verified
+      : activeOverride === true || activeOverride === 'true';
     const updates = {
       verificationStatus: status,
-      isActive: verified,
-      femaleVerificationRequired: !verified,
+      isActive,
+      femaleVerificationRequired: !(verified && isActive),
       verifiedAt: verified ? Date.now() : null,
     };
     await dbUpdate(`users/${uid}`, updates);

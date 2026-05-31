@@ -150,7 +150,8 @@ const AdminController = {
         return res.status(400).json({ success: false, message: 'uid parameter is required.' });
       }
       const verified = req.body?.verified !== false;
-      const data = await AdminModel.verifyUser(uid, verified);
+      const isActive = req.body?.isActive;
+      const data = await AdminModel.verifyUser(uid, verified, isActive);
       return res.status(200).json({ success: true, data });
     } catch (error) {
       console.error('admin verifyUser error:', error);

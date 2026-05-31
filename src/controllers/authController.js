@@ -515,7 +515,7 @@ const AuthController = {
   async setRole(req, res) {
     try {
       const { uid } = req.user;
-      const { role, gender, displayName, name } = req.body;
+      const { role, gender, displayName, name, phoneNumber, phone } = req.body;
 
       if (!role || !['customer', 'professional'].includes(role)) {
         return res.status(400).json({
@@ -545,6 +545,10 @@ const AuthController = {
         ...((displayName || name) ? {
           displayName: String(displayName || name).trim(),
           name: String(displayName || name).trim(),
+        } : {}),
+        ...((phoneNumber || phone) ? {
+          phoneNumber: String(phoneNumber || phone).trim(),
+          phone: String(phoneNumber || phone).trim(),
         } : {}),
         verificationStatus,
         isActive,
