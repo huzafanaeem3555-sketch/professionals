@@ -23,15 +23,17 @@ class AuthNavigation {
     try {
       final res = await ApiService().getMe();
       if (res['success'] == true && res['data'] is Map) {
-        me = Map<String, dynamic>.from(res['data'] as Map);
+        final data = Map<String, dynamic>.from(res['data'] as Map);
+        me = data['user'] is Map
+            ? Map<String, dynamic>.from(data['user'] as Map)
+            : data;
       }
     } catch (_) {}
 
-    final role = (me?['role']?.toString() ??
-            await StorageService.getRole() ??
-            '')
-        .trim()
-        .toLowerCase();
+    final role =
+        (me?['role']?.toString() ?? await StorageService.getRole() ?? '')
+            .trim()
+            .toLowerCase();
     final gender = (me?['gender']?.toString() ??
             await StorageService.getGender() ??
             'male')
@@ -47,20 +49,19 @@ class AuthNavigation {
         : me!['isActive'] == true;
     final femalePending =
         gender == 'female' && (!isActive || verificationStatus != 'verified');
+    final profileCompleted =
+        me?['profileCompleted'] == true || me?['profileCreated'] == true;
+
+    await StorageService.setSessionMeta(
+      role: role,
+      gender: gender,
+      verificationStatus: verificationStatus,
+    );
 
     if (!context.mounted) return;
 
     if (role.isEmpty) {
       Navigator.pushReplacementNamed(context, '/role-selection');
-      return;
-    }
-
-    if (femalePending) {
-      Navigator.pushReplacementNamed(
-        context,
-        '/gender-verification',
-        arguments: role,
-      );
       return;
     }
 
@@ -70,11 +71,30 @@ class AuthNavigation {
     }
 
     if (role == 'professional') {
-      final profileCompleted =
-          me?['profileCompleted'] == true || me?['profileCreated'] == true;
+      if (!profileCompleted) {
+        Navigator.pushReplacementNamed(context, '/professional-setup');
+        return;
+      }
+      if (femalePending) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/gender-verification',
+          arguments: role,
+        );
+        return;
+      }
       Navigator.pushReplacementNamed(
         context,
-        profileCompleted ? '/professional-home' : '/professional-setup',
+        '/professional-home',
+      );
+      return;
+    }
+
+    if (femalePending) {
+      Navigator.pushReplacementNamed(
+        context,
+        '/gender-verification',
+        arguments: role,
       );
       return;
     }

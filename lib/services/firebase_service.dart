@@ -43,25 +43,40 @@ class FirebaseService {
   }
 
   static String _normalizeGender(dynamic value) {
-    return (value ?? '').toString().toLowerCase().trim() == 'female' ? 'female' : 'male';
+    return (value ?? '').toString().toLowerCase().trim() == 'female'
+        ? 'female'
+        : 'male';
   }
 
   Future<bool> _canViewFemaleProfessionals() async {
     final role = await StorageService.getRole() ?? 'customer';
     if (role == 'admin') return true;
     final gender = await StorageService.getGender() ?? 'male';
-    final verificationStatus = await StorageService.getVerificationStatus() ?? 'verified';
+    final verificationStatus =
+        await StorageService.getVerificationStatus() ?? 'verified';
     return role == 'customer' &&
         gender.toLowerCase() == 'female' &&
         verificationStatus.toLowerCase() == 'verified';
   }
 
+  Future<String> _viewerGender() async {
+    return (await StorageService.getGender() ?? 'male').toLowerCase() ==
+            'female'
+        ? 'female'
+        : 'male';
+  }
+
   bool _canShowProfessional(
     Map<String, dynamic> prof, {
     required bool canViewFemaleProfessionals,
+    required String viewerGender,
   }) {
     if (prof['isActive'] == false) return false;
-    if (_normalizeGender(prof['gender']) != 'female') return true;
+    final proGender = _normalizeGender(prof['gender']);
+    if (viewerGender == 'female') {
+      return proGender == 'female' && canViewFemaleProfessionals;
+    }
+    if (proGender != 'female') return true;
     return canViewFemaleProfessionals;
   }
 
@@ -127,6 +142,7 @@ class FirebaseService {
   Future<List<Map<String, dynamic>>> getAllProfessionals() async {
     try {
       final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
+      final viewerGender = await _viewerGender();
       final snapshot = await _db
           .child('professionals')
           .get()
@@ -137,6 +153,7 @@ class FirebaseService {
             .where((prof) => _canShowProfessional(
                   prof,
                   canViewFemaleProfessionals: canViewFemaleProfessionals,
+                  viewerGender: viewerGender,
                 ))
             .toList();
       }
@@ -168,6 +185,7 @@ class FirebaseService {
         if (!_canShowProfessional(
           prof,
           canViewFemaleProfessionals: canViewFemaleProfessionals,
+          viewerGender: viewerGender,
         )) {
           continue;
         }
@@ -180,16 +198,19 @@ class FirebaseService {
           .where((prof) => _canShowProfessional(
                 prof,
                 canViewFemaleProfessionals: canViewFemaleProfessionals,
+                viewerGender: viewerGender,
               ))
           .toList();
     } catch (e) {
       debugPrint('getAllProfessionals error: $e');
       final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
+      final viewerGender = await _viewerGender();
       final apiResults = await _professionalsFromApi();
       return apiResults
           .where((prof) => _canShowProfessional(
                 prof,
                 canViewFemaleProfessionals: canViewFemaleProfessionals,
+                viewerGender: viewerGender,
               ))
           .toList();
     }
@@ -205,6 +226,18 @@ class FirebaseService {
       if (data['phone'] == null && data['phoneNumber'] != null) {
         data['phone'] = data['phoneNumber'];
       }
+      final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (currentUid != uid) {
+        final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
+        final viewerGender = await _viewerGender();
+        if (!_canShowProfessional(
+          data,
+          canViewFemaleProfessionals: canViewFemaleProfessionals,
+          viewerGender: viewerGender,
+        )) {
+          return null;
+        }
+      }
       return data;
     } catch (e) {
       debugPrint('getProfessionalById error: $e');
@@ -216,6 +249,7 @@ class FirebaseService {
   Future<Map<String, dynamic>?> getProfessionalByPhone(String phone) async {
     try {
       final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
+      final viewerGender = await _viewerGender();
       final normalized = normalizePhone(phone);
       // First try to look up as UID directly
       final direct = await getProfessionalById(phone);
@@ -236,6 +270,7 @@ class FirebaseService {
           if (!_canShowProfessional(
             prof,
             canViewFemaleProfessionals: canViewFemaleProfessionals,
+            viewerGender: viewerGender,
           )) {
             return null;
           }
@@ -424,7 +459,8 @@ class FirebaseService {
             pro?['phone']?.toString() ?? pro?['phoneNumber']?.toString() ?? '',
         'professionalLocation': _locationMap(pro?['location']),
         'customerLocation': customerLocation ?? {'lat': 0, 'lng': 0},
-        'customerAddress': address ?? _locationMap(pro?['location'])['address'] ?? '',
+        'customerAddress':
+            address ?? _locationMap(pro?['location'])['address'] ?? '',
         'address': address ?? '',
         'description': description ?? '',
         'customerPhone': customerData['phoneNumber']?.toString() ?? '',

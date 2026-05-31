@@ -16,6 +16,20 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
   String _gender = 'male';
+  final TextEditingController _nameCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    _nameCtrl.text = user?.displayName?.trim() ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
 
   bool _isProfessionalProfileComplete(Map<String, dynamic> proMap) {
     final hasName = (proMap['name']?.toString().trim().isNotEmpty ?? false);
@@ -44,6 +58,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     try {
       final uid = user.uid;
       final gender = _gender;
+      final enteredName = _nameCtrl.text.trim();
+      if (gender == 'female' && role == 'customer' && enteredName.isEmpty) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Enter your full name for verification')),
+        );
+        return;
+      }
       final userRef = FirebaseDatabase.instance.ref().child('users/$uid');
       final existingUserSnap = await userRef.get();
       var existingVerification = '';
@@ -67,10 +90,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       await userRef.update({
         'role': role,
         'gender': gender,
+        if (enteredName.isNotEmpty) 'displayName': enteredName,
+        if (enteredName.isNotEmpty) 'name': enteredName,
         'verificationStatus': verificationStatus,
         'isActive': isActive,
         'femaleVerificationRequired': isFemale && !isActive,
       });
+      if (enteredName.isNotEmpty) {
+        final details = await StorageService.getUserDetails();
+        await StorageService.setUserDetails(
+          name: enteredName,
+          email: details['email'] ?? user.email ?? '',
+          photo: details['photo'] ?? user.photoURL ?? '',
+          idToken: details['idToken'],
+        );
+      }
 
       // 3. Save role via backend API
       try {
@@ -80,7 +114,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       }
 
       if (!mounted) return;
-      if (isFemale && !isActive) {
+      if (isFemale && !isActive && role == 'customer') {
         Navigator.pushReplacementNamed(
           context,
           '/gender-verification',
@@ -184,6 +218,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (_gender == 'female') ...[
+                  TextField(
+                    controller: _nameCtrl,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Full name for verification',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(

@@ -311,6 +311,10 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     if (success) {
       await StorageService.setProfessionalPhone(phone);
       await StorageService.setRole('professional');
+      final gender = (await StorageService.getGender() ?? 'male').toLowerCase();
+      final status =
+          (await StorageService.getVerificationStatus() ?? 'verified')
+              .toLowerCase();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -318,6 +322,14 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
           backgroundColor: AppColors.success,
         ),
       );
+      if (gender == 'female' && status != 'verified') {
+        Navigator.pushReplacementNamed(
+          context,
+          '/gender-verification',
+          arguments: 'professional',
+        );
+        return;
+      }
       Navigator.pushReplacementNamed(context, '/professional-home');
     } else {
       if (!mounted) return;

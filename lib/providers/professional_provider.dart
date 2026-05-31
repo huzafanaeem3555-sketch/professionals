@@ -52,6 +52,8 @@ class ProfessionalProvider extends ChangeNotifier {
       } catch (_) {}
 
       final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
+      final viewerGender =
+          (await StorageService.getGender() ?? 'male').toLowerCase();
 
       if (pos == null &&
           fallbackLat != null &&
@@ -126,6 +128,7 @@ class ProfessionalProvider extends ChangeNotifier {
         if (!_isProfessionalVisible(
           p,
           canViewFemaleProfessionals: canViewFemaleProfessionals,
+          viewerGender: viewerGender,
         )) {
           continue;
         }
@@ -181,14 +184,18 @@ class ProfessionalProvider extends ChangeNotifier {
   bool _isProfessionalVisible(
     Map<String, dynamic> professional, {
     required bool canViewFemaleProfessionals,
+    required String viewerGender,
   }) {
     if (professional['isAvailable'] == false ||
         professional['isActive'] == false) {
       return false;
     }
 
-    final gender = (professional['gender']?.toString().toLowerCase().trim() ??
-        'male');
+    final gender =
+        (professional['gender']?.toString().toLowerCase().trim() ?? 'male');
+    if (viewerGender == 'female') {
+      return gender == 'female' && canViewFemaleProfessionals;
+    }
     if (gender != 'female') return true;
     return canViewFemaleProfessionals;
   }

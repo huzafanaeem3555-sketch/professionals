@@ -187,10 +187,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   bool _canShowProfessional(ProfessionalModel pro) {
     if (!pro.isActive) return false;
     final proGender = pro.gender.toLowerCase();
-    if (proGender != 'female') return true;
-    return _customerGender == 'female' &&
-        _customerVerificationStatus == 'verified' &&
-        pro.verificationStatus == 'verified';
+    if (_customerGender == 'female') {
+      return proGender == 'female' &&
+          _customerVerificationStatus == 'verified' &&
+          pro.verificationStatus == 'verified';
+    }
+    if (proGender == 'female') return false;
+    return true;
   }
 
   void _applyFilter() {

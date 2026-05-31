@@ -23,6 +23,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
 
   String? _phone;
   String _name = '';
+  String _gender = 'male';
   String _photoURL = '';
   bool _isAvailable = true;
   bool _loadingProfile = true;
@@ -52,6 +53,10 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
       if (mounted) Navigator.pushReplacementNamed(context, '/login');
       return;
     }
+    _gender =
+        (await StorageService.getGender() ?? 'male').toLowerCase() == 'female'
+            ? 'female'
+            : 'male';
 
     _profileSub = _db.child('professionals/$uid').onValue.listen((event) {
       if (event.snapshot.exists && event.snapshot.value != null && mounted) {
@@ -61,6 +66,9 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           _phone = data['phone']?.toString() ??
               data['phoneNumber']?.toString() ??
               '';
+          _gender = data['gender']?.toString().toLowerCase() == 'female'
+              ? 'female'
+              : 'male';
           _photoURL = data['photoURL']?.toString() ?? '';
           _isAvailable = data['isAvailable'] ?? true;
           _loadingProfile = false;
@@ -85,6 +93,13 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           final expiresAt = _toInt(b['expiresAt']);
           if (expiresAt > 0 && expiresAt <= now) {
             unawaited(_db.child('professionalContactLeads/$uid/$id').remove());
+            continue;
+          }
+          final customerGender =
+              b['customerGender']?.toString().toLowerCase() == 'female'
+                  ? 'female'
+                  : 'male';
+          if (customerGender != _gender) {
             continue;
           }
           b['leadId'] = id;
