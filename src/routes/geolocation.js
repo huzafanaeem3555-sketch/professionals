@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, optionalAuth } = require('../middleware/auth');
 const GeolocationController = require('../controllers/geolocationController');
 
 /**
@@ -8,7 +8,7 @@ const GeolocationController = require('../controllers/geolocationController');
  * Query params: lat, lng, radiusKm (default 10), serviceType, minRating, maxPrice
  * Returns: list of nearby professionals with location
  */
-router.get('/nearby', GeolocationController.getNearbyProfessionals);
+router.get('/nearby', optionalAuth, GeolocationController.getNearbyProfessionals);
 
 /**
  * POST /api/geolocation/professional-location

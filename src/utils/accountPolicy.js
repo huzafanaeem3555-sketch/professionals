@@ -40,11 +40,15 @@ function isAdminViewer(viewer) {
 
 function canViewFemaleProfessional(viewer, professional) {
   if (!professional) return false;
-  if (normalizeGender(professional.gender) !== 'female') return true;
+  const professionalGender = normalizeGender(professional.gender);
 
-  if (!viewer) return false;
+  if (!viewer) return professionalGender !== 'female';
   if (isAdminViewer(viewer)) return true;
   if (String(viewer.uid || '') === String(professional.uid || '')) return true;
+
+  if (professionalGender !== 'female') {
+    return normalizeGender(viewer.gender) !== 'female';
+  }
 
   return (
     normalizeRole(viewer.role) === 'customer' &&

@@ -3,7 +3,26 @@ const router = express.Router();
 const { saveFcmToken, sendNotificationToUser } = require('../utils/notifications');
 const { verifyToken } = require('../middleware/auth');
 const UserModel = require('../models/userModel');
+const ProfessionalModel = require('../models/professionalModel');
 const { dbPush } = require('../config/firebase');
+
+function normalizeGender(value) {
+  return String(value || '').trim().toLowerCase() === 'female' ? 'female' : 'male';
+}
+
+async function assertSameGenderContact(targetUserId, customerGender) {
+  const professional = await ProfessionalModel.getById(targetUserId);
+  if (!professional) {
+    const error = new Error('Professional not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (normalizeGender(professional.gender) !== normalizeGender(customerGender)) {
+    const error = new Error('This professional is not available for your account.');
+    error.statusCode = 403;
+    throw error;
+  }
+}
 
 async function saveProfessionalLead({
   targetUserId,
@@ -94,6 +113,8 @@ router.post('/contact', verifyToken, async (req, res) => {
     }
 
     const sender = await UserModel.getById(senderId, true);
+    const finalCustomerGender = customerGender || sender?.gender || 'male';
+    await assertSameGenderContact(targetUserId, finalCustomerGender);
     let leadId = '';
     if (!leadAlreadySaved) {
       leadId = await saveProfessionalLead({
@@ -101,7 +122,7 @@ router.post('/contact', verifyToken, async (req, res) => {
         customerId: senderId,
         customerName: sender?.displayName || sender?.name || req.user.displayName || 'Customer',
         customerPhone: customerPhone || sender?.phoneNumber || '',
-        customerGender: customerGender || sender?.gender || 'male',
+        customerGender: finalCustomerGender,
         customerAddress: customerAddress || sender?.address || '',
         customerLocation: customerLocation || sender?.location || null,
         serviceType: serviceType || '',
@@ -131,7 +152,7 @@ router.post('/contact', verifyToken, async (req, res) => {
       data: { ...result, leadId },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(error.statusCode || 500).json({ success: false, message: error.message });
   }
 });
 
@@ -160,6 +181,8 @@ router.post('/contact-public', async (req, res) => {
         message: 'targetUserId, customerPhone, and customerAddress are required',
       });
     }
+
+    await assertSameGenderContact(targetUserId, customerGender);
 
     const leadId = leadAlreadySaved ? '' : await saveProfessionalLead({
         targetUserId,
@@ -196,7 +219,7 @@ router.post('/contact-public', async (req, res) => {
 
     return res.json({ success: true, data: { leadId, notification: notifyResult } });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(error.statusCode || 500).json({ success: false, message: error.message });
   }
 });
 

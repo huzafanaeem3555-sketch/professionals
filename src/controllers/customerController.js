@@ -2,6 +2,7 @@ const BookingModel = require('../models/bookingModel');
 const UserModel = require('../models/userModel');
 const ProfessionalModel = require('../models/professionalModel');
 const { sendNotificationToUser } = require('../utils/notifications');
+const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
 
 const CustomerController = {
   /**
@@ -53,6 +54,14 @@ const CustomerController = {
         return res.status(404).json({
           success: false,
           message: 'Professional not found.',
+        });
+      }
+
+      const viewer = await resolveViewerContext(req);
+      if (!canViewFemaleProfessional(viewer, professional)) {
+        return res.status(403).json({
+          success: false,
+          message: 'This professional is not available for your account.',
         });
       }
 

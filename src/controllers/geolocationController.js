@@ -2,6 +2,7 @@ const ProfessionalModel = require('../models/professionalModel');
 const UserModel = require('../models/userModel');
 const BookingModel = require('../models/bookingModel');
 const { dbGet } = require('../config/firebase');
+const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
 
 const GeolocationController = {
   /**
@@ -42,7 +43,11 @@ const GeolocationController = {
       if (minRating) filters.minRating = parseFloat(minRating);
       if (maxPrice) filters.maxPrice = parseFloat(maxPrice);
 
-      const nearby = await ProfessionalModel.getNearby(filters);
+      const viewer = await resolveViewerContext(req);
+      const nearby = (await ProfessionalModel.getNearby(filters)).filter((pro) => {
+        if (pro.isActive === false) return false;
+        return canViewFemaleProfessional(viewer, pro);
+      });
 
       return res.status(200).json({
         success: true,
