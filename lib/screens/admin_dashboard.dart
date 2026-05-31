@@ -14,17 +14,25 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _professionalFilter = 'all';
+  String _customerFilter = 'all';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshData());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -385,6 +393,134 @@ class _AdminDashboardState extends State<AdminDashboard>
     return (text.isEmpty ? fallback : text).substring(0, 1).toUpperCase();
   }
 
+  String _flatten(dynamic value) {
+    if (value == null) return '';
+    if (value is Map) {
+      return value.values.map(_flatten).join(' ');
+    }
+    if (value is Iterable) {
+      return value.map(_flatten).join(' ');
+    }
+    return value.toString();
+  }
+
+  String _normalizedGender(dynamic value) {
+    return value?.toString().toLowerCase().trim() == 'female'
+        ? 'female'
+        : 'male';
+  }
+
+  String _normalizedStatus(dynamic value) {
+    final status = value?.toString().toLowerCase().trim() ?? '';
+    return status.isEmpty ? 'verified' : status;
+  }
+
+  bool _matchesSearch(Map<String, dynamic> item, String query) {
+    if (query.isEmpty) return true;
+    final haystack = [
+      item['uid'],
+      item['id'],
+      item['displayName'],
+      item['name'],
+      item['email'],
+      item['phone'],
+      item['phoneNumber'],
+      item['gender'],
+      item['verificationStatus'],
+      item['status'],
+      item['role'],
+      item['serviceTypes'],
+      item['services'],
+      item['customServices'],
+      item['address'],
+      item['location'],
+      item['bookingId'],
+      item['transactionId'],
+      item['customerName'],
+      item['professionalName'],
+    ].map(_flatten).join(' ').toLowerCase();
+    return haystack.contains(query);
+  }
+
+  List<Map<String, dynamic>> _filteredProfessionals(AdminProvider adminProv) {
+    final query = _searchQuery.trim().toLowerCase();
+    return adminProv.professionals
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .where((item) {
+      final gender = _normalizedGender(item['gender']);
+      final status = _normalizedStatus(item['verificationStatus']);
+
+      switch (_professionalFilter) {
+        case 'female':
+          if (gender != 'female') return false;
+          break;
+        case 'male':
+          if (gender != 'male') return false;
+          break;
+        case 'pending':
+          if (status == 'verified') return false;
+          break;
+        case 'verified':
+          if (status != 'verified') return false;
+          break;
+      }
+
+      return _matchesSearch(item, query);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _filteredCustomers(AdminProvider adminProv) {
+    final query = _searchQuery.trim().toLowerCase();
+    return adminProv.customers
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .where((item) {
+      final gender = _normalizedGender(item['gender']);
+      final status = _normalizedStatus(item['verificationStatus']);
+
+      switch (_customerFilter) {
+        case 'female':
+          if (gender != 'female') return false;
+          break;
+        case 'male':
+          if (gender != 'male') return false;
+          break;
+        case 'pending':
+          if (status == 'verified') return false;
+          break;
+        case 'verified':
+          if (status != 'verified') return false;
+          break;
+      }
+
+      return _matchesSearch(item, query);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _filteredBookings(AdminProvider adminProv) {
+    final query = _searchQuery.trim().toLowerCase();
+    return adminProv.bookings
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .where((item) => _matchesSearch(item, query))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _filteredTransactions(AdminProvider adminProv) {
+    final query = _searchQuery.trim().toLowerCase();
+    return adminProv.transactions
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .where((item) => _matchesSearch(item, query))
+        .toList();
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+      _professionalFilter = 'all';
+      _customerFilter = 'all';
+    });
+  }
+
   Future<void> _showProfessionalReviews(Map<String, dynamic> p) async {
     final uid = p['uid']?.toString() ?? '';
     if (uid.isEmpty) return;
@@ -439,6 +575,123 @@ class _AdminDashboardState extends State<AdminDashboard>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAdminSearchPanel() {
+    final tabIndex = _tabController.index;
+    final showProfessionalFilters = tabIndex == 1;
+    final showCustomerFilters = tabIndex == 2;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _searchQuery = value.trim()),
+            style: const TextStyle(color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Search users, status, phone, service or booking ID',
+              hintStyle: const TextStyle(color: AppColors.textSecondary),
+              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: _resetFilters,
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+          if (showProfessionalFilters || showCustomerFilters) ...[
+            const SizedBox(height: 10),
+            _buildVerificationFilters(
+              title: showProfessionalFilters
+                  ? 'Professional filters'
+                  : 'Customer filters',
+              current: showProfessionalFilters
+                  ? _professionalFilter
+                  : _customerFilter,
+              onChanged: (value) {
+                setState(() {
+                  if (showProfessionalFilters) {
+                    _professionalFilter = value;
+                  } else {
+                    _customerFilter = value;
+                  }
+                });
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationFilters({
+    required String title,
+    required String current,
+    required ValueChanged<String> onChanged,
+  }) {
+    final filters = <Map<String, String>>[
+      {'label': 'All', 'value': 'all'},
+      {'label': 'Pending', 'value': 'pending'},
+      {'label': 'Verified', 'value': 'verified'},
+      {'label': 'Female', 'value': 'female'},
+      {'label': 'Male', 'value': 'male'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: filters.map((filter) {
+            final value = filter['value']!;
+            final label = filter['label']!;
+            final selected = current == value;
+            return ChoiceChip(
+              label: Text(label),
+              selected: selected,
+              onSelected: (_) => onChanged(value),
+              selectedColor: AppColors.primary.withValues(alpha: 0.2),
+              labelStyle: TextStyle(
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+              backgroundColor: Colors.white,
+              shape: StadiumBorder(
+                side: BorderSide(
+                  color: selected ? AppColors.primary : AppColors.divider,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -532,6 +785,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                   children: [
                     if (adminProv.error != null)
                       _adminWarningBanner(adminProv.error!),
+                    _buildAdminSearchPanel(),
                     Expanded(
                       child: TabBarView(
                         controller: _tabController,
@@ -835,6 +1089,42 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  Widget _emptyFilteredState(
+    String message,
+    IconData icon,
+    VoidCallback onClear,
+  ) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppLogo(size: 88, padding: 6),
+            const SizedBox(height: 18),
+            Icon(icon, color: AppColors.primary, size: 32),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: onClear,
+              icon: const Icon(Icons.filter_alt_off),
+              label: const Text('Clear Filters'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _verificationBadge(String status) {
     final verified = status == 'verified';
     return Container(
@@ -874,12 +1164,19 @@ class _AdminDashboardState extends State<AdminDashboard>
   }
 
   Widget _buildProfessionalsTab(AdminProvider adminProv) {
-    final list = adminProv.professionals;
-    if (list.isEmpty) {
+    final list = _filteredProfessionals(adminProv);
+    if (adminProv.professionals.isEmpty) {
       return _emptyAdminState(
         'No professionals registered',
         Icons.engineering_rounded,
         () => _addAdminUser('professional'),
+      );
+    }
+    if (list.isEmpty) {
+      return _emptyFilteredState(
+        'No professionals match the selected filters',
+        Icons.manage_search_rounded,
+        _resetFilters,
       );
     }
 
@@ -1030,12 +1327,19 @@ class _AdminDashboardState extends State<AdminDashboard>
   }
 
   Widget _buildCustomersTab(AdminProvider adminProv) {
-    final list = adminProv.customers;
-    if (list.isEmpty) {
+    final list = _filteredCustomers(adminProv);
+    if (adminProv.customers.isEmpty) {
       return _emptyAdminState(
         'No customers registered',
         Icons.people_alt_rounded,
         () => _addAdminUser('customer'),
+      );
+    }
+    if (list.isEmpty) {
+      return _emptyFilteredState(
+        'No customers match the selected filters',
+        Icons.manage_search_rounded,
+        _resetFilters,
       );
     }
 
@@ -1143,11 +1447,18 @@ class _AdminDashboardState extends State<AdminDashboard>
   }
 
   Widget _buildBookingsTab(AdminProvider adminProv) {
-    final list = adminProv.bookings;
-    if (list.isEmpty) {
+    final list = _filteredBookings(adminProv);
+    if (adminProv.bookings.isEmpty) {
       return const Center(
           child: Text('No bookings found',
               style: TextStyle(color: AppColors.textPrimary)));
+    }
+    if (list.isEmpty) {
+      return _emptyFilteredState(
+        'No bookings match the current search',
+        Icons.manage_search_rounded,
+        _resetFilters,
+      );
     }
 
     return ListView.builder(
@@ -1264,11 +1575,18 @@ class _AdminDashboardState extends State<AdminDashboard>
   }
 
   Widget _buildTransactionsTab(AdminProvider adminProv) {
-    final list = adminProv.transactions;
-    if (list.isEmpty) {
+    final list = _filteredTransactions(adminProv);
+    if (adminProv.transactions.isEmpty) {
       return const Center(
           child: Text('No transactions recorded',
               style: TextStyle(color: AppColors.textPrimary)));
+    }
+    if (list.isEmpty) {
+      return _emptyFilteredState(
+        'No transactions match the current search',
+        Icons.manage_search_rounded,
+        _resetFilters,
+      );
     }
 
     return ListView.builder(

@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import '../models/professional_model.dart';
 import '../services/firebase_service.dart';
 import '../services/api_service.dart';
-
 import '../services/location_service.dart';
+import '../services/storage_service.dart';
 import '../utils/constants.dart';
 
 class ProfessionalProvider extends ChangeNotifier {
@@ -50,6 +50,8 @@ class ProfessionalProvider extends ChangeNotifier {
       try {
         pos ??= await _locationService.getCurrentPosition();
       } catch (_) {}
+
+      final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
 
       if (pos == null &&
           fallbackLat != null &&
@@ -121,6 +123,13 @@ class ProfessionalProvider extends ChangeNotifier {
         final lat = (p['lat'] ?? location['lat'] ?? 0) as num;
         final lng = (p['lng'] ?? location['lng'] ?? 0) as num;
 
+        if (!_isProfessionalVisible(
+          p,
+          canViewFemaleProfessionals: canViewFemaleProfessionals,
+        )) {
+          continue;
+        }
+
         if (pos != null && (lat.toDouble() != 0 || lng.toDouble() != 0)) {
           final distance = _locationService.distanceBetween(
             pos.latitude,
@@ -153,6 +162,35 @@ class ProfessionalProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  Future<bool> _canViewFemaleProfessionals() async {
+    final role = await StorageService.getRole() ?? 'customer';
+    if (role == 'admin') return true;
+
+    final gender = (await StorageService.getGender() ?? 'male').toLowerCase();
+    final verificationStatus =
+        (await StorageService.getVerificationStatus() ?? 'pending')
+            .toLowerCase();
+
+    return role == 'customer' &&
+        gender == 'female' &&
+        verificationStatus == 'verified';
+  }
+
+  bool _isProfessionalVisible(
+    Map<String, dynamic> professional, {
+    required bool canViewFemaleProfessionals,
+  }) {
+    if (professional['isAvailable'] == false ||
+        professional['isActive'] == false) {
+      return false;
+    }
+
+    final gender = (professional['gender']?.toString().toLowerCase().trim() ??
+        'male');
+    if (gender != 'female') return true;
+    return canViewFemaleProfessionals;
   }
 
   /// Load a professional's public profile

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
+import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/auth_navigation.dart';
 import '../widgets/app_logo.dart';
@@ -15,8 +16,15 @@ class GenderVerificationScreen extends StatelessWidget {
   static const String whatsappNumber = '923195682936';
 
   Future<void> _openWhatsApp(BuildContext context) async {
+    final details = await StorageService.getUserDetails();
+    final storedName = details['name']?.trim() ?? '';
+    final firebaseName =
+        AuthService().getCurrentUser()?.displayName?.trim() ?? '';
+    final name = storedName.isNotEmpty ? storedName : firebaseName;
     final message = Uri.encodeComponent(
-      'Assalam-o-Alaikum, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on Hirepro. I will send my voice note.',
+      'Assalam-o-Alaikum, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on Hirepro.\n'
+      'Name: ${name.isNotEmpty ? name : 'Please confirm my account'}\n'
+      'I will send my voice note for verification.',
     );
     final uri = Uri.parse('https://wa.me/$whatsappNumber?text=$message');
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -82,6 +90,22 @@ class GenderVerificationScreen extends StatelessWidget {
                     fontSize: 16,
                   ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              FutureBuilder<Map<String, String>>(
+                future: StorageService.getUserDetails(),
+                builder: (context, snapshot) {
+                  final name = snapshot.data?['name']?.trim() ?? '';
+                  if (name.isEmpty) return const SizedBox.shrink();
+                  return Text(
+                    'Account name: $name',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 18),
               ElevatedButton.icon(
