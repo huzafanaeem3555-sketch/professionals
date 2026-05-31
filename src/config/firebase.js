@@ -1,61 +1,214 @@
-// FIREBASE CLIENT SDK - COMPLETE WORKING SOLUTION FOR RAILWAY
-// NO firebase-admin, NO service account, NO credentials needed
+const axios = require('axios');
+const firebase = require('firebase/compat/app');
+require('firebase/compat/database');
 
-const { initializeApp } = require('firebase/app');
-const { 
-  getDatabase, 
-  ref, 
-  get, 
-  set, 
-  update, 
-  push, 
-  remove, 
-  query, 
-  orderByChild, 
-  equalTo, 
-  limitToLast,
-  onValue,
-  off
-} = require('firebase/database');
+const FIREBASE_API_KEY =
+  process.env.FIREBASE_API_KEY || 'AIzaSyAix8w3uQwdtBV0jYRSWoTBcQE_KYLPK2M';
+const FIREBASE_DATABASE_URL =
+  process.env.FIREBASE_DATABASE_URL ||
+  'https://serviceconnect-dea35-default-rtdb.firebaseio.com/';
 
-// Firebase configuration - only database URL needed
-const firebaseConfig = {
-  databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://serviceconnect-dea35-default-rtdb.firebaseio.com/'
-};
-
-// Initialize Firebase
 let db;
 let firebaseReady = false;
+let firebaseInitError = null;
 
-try {
-  const app = initializeApp(firebaseConfig);
-  db = getDatabase(app);
-  firebaseReady = true;
-  console.log('✅ Firebase connected successfully');
-} catch (error) {
-  console.error('❌ Firebase connection failed:', error.message);
-  firebaseReady = false;
-  // Create fallback dummy database
-  db = {
-    ref: () => ({
-      once: async () => ({ exists: () => false, val: () => null }),
-      set: async () => {},
-      update: async () => {},
-      remove: async () => {},
-      push: () => ({ key: 'fallback', set: async () => {} })
-    })
+const DB_TIMEOUT_MS = Number(process.env.DB_TIMEOUT_MS || 8000);
+
+function withTimeout(promise, label, timeoutMs = DB_TIMEOUT_MS) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function normalizeAuthError(error, fallbackMessage) {
+  const code = error?.code || error?.response?.data?.error?.message || '';
+  const message = fallbackMessage || error?.message || 'Authentication failed.';
+  const mapped = {
+    EMAIL_EXISTS: 'auth/email-already-exists',
+    EMAIL_NOT_FOUND: 'auth/user-not-found',
+    INVALID_PASSWORD: 'auth/invalid-password',
+    INVALID_LOGIN_CREDENTIALS: 'auth/invalid-password',
+    USER_NOT_FOUND: 'auth/user-not-found',
+  };
+  const normalizedCode = mapped[code] || code;
+  const err = new Error(message);
+  if (normalizedCode) err.code = normalizedCode;
+  return err;
+}
+
+function createFallbackQuery() {
+  return {
+    once: async () => ({
+      exists: () => false,
+      val: () => null,
+      forEach: () => {},
+    }),
+    set: async () => {},
+    update: async () => {},
+    remove: async () => {},
+    push: () => ({ key: 'fallback', set: async () => {} }),
+    on: () => {},
+    off: () => {},
+    orderByChild: () => createFallbackQuery(),
+    equalTo: () => createFallbackQuery(),
+    limitToLast: () => createFallbackQuery(),
   };
 }
 
-// ============================================
-// DATABASE HELPER FUNCTIONS
-// ============================================
+async function callIdentityToolkit(endpoint, payload) {
+  const url = `https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`;
+  try {
+    const response = await axios.post(url, payload, { timeout: 20000 });
+    return response.data;
+  } catch (error) {
+    throw normalizeAuthError(error);
+  }
+}
 
-// Get data from a path
+function mapAuthUser(user) {
+  if (!user) return null;
+  return {
+    uid: user.localId || user.uid || '',
+    email: user.email || '',
+    displayName: user.displayName || user.name || '',
+    photoURL: user.photoUrl || user.photoURL || '',
+    phoneNumber: user.phoneNumber || '',
+    emailVerified: user.emailVerified !== false,
+    raw: user,
+  };
+}
+
+async function firebaseLookupByIdToken(idToken) {
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`;
+  try {
+    const response = await axios.post(
+      url,
+      { idToken },
+      { timeout: 20000 },
+    );
+    const user = response.data?.users?.[0];
+    if (!user) {
+      throw normalizeAuthError({ code: 'USER_NOT_FOUND' }, 'Token user not found.');
+    }
+    return mapAuthUser(user);
+  } catch (error) {
+    throw normalizeAuthError(error);
+  }
+}
+
+async function firebaseLookupByEmail(email) {
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`;
+  try {
+    const response = await axios.post(
+      url,
+      { email: [email] },
+      { timeout: 20000 },
+    );
+    const user = response.data?.users?.[0];
+    if (!user) {
+      throw normalizeAuthError({ code: 'USER_NOT_FOUND' }, 'User not found.');
+    }
+    return mapAuthUser(user);
+  } catch (error) {
+    throw normalizeAuthError(error);
+  }
+}
+
+async function firebaseCreateUser({ email, password, displayName }) {
+  const created = await callIdentityToolkit('accounts:signUp', {
+    email,
+    password,
+    returnSecureToken: true,
+  });
+
+  if (displayName) {
+    try {
+      await callIdentityToolkit('accounts:update', {
+        idToken: created.idToken,
+        displayName,
+        returnSecureToken: true,
+      });
+    } catch (_) {
+      // Profile update is best-effort. The user still exists and can sign in.
+    }
+  }
+
+  return mapAuthUser({
+    localId: created.localId,
+    email: created.email,
+    displayName: displayName || created.displayName || '',
+    photoUrl: created.photoUrl || '',
+    emailVerified: created.emailVerified,
+  });
+}
+
+function createAuthBridge() {
+  return {
+    async verifyIdToken(idToken) {
+      return firebaseLookupByIdToken(idToken);
+    },
+    async getUserByEmail(email) {
+      return firebaseLookupByEmail(email);
+    },
+    async getUser(uid) {
+      const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`;
+      try {
+        const response = await axios.post(
+          url,
+          { localId: [uid] },
+          { timeout: 20000 },
+        );
+        const user = response.data?.users?.[0];
+        if (!user) {
+          throw normalizeAuthError({ code: 'USER_NOT_FOUND' }, 'User not found.');
+        }
+        return mapAuthUser(user);
+      } catch (error) {
+        throw normalizeAuthError(error);
+      }
+    },
+    async createUser({ email, password, displayName }) {
+      return firebaseCreateUser({ email, password, displayName });
+    },
+    async createCustomToken() {
+      throw new Error('Custom token creation requires Firebase Admin credentials.');
+    },
+  };
+}
+
+function initializeFirebase() {
+  try {
+    const app = firebase.apps.length
+      ? firebase.app()
+      : firebase.initializeApp({ databaseURL: FIREBASE_DATABASE_URL });
+
+    db = firebase.database(app);
+    firebaseReady = true;
+    console.log('✅ Firebase connected successfully');
+  } catch (error) {
+    firebaseInitError = error;
+    firebaseReady = false;
+    console.error('❌ Firebase connection failed:', error.message);
+    db = {
+      ref: () => createFallbackQuery(),
+    };
+  }
+}
+
+initializeFirebase();
+
+const auth = createAuthBridge();
+const messaging = null;
+
 async function dbGet(pathName) {
   if (!firebaseReady) return null;
   try {
-    const snapshot = await get(ref(db, pathName));
+    const snapshot = await withTimeout(db.ref(pathName).once('value'), `dbGet ${pathName}`);
     return snapshot.exists() ? snapshot.val() : null;
   } catch (error) {
     console.error(`dbGet error:`, error.message);
@@ -63,11 +216,10 @@ async function dbGet(pathName) {
   }
 }
 
-// Set data at a path
 async function dbSet(pathName, data) {
   if (!firebaseReady) return false;
   try {
-    await set(ref(db, pathName), data);
+    await withTimeout(db.ref(pathName).set(data), `dbSet ${pathName}`);
     return true;
   } catch (error) {
     console.error(`dbSet error:`, error.message);
@@ -75,11 +227,10 @@ async function dbSet(pathName, data) {
   }
 }
 
-// Update data at a path
 async function dbUpdate(pathName, data) {
   if (!firebaseReady) return false;
   try {
-    await update(ref(db, pathName), data);
+    await withTimeout(db.ref(pathName).update(data), `dbUpdate ${pathName}`);
     return true;
   } catch (error) {
     console.error(`dbUpdate error:`, error.message);
@@ -87,12 +238,11 @@ async function dbUpdate(pathName, data) {
   }
 }
 
-// Push data (generate unique key)
 async function dbPush(pathName, data) {
   if (!firebaseReady) return null;
   try {
-    const newRef = push(ref(db, pathName));
-    await set(newRef, data);
+    const newRef = db.ref(pathName).push();
+    await withTimeout(newRef.set(data), `dbPush ${pathName}`);
     return newRef.key;
   } catch (error) {
     console.error(`dbPush error:`, error.message);
@@ -100,11 +250,10 @@ async function dbPush(pathName, data) {
   }
 }
 
-// Delete data at a path
 async function dbDelete(pathName) {
   if (!firebaseReady) return false;
   try {
-    await remove(ref(db, pathName));
+    await withTimeout(db.ref(pathName).remove(), `dbDelete ${pathName}`);
     return true;
   } catch (error) {
     console.error(`dbDelete error:`, error.message);
@@ -112,11 +261,10 @@ async function dbDelete(pathName) {
   }
 }
 
-// Get all data from a path
 async function dbGetAll(pathName) {
   if (!firebaseReady) return [];
   try {
-    const snapshot = await get(ref(db, pathName));
+    const snapshot = await withTimeout(db.ref(pathName).once('value'), `dbGetAll ${pathName}`);
     if (!snapshot.exists()) return [];
     const results = [];
     snapshot.forEach((child) => {
@@ -129,15 +277,14 @@ async function dbGetAll(pathName) {
   }
 }
 
-// Query data with order and filter
 async function dbQuery(pathName, orderByField, equalToValue, limitVal = null) {
   if (!firebaseReady) return [];
   try {
-    let q = query(ref(db, pathName), orderByChild(orderByField), equalTo(equalToValue));
+    let q = db.ref(pathName).orderByChild(orderByField).equalTo(equalToValue);
     if (limitVal) {
-      q = query(q, limitToLast(limitVal));
+      q = q.limitToLast(limitVal);
     }
-    const snapshot = await get(q);
+    const snapshot = await withTimeout(q.once('value'), `dbQuery ${pathName}`);
     if (!snapshot.exists()) return [];
     const results = [];
     snapshot.forEach((child) => {
@@ -150,31 +297,23 @@ async function dbQuery(pathName, orderByField, equalToValue, limitVal = null) {
   }
 }
 
-// Listen for real-time updates
 function dbListen(pathName, callback) {
   if (!firebaseReady) return () => {};
-  const dbRef = ref(db, pathName);
+  const ref = db.ref(pathName);
   const handler = (snapshot) => {
     callback(snapshot.exists() ? snapshot.val() : null);
   };
-  onValue(dbRef, handler);
-  return () => off(dbRef, 'value', handler);
+  ref.on('value', handler);
+  return () => ref.off('value', handler);
 }
 
-// ============================================
-// AUTH & MESSAGING (not available in client SDK)
-// ============================================
-const auth = null;
-const messaging = null;
-
-// ============================================
-// EXPORTS
-// ============================================
 module.exports = {
   db,
   auth,
   messaging,
   firebaseReady,
+  firebaseInitError,
+  firebaseApiKey: FIREBASE_API_KEY,
   dbGet,
   dbSet,
   dbUpdate,

@@ -2,7 +2,7 @@ require('dotenv').config();
 const axios = require('axios');
 const UserModel = require('../models/userModel');
 const jwt = require('jsonwebtoken');
-const { auth } = require('../config/firebase');
+const { auth, firebaseApiKey } = require('../config/firebase');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'service-connect-secret-change-in-production';
 const SESSION_EXPIRES = process.env.SESSION_EXPIRES || '7d';
@@ -90,12 +90,9 @@ const resolveEmailPassword = (body) => {
 };
 
 const signInWithEmailPasswordRest = async (email, password) => {
-  const apiKey = process.env.FIREBASE_API_KEY;
-  console.log('FIREBASE_API_KEY exists:', !!apiKey);
-  if (!apiKey || apiKey.includes('your_firebase')) {
-    throw new Error(
-      'FIREBASE_API_KEY missing in backend/.env — copy current_key from android/app/google-services.json',
-    );
+  const apiKey = process.env.FIREBASE_API_KEY || firebaseApiKey;
+  if (!apiKey) {
+    throw new Error('Firebase API key is missing.');
   }
 
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
