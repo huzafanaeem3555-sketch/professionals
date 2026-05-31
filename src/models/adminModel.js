@@ -25,6 +25,16 @@ function toList(value) {
     .filter(Boolean);
 }
 
+function reliabilityScore(pro) {
+  const completed = Math.max(0, Number(pro.completedJobs || pro.totalJobs || 0));
+  const rating = Math.max(0, Math.min(5, Number(pro.rating || 0)));
+  const ratings = Math.max(0, Number(pro.totalRatings || 0));
+  const cancellations = Math.max(0, Number(pro.cancelledJobs || pro.cancellationCount || 0));
+  let score = 45 + rating * 8 + Math.min(completed, 50) * 0.6 + Math.min(ratings, 50) * 0.25;
+  score -= Math.min(cancellations, 30) * 2;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 const AdminModel = {
   createToken(username) {
     return jwt.sign({ username, role: 'admin' }, ADMIN_TOKEN_SECRET, { expiresIn: ADMIN_TOKEN_EXPIRES });
@@ -104,6 +114,9 @@ const AdminModel = {
         services: serviceTypes,
         customServices: toList(pro.customServices),
         rating: user.rating || pro.rating || 0,
+        isFeatured: pro.isFeatured === true && (!Number(pro.featuredUntil || 0) || Number(pro.featuredUntil || 0) > Date.now()),
+        featuredUntil: Number(pro.featuredUntil || 0),
+        reliabilityScore: reliabilityScore(pro),
         totalJobs: pro.completedJobs || pro.totalJobs || 0,
         experienceYears: Number(pro.experienceYears || 0),
         createdAt: pro.createdAt || user.createdAt || pro._createdAt || user._createdAt || 0,
@@ -352,6 +365,8 @@ const AdminModel = {
       userUpdates.rating = proUpdates.rating;
     }
     if (payload.totalRatings !== undefined) proUpdates.totalRatings = Math.max(0, Number(payload.totalRatings) || 0);
+    if (payload.isFeatured !== undefined) proUpdates.isFeatured = payload.isFeatured === true || payload.isFeatured === 'true';
+    if (payload.featuredUntil !== undefined) proUpdates.featuredUntil = Math.max(0, Number(payload.featuredUntil) || 0);
     if (payload.experienceYears !== undefined) proUpdates.experienceYears = Math.max(0, Number(payload.experienceYears) || 0);
     if (payload.isAvailableNow !== undefined) proUpdates.isAvailableNow = Boolean(payload.isAvailableNow);
     if (payload.gender !== undefined) {

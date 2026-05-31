@@ -1,4 +1,4 @@
-const { dbGetAll, dbDelete } = require('../config/firebase');
+const { dbGetAll, dbDelete, dbGet } = require('../config/firebase');
 const { CONTACT_LEAD_TTL_MS } = require('../utils/accountPolicy');
 
 const CLEANUP_INTERVAL_MS = Number(process.env.CONTACT_LEAD_CLEANUP_INTERVAL_MS || 30 * 60 * 1000);
@@ -14,6 +14,10 @@ function toNumber(value) {
 
 async function cleanupExpiredContactLeads() {
   const now = Date.now();
+  const settings = await dbGet('adminSettings/contactLeadCleanup');
+  const configuredTtlMs = Number(settings?.hours || 0) > 0
+    ? Number(settings.hours) * 60 * 60 * 1000
+    : CONTACT_LEAD_TTL_MS;
   const leadGroups = await dbGetAll('professionalContactLeads');
   let removed = 0;
 
@@ -26,7 +30,7 @@ async function cleanupExpiredContactLeads() {
       if (!lead || typeof lead !== 'object') continue;
       const expiresAt = toNumber(lead.expiresAt || lead._expiresAt);
       const createdAt = toNumber(lead.createdAt || lead._createdAt);
-      const ttlExpiresAt = createdAt ? createdAt + CONTACT_LEAD_TTL_MS : 0;
+      const ttlExpiresAt = createdAt ? createdAt + configuredTtlMs : 0;
       const shouldRemove = (expiresAt > 0 && expiresAt <= now) || (ttlExpiresAt > 0 && ttlExpiresAt <= now);
       if (!shouldRemove) continue;
 

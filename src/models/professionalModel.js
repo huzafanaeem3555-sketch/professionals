@@ -49,6 +49,26 @@ function normalizeServiceList(value) {
   return result;
 }
 
+function reliabilityScore(pro) {
+  const completed = Math.max(0, Number(pro.completedJobs || pro.totalJobs || 0));
+  const rating = Math.max(0, Math.min(5, Number(pro.rating || 0)));
+  const ratings = Math.max(0, Number(pro.totalRatings || 0));
+  const cancellations = Math.max(0, Number(pro.cancelledJobs || pro.cancellationCount || 0));
+  const responseMinutes = Math.max(0, Number(pro.averageResponseMinutes || 0));
+  let score = 45 + rating * 8 + Math.min(completed, 50) * 0.6 + Math.min(ratings, 50) * 0.25;
+  score -= Math.min(cancellations, 30) * 2;
+  if (responseMinutes > 0) score -= Math.min(responseMinutes, 240) / 24;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function isFeaturedNow(pro) {
+  if (pro.isFeatured === true) {
+    const until = Number(pro.featuredUntil || 0);
+    return !until || until > Date.now();
+  }
+  return false;
+}
+
 const ProfessionalModel = {
   // Get all professionals
   async getAll() {
@@ -103,6 +123,8 @@ const ProfessionalModel = {
       totalEarnings: profileData.totalEarnings !== undefined ? Number(profileData.totalEarnings) : 0,
       completedJobs: profileData.completedJobs !== undefined ? Number(profileData.completedJobs) : 0,
       experienceYears: experienceYears !== undefined ? Number(experienceYears) : 0,
+      isFeatured: profileData.isFeatured === true,
+      featuredUntil: Number(profileData.featuredUntil || 0),
       rating: Number(rating || 0),
       totalRatings: Number(profileData.totalRatings || 0),
       isAvailable: isAvailable !== false,
@@ -183,6 +205,10 @@ const ProfessionalModel = {
         location: pro.location,
         rating: pro.rating || 0,
         totalRatings: pro.totalRatings || 0,
+        completedJobs: pro.completedJobs || 0,
+        reliabilityScore: reliabilityScore(pro),
+        isFeatured: isFeaturedNow(pro),
+        featuredUntil: Number(pro.featuredUntil || 0),
         distance: parseFloat(distance.toFixed(2)),
         isAvailable: true,
         photoURL: pro.photoURL || '',
@@ -193,6 +219,10 @@ const ProfessionalModel = {
     }
 
     results.sort((a, b) => {
+      const featuredDiff = (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+      if (featuredDiff !== 0) return featuredDiff;
+      const reliabilityDiff = Number(b.reliabilityScore || 0) - Number(a.reliabilityScore || 0);
+      if (reliabilityDiff !== 0) return reliabilityDiff;
       const ratingDiff = Number(b.rating || 0) - Number(a.rating || 0);
       if (ratingDiff !== 0) return ratingDiff;
       const ratingCountDiff = Number(b.totalRatings || 0) - Number(a.totalRatings || 0);

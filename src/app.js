@@ -21,6 +21,7 @@ const geolocationRoutes = require('./routes/geolocation');
 const utilityRoutes = require('./routes/utils');
 const searchRoutes = require('./routes/search');  // ✅ ADDED
 const notificationRoutes = require('./routes/notifications');
+const marketplaceRoutes = require('./routes/marketplace');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -91,6 +92,7 @@ app.use('/api/geolocation', geolocationRoutes);
 app.use('/api/utils', utilityRoutes);
 app.use('/api/search', searchRoutes);  // ✅ ADDED
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
 
 // ————————————————— 404 ————————————————————————
 app.use((req, res) => {

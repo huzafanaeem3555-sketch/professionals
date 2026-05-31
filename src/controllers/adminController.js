@@ -1,5 +1,6 @@
 const AdminModel = require('../models/adminModel');
 const { dbGetAll, dbSet } = require('../config/firebase');
+const MarketplaceModel = require('../models/marketplaceModel');
 
 const AdminController = {
   async login(req, res) {
@@ -112,6 +113,51 @@ const AdminController = {
     } catch (error) {
       console.error('admin transactions error:', error);
       return res.status(500).json({ success: false, message: 'Failed to fetch transactions.' });
+    }
+  },
+
+  async getComplaints(req, res) {
+    try {
+      const complaints = await MarketplaceModel.listComplaints();
+      return res.status(200).json({ success: true, data: complaints });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Failed to fetch complaints.' });
+    }
+  },
+
+  async updateComplaint(req, res) {
+    try {
+      const data = await MarketplaceModel.updateComplaint(req.params.id, req.body || {});
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Failed to update complaint.' });
+    }
+  },
+
+  async deleteComplaint(req, res) {
+    try {
+      await MarketplaceModel.deleteComplaint(req.params.id);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
+    }
+  },
+
+  async getMarketplace(req, res) {
+    try {
+      const data = await MarketplaceModel.listAdminBundle();
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Failed to fetch marketplace data.' });
+    }
+  },
+
+  async updateCleanupSettings(req, res) {
+    try {
+      const data = await MarketplaceModel.updateCleanupSettings(req.body?.hours);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Failed to update cleanup settings.' });
     }
   },
 

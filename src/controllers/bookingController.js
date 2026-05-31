@@ -625,6 +625,12 @@ const BookingController = {
 
       await BookingModel.addRating(bookingId, rating, review || '');
       await ProfessionalModel.updateRating(booking.professionalId, rating);
+      await sendNotificationToUser(
+        booking.professionalId,
+        'New rating received',
+        `Customer rated your work ${rating}/5.`,
+        { bookingId, type: 'rating_received', rating: String(rating) }
+      ).catch(() => null);
 
       return res.status(200).json({
         success: true,
