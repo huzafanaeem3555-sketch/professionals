@@ -286,7 +286,10 @@ class FirebaseService {
 
   /// Save or update professional profile (API first, fallback to direct RTDB write)
   Future<bool> saveProfessional(Map<String, dynamic> data) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? data['uid'] ?? '';
+    final sessionUid = await StorageService.getUid();
+    final uid = data['uid']?.toString().isNotEmpty == true
+        ? data['uid'].toString()
+        : (sessionUid ?? FirebaseAuth.instance.currentUser?.uid ?? '');
     if (uid.isEmpty) return false;
 
     final phone = normalizePhone(

@@ -108,8 +108,7 @@ class AuthService {
     required String idToken,
     Map<String, dynamic>? backendUser,
   }) async {
-    final email =
-        firebaseUser.email ?? backendUser?['email']?.toString() ?? '';
+    final email = firebaseUser.email ?? backendUser?['email']?.toString() ?? '';
     final name = firebaseUser.displayName ??
         backendUser?['displayName']?.toString() ??
         backendUser?['name']?.toString() ??
@@ -118,10 +117,12 @@ class AuthService {
         firebaseUser.photoURL ?? backendUser?['photoURL']?.toString() ?? '';
     final role = backendUser?['role']?.toString();
     final gender = backendUser?['gender']?.toString();
-    final verificationStatus =
-        backendUser?['verificationStatus']?.toString();
+    final verificationStatus = backendUser?['verificationStatus']?.toString();
+    final sessionUid = backendUser?['uid']?.toString().isNotEmpty == true
+        ? backendUser!['uid'].toString()
+        : firebaseUser.uid;
 
-    await StorageService.setUid(firebaseUser.uid);
+    await StorageService.setUid(sessionUid);
     await StorageService.setIdToken(idToken);
     await StorageService.setUserDetails(
       name: name,
@@ -136,8 +137,9 @@ class AuthService {
     );
 
     try {
-      await FirebaseDatabase.instance.ref('users/${firebaseUser.uid}').update({
-        'uid': firebaseUser.uid,
+      await FirebaseDatabase.instance.ref('users/$sessionUid').update({
+        'uid': sessionUid,
+        'firebaseUid': firebaseUser.uid,
         'email': email,
         'displayName': name,
         'name': name,

@@ -49,8 +49,9 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
   Future<void> _bootstrap() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      final uid = await StorageService.getUid() ?? user.uid;
       _nameCtrl.text = user.displayName ?? '';
-      final pro = await FirebaseService().getProfessionalById(user.uid);
+      final pro = await FirebaseService().getProfessionalById(uid);
       if (pro != null && mounted) {
         _nameCtrl.text = pro['name']?.toString() ?? user.displayName ?? '';
         _phoneCtrl.text =

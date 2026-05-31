@@ -95,19 +95,29 @@ class _SplashScreenState extends State<SplashScreen>
           await AuthNavigation.routeAfterAuth(context);
           return;
         }
-        final freshIdToken = await currentUser.getIdToken(true) ?? '';
-        if (freshIdToken.isNotEmpty) {
-          final Map<String, dynamic> syncResult =
-              await ApiService().signInWithToken(freshIdToken).timeout(
-                    const Duration(seconds: 15),
-                    onTimeout: () => <String, dynamic>{'success': false},
-                  );
-          if (syncResult['success'] == true) {
-            final data = syncResult['data'];
-            if (data is Map) {
-              final backendToken = data['token']?.toString();
-              if (backendToken != null && backendToken.isNotEmpty) {
-                await ApiService().setBackendToken(backendToken);
+        var backendSessionValid = false;
+        if (token != null && token.isNotEmpty) {
+          final me = await ApiService().getMe().timeout(
+                const Duration(seconds: 8),
+                onTimeout: () => <String, dynamic>{'success': false},
+              );
+          backendSessionValid = me['success'] == true;
+        }
+        if (!backendSessionValid) {
+          final freshIdToken = await currentUser.getIdToken(true) ?? '';
+          if (freshIdToken.isNotEmpty) {
+            final Map<String, dynamic> syncResult =
+                await ApiService().signInWithToken(freshIdToken).timeout(
+                      const Duration(seconds: 15),
+                      onTimeout: () => <String, dynamic>{'success': false},
+                    );
+            if (syncResult['success'] == true) {
+              final data = syncResult['data'];
+              if (data is Map) {
+                final backendToken = data['token']?.toString();
+                if (backendToken != null && backendToken.isNotEmpty) {
+                  await ApiService().setBackendToken(backendToken);
+                }
               }
             }
           }

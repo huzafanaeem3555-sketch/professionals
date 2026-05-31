@@ -108,7 +108,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
       // 3. Save role via backend API
       try {
-        await ApiService().setRole(role, gender: gender);
+        await ApiService().setRole(
+          role,
+          gender: gender,
+          displayName: enteredName,
+        );
       } catch (apiErr) {
         debugPrint('Backend setRole error (continuing anyway): $apiErr');
       }

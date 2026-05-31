@@ -215,12 +215,18 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> setRole(String role, {String? gender}) async {
+  Future<Map<String, dynamic>> setRole(
+    String role, {
+    String? gender,
+    String? displayName,
+  }) async {
     try {
       final response = await _withRetry(
         () => _dio.post('/users/set-role', data: {
           'role': role,
           if (gender != null) 'gender': gender,
+          if (displayName != null && displayName.trim().isNotEmpty)
+            'displayName': displayName.trim(),
         }),
       );
       return response.data;
