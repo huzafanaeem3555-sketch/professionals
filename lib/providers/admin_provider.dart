@@ -155,11 +155,19 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> verifyUser(String uid, {bool verified = true}) async {
+  Future<bool> verifyUser(
+    String uid, {
+    bool verified = true,
+    bool? isActive,
+  }) async {
     _setLoading(true);
     _setError(null);
     try {
-      final res = await _api.verifyAdminUser(uid, verified: verified);
+      final res = await _api.verifyAdminUser(
+        uid,
+        verified: verified,
+        isActive: isActive,
+      );
       if (res['success'] == true) {
         await fetchAll(showLoading: false);
         return true;

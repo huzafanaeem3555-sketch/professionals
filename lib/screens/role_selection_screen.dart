@@ -17,6 +17,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
   String _gender = 'male';
   final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _phoneCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -56,14 +58,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     setState(() => _saving = true);
 
     try {
-      final uid = user.uid;
+      final uid = await StorageService.getUid() ?? user.uid;
       final gender = _gender;
       final enteredName = _nameCtrl.text.trim();
+      final enteredPhone = _phoneCtrl.text.trim();
       if (gender == 'female' && role == 'customer' && enteredName.isEmpty) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Enter your full name for verification')),
+        );
+        return;
+      }
+      if (gender == 'female' && role == 'customer' && enteredPhone.isEmpty) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Enter your phone number for verification')),
         );
         return;
       }
@@ -92,6 +103,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         'gender': gender,
         if (enteredName.isNotEmpty) 'displayName': enteredName,
         if (enteredName.isNotEmpty) 'name': enteredName,
+        if (enteredPhone.isNotEmpty) 'phoneNumber': enteredPhone,
+        if (enteredPhone.isNotEmpty) 'phone': enteredPhone,
         'verificationStatus': verificationStatus,
         'isActive': isActive,
         'femaleVerificationRequired': isFemale && !isActive,
@@ -102,6 +115,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           name: enteredName,
           email: details['email'] ?? user.email ?? '',
           photo: details['photo'] ?? user.photoURL ?? '',
+          phone: enteredPhone,
           idToken: details['idToken'],
         );
       }
@@ -112,6 +126,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           role,
           gender: gender,
           displayName: enteredName,
+          phoneNumber: enteredPhone,
         );
       } catch (apiErr) {
         debugPrint('Backend setRole error (continuing anyway): $apiErr');
@@ -224,10 +239,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 if (_gender == 'female') ...[
                   TextField(
                     controller: _nameCtrl,
-                    textInputAction: TextInputAction.done,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Full name for verification',
                       prefixIcon: Icon(Icons.badge_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone number for verification',
+                      prefixIcon: Icon(Icons.phone_outlined),
                       border: OutlineInputBorder(),
                     ),
                   ),

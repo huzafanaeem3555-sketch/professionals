@@ -18,12 +18,15 @@ class GenderVerificationScreen extends StatelessWidget {
   Future<void> _openWhatsApp(BuildContext context) async {
     final details = await StorageService.getUserDetails();
     final storedName = details['name']?.trim() ?? '';
+    final phone = details['phone']?.trim() ?? '';
     final firebaseName =
         AuthService().getCurrentUser()?.displayName?.trim() ?? '';
     final name = storedName.isNotEmpty ? storedName : firebaseName;
+    final phoneLine = phone.isNotEmpty ? 'Phone: $phone\n' : '';
     final message = Uri.encodeComponent(
       'Assalam-o-Alaikum, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on Hirepro.\n'
       'Name: ${name.isNotEmpty ? name : 'Please confirm my account'}\n'
+      '$phoneLine'
       'I will send my voice note for verification.',
     );
     final uri = Uri.parse('https://wa.me/$whatsappNumber?text=$message');
@@ -96,14 +99,31 @@ class GenderVerificationScreen extends StatelessWidget {
                 future: StorageService.getUserDetails(),
                 builder: (context, snapshot) {
                   final name = snapshot.data?['name']?.trim() ?? '';
-                  if (name.isEmpty) return const SizedBox.shrink();
-                  return Text(
-                    'Account name: $name',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  final phone = snapshot.data?['phone']?.trim() ?? '';
+                  if (name.isEmpty && phone.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      if (name.isNotEmpty)
+                        Text(
+                          'Account name: $name',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      if (phone.isNotEmpty)
+                        Text(
+                          'Phone: $phone',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),

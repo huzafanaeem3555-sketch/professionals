@@ -10,6 +10,7 @@ class StorageService {
   static const String _keyIdToken = 'id_token';
   static const String _keyUserName = 'user_name';
   static const String _keyUserEmail = 'user_email';
+  static const String _keyUserPhone = 'user_phone';
   static const String _keyUserPhoto = 'user_photo';
   static const String _keyGender = 'user_gender';
   static const String _keyVerificationStatus = 'verification_status';
@@ -78,12 +79,16 @@ class StorageService {
     required String name,
     required String email,
     required String photo,
+    String? phone,
     String? idToken,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserName, name);
     await prefs.setString(_keyUserEmail, email);
     await prefs.setString(_keyUserPhoto, photo);
+    if (phone != null && phone.isNotEmpty) {
+      await prefs.setString(_keyUserPhone, phone);
+    }
     if (idToken != null && idToken.isNotEmpty) {
       await prefs.setString(_keyIdToken, idToken);
     }
@@ -112,12 +117,13 @@ class StorageService {
       return {
         'name': prefs.getString(_keyUserName) ?? '',
         'email': prefs.getString(_keyUserEmail) ?? '',
+        'phone': prefs.getString(_keyUserPhone) ?? '',
         'photo': prefs.getString(_keyUserPhoto) ?? '',
         'idToken': prefs.getString(_keyIdToken) ?? '',
       };
     } catch (_) {
       await clearAll();
-      return {'name': '', 'email': '', 'photo': '', 'idToken': ''};
+      return {'name': '', 'email': '', 'phone': '', 'photo': '', 'idToken': ''};
     }
   }
 

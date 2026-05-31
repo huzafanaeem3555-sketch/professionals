@@ -70,6 +70,15 @@ class AuthNavigation {
       return;
     }
 
+    if (!isActive && gender != 'female') {
+      Navigator.pushReplacementNamed(
+        context,
+        '/gender-verification',
+        arguments: role,
+      );
+      return;
+    }
+
     if (role == 'professional') {
       if (!profileCompleted) {
         Navigator.pushReplacementNamed(context, '/professional-setup');

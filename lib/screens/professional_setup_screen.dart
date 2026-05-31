@@ -312,6 +312,14 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     if (success) {
       await StorageService.setProfessionalPhone(phone);
       await StorageService.setRole('professional');
+      final details = await StorageService.getUserDetails();
+      await StorageService.setUserDetails(
+        name: name,
+        email: details['email'] ?? '',
+        photo: details['photo'] ?? _photoURL,
+        phone: phone,
+        idToken: details['idToken'],
+      );
       final gender = (await StorageService.getGender() ?? 'male').toLowerCase();
       final status =
           (await StorageService.getVerificationStatus() ?? 'verified')

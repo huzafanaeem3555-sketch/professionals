@@ -79,18 +79,65 @@ class _AdminDashboardState extends State<AdminDashboard>
     }
   }
 
-  Future<void> _verifyUser(String uid, bool verified) async {
+  Future<void> _verifyUser(
+    String uid,
+    bool verified, {
+    bool? isActive,
+  }) async {
     final success = await Provider.of<AdminProvider>(context, listen: false)
-        .verifyUser(uid, verified: verified);
+        .verifyUser(uid, verified: verified, isActive: isActive);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(success
-            ? (verified ? 'Account verified' : 'Account set to pending')
+            ? (verified
+                ? (isActive == false
+                    ? 'Account verified and inactive'
+                    : 'Account verified')
+                : 'Account set to pending')
             : Provider.of<AdminProvider>(context, listen: false).error ??
                 'Verification update failed'),
         backgroundColor: success ? AppColors.success : AppColors.error,
       ),
+    );
+  }
+
+  Widget _adminUserActions(Map<String, dynamic> user) {
+    final uid = user['uid']?.toString() ?? '';
+    final status = user['verificationStatus']?.toString().toLowerCase() ?? '';
+    final verified = status == 'verified';
+    final active = user['isActive'] != false;
+    if (uid.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 2,
+      runSpacing: 2,
+      children: [
+        IconButton(
+          tooltip: verified ? 'Set pending' : 'Verify account',
+          icon: Icon(
+            verified ? Icons.undo_rounded : Icons.verified_user,
+            color: verified ? AppColors.warning : AppColors.success,
+          ),
+          onPressed: () => _verifyUser(
+            uid,
+            !verified,
+            isActive: !verified ? true : false,
+          ),
+        ),
+        IconButton(
+          tooltip: active ? 'Deactivate account' : 'Activate account',
+          icon: Icon(
+            active ? Icons.block_rounded : Icons.check_circle_outline,
+            color: active ? Colors.redAccent : AppColors.success,
+          ),
+          onPressed: () => _verifyUser(
+            uid,
+            active ? verified : true,
+            isActive: !active,
+          ),
+        ),
+      ],
     );
   }
 
@@ -595,7 +642,8 @@ class _AdminDashboardState extends State<AdminDashboard>
             decoration: InputDecoration(
               hintText: 'Search users, status, phone, service or booking ID',
               hintStyle: const TextStyle(color: AppColors.textSecondary),
-              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              prefixIcon:
+                  const Icon(Icons.search, color: AppColors.textSecondary),
               suffixIcon: _searchController.text.isEmpty
                   ? null
                   : IconButton(
@@ -1239,7 +1287,8 @@ class _AdminDashboardState extends State<AdminDashboard>
                         runSpacing: 6,
                         children: [
                           _metaChip('Gender: $gender', AppColors.primaryLight),
-                          _metaChip('Status: $status',
+                          _metaChip(
+                              'Status: $status',
                               status == 'verified'
                                   ? AppColors.success
                                   : AppColors.warning),
@@ -1294,14 +1343,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                 Wrap(
                   spacing: 2,
                   children: [
-                    if (gender == 'female' && status != 'verified')
-                      IconButton(
-                        tooltip: 'Verify female account',
-                        icon: const Icon(Icons.verified_user,
-                            color: AppColors.success),
-                        onPressed: () =>
-                            _verifyUser(p['uid']?.toString() ?? '', true),
-                      ),
+                    _adminUserActions(Map<String, dynamic>.from(p as Map)),
                     IconButton(
                       tooltip: 'Edit',
                       icon: const Icon(Icons.edit, color: Colors.white70),
@@ -1397,7 +1439,8 @@ class _AdminDashboardState extends State<AdminDashboard>
                         runSpacing: 6,
                         children: [
                           _metaChip('Gender: $gender', AppColors.accent),
-                          _metaChip('Status: $status',
+                          _metaChip(
+                              'Status: $status',
                               status == 'verified'
                                   ? AppColors.success
                                   : AppColors.warning),
@@ -1424,14 +1467,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                     ],
                   ),
                 ),
-                if (gender == 'female' && status != 'verified')
-                  IconButton(
-                    tooltip: 'Verify female account',
-                    icon: const Icon(Icons.verified_user,
-                        color: AppColors.success),
-                    onPressed: () =>
-                        _verifyUser(c['uid']?.toString() ?? '', true),
-                  ),
+                _adminUserActions(Map<String, dynamic>.from(c as Map)),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded,
                       color: Colors.redAccent),

@@ -219,6 +219,7 @@ class ApiService {
     String role, {
     String? gender,
     String? displayName,
+    String? phoneNumber,
   }) async {
     try {
       final response = await _withRetry(
@@ -227,6 +228,8 @@ class ApiService {
           if (gender != null) 'gender': gender,
           if (displayName != null && displayName.trim().isNotEmpty)
             'displayName': displayName.trim(),
+          if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
+            'phoneNumber': phoneNumber.trim(),
         }),
       );
       return response.data;
@@ -972,11 +975,16 @@ class ApiService {
   Future<Map<String, dynamic>> verifyAdminUser(
     String uid, {
     bool verified = true,
+    bool? isActive,
   }) async {
     try {
       final response = await _withRetry(
         () => _dio.patch('${ApiConstants.adminUsers}/$uid/verify',
-            data: {'verified': verified}, options: _adminOptions),
+            data: {
+              'verified': verified,
+              if (isActive != null) 'isActive': isActive,
+            },
+            options: _adminOptions),
       );
       return response.data;
     } catch (e) {
