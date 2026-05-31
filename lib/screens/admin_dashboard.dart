@@ -1173,26 +1173,6 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  Widget _verificationBadge(String status) {
-    final verified = status == 'verified';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: (verified ? AppColors.success : AppColors.warning)
-            .withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        verified ? 'Female verified' : 'Female pending verification',
-        style: TextStyle(
-          color: verified ? AppColors.success : AppColors.warning,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
   Widget _metaChip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1206,6 +1186,346 @@ class _AdminDashboardState extends State<AdminDashboard>
           color: color,
           fontSize: 11,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  String _shortText(dynamic value, {String fallback = '-'}) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? fallback : text;
+  }
+
+  Widget _detailRow(String label, dynamic value) {
+    final text = _flatten(value).trim();
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 118,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              text,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showUserDetails(
+    Map<String, dynamic> user, {
+    required String type,
+  }) async {
+    final isProfessional = type == 'professional';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 720),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.white24,
+                      child: Text(
+                        _initial(
+                            user['displayName'], isProfessional ? 'P' : 'C'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _shortText(
+                              user['displayName'],
+                              fallback:
+                                  isProfessional ? 'Professional' : 'Customer',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            isProfessional
+                                ? 'Professional profile'
+                                : 'Customer profile',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Close details',
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _metaChip(
+                            'Gender: ${_shortText(user['gender'], fallback: 'male')}',
+                            isProfessional
+                                ? AppColors.primaryLight
+                                : AppColors.accent,
+                          ),
+                          _metaChip(
+                            'Status: ${_shortText(user['verificationStatus'], fallback: 'verified')}',
+                            user['verificationStatus'] == 'verified'
+                                ? AppColors.success
+                                : AppColors.warning,
+                          ),
+                          _metaChip(
+                            'Active: ${user['isActive'] != false ? 'Yes' : 'No'}',
+                            user['isActive'] != false
+                                ? AppColors.success
+                                : Colors.redAccent,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _detailRow('UID', user['uid']),
+                      _detailRow('Name', user['displayName'] ?? user['name']),
+                      _detailRow('Email', user['email']),
+                      _detailRow('Phone', user['phoneNumber'] ?? user['phone']),
+                      if (isProfessional) ...[
+                        _detailRow('Services',
+                            user['serviceTypes'] ?? user['services']),
+                        _detailRow('Custom', user['customServices']),
+                        _detailRow('Experience', user['experienceYears']),
+                        _detailRow('Rating', user['rating']),
+                        _detailRow('Jobs', user['totalJobs']),
+                        _detailRow(
+                            'Location', user['location'] ?? user['address']),
+                      ] else ...[
+                        _detailRow('Bookings', user['totalBookings']),
+                        _detailRow('Address', user['address']),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _adminUserActions(user),
+                    if (isProfessional)
+                      Tooltip(
+                        message: 'Edit professional profile fields',
+                        child: TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _editProfessional(user);
+                          },
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Edit'),
+                        ),
+                      ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _adminSummaryCard({
+    required Map<String, dynamic> user,
+    required String type,
+    required Color accent,
+    required List<Widget> actions,
+    String? subtitle,
+  }) {
+    final isProfessional = type == 'professional';
+    final name = _shortText(user['displayName'],
+        fallback: isProfessional ? 'Professional' : 'Customer');
+    final phone =
+        _shortText(user['phoneNumber'] ?? user['phone'], fallback: '');
+    final status = _shortText(user['verificationStatus'], fallback: 'verified');
+    final active = user['isActive'] != false;
+
+    return Card(
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.divider.withValues(alpha: 0.8)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _showUserDetails(user, type: type),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 430;
+              final actionWrap = Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 2,
+                runSpacing: 2,
+                children: actions,
+              );
+              final info = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: accent.withValues(alpha: 0.14),
+                    child: Text(
+                      _initial(name, isProfessional ? 'P' : 'C'),
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          phone.isNotEmpty
+                              ? phone
+                              : _shortText(user['email'],
+                                  fallback: 'No contact'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 7),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            _metaChip(
+                              _shortText(user['gender'], fallback: 'male'),
+                              accent,
+                            ),
+                            _metaChip(
+                              status,
+                              status == 'verified'
+                                  ? AppColors.success
+                                  : AppColors.warning,
+                            ),
+                            _metaChip(
+                              active ? 'active' : 'inactive',
+                              active ? AppColors.success : Colors.redAccent,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    info,
+                    const SizedBox(height: 8),
+                    actionWrap,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: info),
+                  const SizedBox(width: 8),
+                  actionWrap,
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1233,136 +1553,40 @@ class _AdminDashboardState extends State<AdminDashboard>
       itemCount: list.length,
       itemBuilder: (context, index) {
         final p = list[index];
-        final gender = p['gender']?.toString().toLowerCase() ?? 'male';
-        final status = p['verificationStatus']?.toString() ?? 'verified';
         final serviceTypesList = p['serviceTypes'] ?? [];
         final serviceTypesString = serviceTypesList is List
             ? serviceTypesList.join(', ')
             : serviceTypesList.toString();
 
-        return Card(
-          color: AppColors.primaryDark,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Colors.white12)),
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                  child: Text(
-                    _initial(p['displayName'], 'P'),
-                    style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        p['displayName'] ?? 'Professional',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.white),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(p['email'] ?? '',
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 13)),
-                      Text(p['phoneNumber'] ?? '',
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 13)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _metaChip('Gender: $gender', AppColors.primaryLight),
-                          _metaChip(
-                              'Status: $status',
-                              status == 'verified'
-                                  ? AppColors.success
-                                  : AppColors.warning),
-                          _metaChip(
-                            'Active: ${(p['isActive'] ?? true) ? 'Yes' : 'No'}',
-                            (p['isActive'] ?? true)
-                                ? AppColors.success
-                                : Colors.redAccent,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(6)),
-                        child: Text(
-                          'Services: $serviceTypesString',
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.star_rounded,
-                              color: Colors.amber[600], size: 18),
-                          const SizedBox(width: 4),
-                          Text('${p['rating'] ?? 0.0}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 12),
-                          Icon(Icons.done_all_rounded,
-                              color: AppColors.success, size: 18),
-                          const SizedBox(width: 4),
-                          Text('${p['totalJobs'] ?? 0} Completed Jobs',
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 12)),
-                        ],
-                      ),
-                      if (gender == 'female') ...[
-                        const SizedBox(height: 8),
-                        _verificationBadge(status),
-                      ],
-                    ],
-                  ),
-                ),
-                Wrap(
-                  spacing: 2,
-                  children: [
-                    _adminUserActions(Map<String, dynamic>.from(p as Map)),
-                    IconButton(
-                      tooltip: 'Edit',
-                      icon: const Icon(Icons.edit, color: Colors.white70),
-                      onPressed: () => _editProfessional(
-                        Map<String, dynamic>.from(p as Map),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Feedbacks',
-                      icon: const Icon(Icons.reviews, color: Colors.amber),
-                      onPressed: () => _showProfessionalReviews(
-                        Map<String, dynamic>.from(p as Map),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+        return _adminSummaryCard(
+          user: p,
+          type: 'professional',
+          accent: AppColors.primary,
+          subtitle: serviceTypesString.isEmpty ? null : serviceTypesString,
+          actions: [
+            _adminUserActions(p),
+            Tooltip(
+              message: 'Edit professional profile fields',
+              child: IconButton(
+                icon: const Icon(Icons.edit, color: AppColors.primary),
+                onPressed: () => _editProfessional(p),
+              ),
             ),
-          ),
+            Tooltip(
+              message: 'Open professional reviews',
+              child: IconButton(
+                icon: const Icon(Icons.reviews, color: Colors.amber),
+                onPressed: () => _showProfessionalReviews(p),
+              ),
+            ),
+            Tooltip(
+              message: 'Open full profile details',
+              child: IconButton(
+                icon: const Icon(Icons.info_outline, color: AppColors.primary),
+                onPressed: () => _showUserDetails(p, type: 'professional'),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -1390,93 +1614,35 @@ class _AdminDashboardState extends State<AdminDashboard>
       itemCount: list.length,
       itemBuilder: (context, index) {
         final c = list[index];
-        final gender = c['gender']?.toString().toLowerCase() ?? 'male';
-        final status = c['verificationStatus']?.toString() ?? 'verified';
 
-        return Card(
-          color: AppColors.primaryDark,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Colors.white12)),
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppColors.accent.withValues(alpha: 0.18),
-                  child: Text(
-                    _initial(c['displayName'], 'C'),
-                    style: const TextStyle(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        c['displayName'] ?? 'Customer',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.white),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(c['email'] ?? '',
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 13)),
-                      Text(c['phoneNumber'] ?? '',
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 13)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _metaChip('Gender: $gender', AppColors.accent),
-                          _metaChip(
-                              'Status: $status',
-                              status == 'verified'
-                                  ? AppColors.success
-                                  : AppColors.warning),
-                          _metaChip(
-                            'Active: ${(c['isActive'] ?? true) ? 'Yes' : 'No'}',
-                            (c['isActive'] ?? true)
-                                ? AppColors.success
-                                : Colors.redAccent,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Total Bookings: ${c['totalBookings'] ?? 0}',
-                        style: TextStyle(
-                            color: AppColors.accent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      if (gender == 'female') ...[
-                        const SizedBox(height: 8),
-                        _verificationBadge(status),
-                      ],
-                    ],
-                  ),
-                ),
-                _adminUserActions(Map<String, dynamic>.from(c as Map)),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      color: Colors.redAccent),
-                  onPressed: () => _deleteUser(
-                      c['uid'] ?? '', c['displayName'] ?? 'Customer'),
-                ),
-              ],
+        return _adminSummaryCard(
+          user: c,
+          type: 'customer',
+          accent: AppColors.accent,
+          subtitle: 'Bookings: ${c['totalBookings'] ?? 0}',
+          actions: [
+            _adminUserActions(c),
+            Tooltip(
+              message: 'Open full customer details',
+              child: IconButton(
+                icon: const Icon(Icons.info_outline, color: AppColors.accent),
+                onPressed: () => _showUserDetails(c, type: 'customer'),
+              ),
             ),
-          ),
+            Tooltip(
+              message: 'Delete customer data',
+              child: IconButton(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.redAccent,
+                ),
+                onPressed: () => _deleteUser(
+                  c['uid'] ?? '',
+                  c['displayName'] ?? 'Customer',
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
