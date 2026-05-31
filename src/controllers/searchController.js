@@ -1,4 +1,5 @@
 const ProfessionalModel = require('../models/professionalModel');
+const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
 
 // Initialize Groq client ONLY if API key exists (Prevents Railway crash)
 let Groq;
@@ -35,6 +36,14 @@ function allServicesFor(pro) {
     ...(Array.isArray(pro.services) ? pro.services : []),
     ...(Array.isArray(pro.customServices) ? pro.customServices : []),
   ].filter(Boolean);
+}
+
+function isVisibleToViewer(viewer, professional) {
+  return canViewFemaleProfessional(viewer, professional);
+}
+
+function filterVisibleProfessionals(viewer, professionals) {
+  return professionals.filter(pro => isVisibleToViewer(viewer, pro));
 }
 
 // Keywords to service type mapping (simple fallback)
@@ -118,7 +127,11 @@ const SearchController = {
       }
       
       // Step 3: Get professionals matching the services
-      const allProfessionals = await ProfessionalModel.getAll();
+      const viewer = await resolveViewerContext(req);
+      const allProfessionals = filterVisibleProfessionals(
+        viewer,
+        await ProfessionalModel.getAll()
+      );
       
       // Filter professionals by matched services
       let filtered = allProfessionals.filter(pro => {
@@ -314,6 +327,7 @@ If no service matches, return empty array for services.`;
       
       const query = q.trim().toLowerCase();
       const suggestions = new Set();
+      const viewer = await resolveViewerContext(req);
       
       // Add matching service types
       for (const service of SERVICE_TYPES) {
@@ -323,7 +337,10 @@ If no service matches, return empty array for services.`;
       }
       
       // Add suggestions from professional names
-      const allProfessionals = await ProfessionalModel.getAll();
+      const allProfessionals = filterVisibleProfessionals(
+        viewer,
+        await ProfessionalModel.getAll()
+      );
       for (const pro of allProfessionals) {
         const name = (pro.name || '').toLowerCase();
         if (name.includes(query)) {
