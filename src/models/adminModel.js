@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { dbGet, dbGetAll, dbSet, dbUpdate, dbDelete } = require('../config/firebase');
+const { sendNotificationToUser } = require('../utils/notifications');
 const { normalizeGender } = require('../utils/accountPolicy');
 
 const ADMIN_TOKEN_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'service-connect-secret-change-in-production';
@@ -391,6 +392,21 @@ const AdminModel = {
     const pro = await dbGet(`professionals/${uid}`);
     if (pro) {
       await dbUpdate(`professionals/${uid}`, updates);
+    }
+    if (verified) {
+      const user = await dbGet(`users/${uid}`);
+      const displayName = user?.displayName || pro?.displayName || 'User';
+      await sendNotificationToUser(
+        uid,
+        'Account verified',
+        `Your ${String(user?.role || pro?.role || 'account')} has been verified by admin. You can now access the app.`,
+        {
+          type: 'verification',
+          status: 'verified',
+          uid,
+        },
+      );
+      return { uid, ...updates, displayName };
     }
     return { uid, ...updates };
   },
