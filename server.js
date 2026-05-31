@@ -2,6 +2,7 @@ process.noDeprecation = process.env.NODE_NO_DEPRECATION !== 'false';
 
 require('dotenv').config();
 const app = require('./src/app');
+const { startContactLeadCleanupJob } = require('./src/services/contactLeadCleanupService');
 
 const PORT = process.env.PORT || 3000;
 
@@ -37,3 +38,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 URL: http://localhost:${PORT}`);
 });
+
+if (process.env.DISABLE_CONTACT_LEAD_CLEANUP !== 'true') {
+  startContactLeadCleanupJob();
+}

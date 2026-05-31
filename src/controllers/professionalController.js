@@ -3,6 +3,11 @@ const UserModel = require('../models/userModel');
 const TransactionModel = require('../models/transactionModel');
 const BookingModel = require('../models/bookingModel');
 const { uploadMultipleToImgBB } = require('../utils/imgbb');
+const {
+  canViewFemaleProfessional,
+  resolveViewerContext,
+  normalizeGender,
+} = require('../utils/accountPolicy');
 
 // Helper: Calculate distance between two coordinates (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -33,7 +38,7 @@ function normalizeServiceList(value) {
 
 async function formatProfessional(pro, { includePhone = false, phoneRevealed = false, includeReviews = false } = {}) {
   const reviews = includeReviews ? await ProfessionalModel.getReviews(pro.uid) : [];
-  const isFemale = String(pro.gender || '').toLowerCase() === 'female';
+  const isFemale = normalizeGender(pro.gender) === 'female';
   return {
     uid: pro.uid,
     name: pro.name,
@@ -63,8 +68,12 @@ const ProfessionalController = {
   async getAll(req, res) {
     try {
       const professionals = await ProfessionalModel.getAll();
-      
-      const visible = professionals.filter((pro) => pro.isActive !== false && (String(pro.gender || '').toLowerCase() !== 'female' || pro.verificationStatus === 'verified'));
+
+      const viewer = await resolveViewerContext(req);
+      const visible = professionals.filter((pro) => {
+        if (pro.isActive === false) return false;
+        return canViewFemaleProfessional(viewer, pro);
+      });
       const formatted = await Promise.all(visible.map(pro => formatProfessional(pro)));
       
       return res.json({ success: true, data: formatted, count: formatted.length });
@@ -93,7 +102,11 @@ const ProfessionalController = {
         radiusKm,
         serviceType
       });
-      const visible = professionals.filter((pro) => pro.isActive !== false && (String(pro.gender || '').toLowerCase() !== 'female' || pro.verificationStatus === 'verified'));
+      const viewer = await resolveViewerContext(req);
+      const visible = professionals.filter((pro) => {
+        if (pro.isActive === false) return false;
+        return canViewFemaleProfessional(viewer, pro);
+      });
       
       // Map and hide phone numbers
       const formatted = visible.map(pro => ({
@@ -117,6 +130,11 @@ const ProfessionalController = {
       const professional = await ProfessionalModel.getById(uid);
       
       if (!professional) {
+        return res.status(404).json({ success: false, message: 'Professional not found.' });
+      }
+
+      const viewer = await resolveViewerContext(req);
+      if (!canViewFemaleProfessional(viewer, professional)) {
         return res.status(404).json({ success: false, message: 'Professional not found.' });
       }
       

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { dbGet, dbGetAll, dbSet, dbUpdate, dbDelete } = require('../config/firebase');
+const { normalizeGender } = require('../utils/accountPolicy');
 
 const ADMIN_TOKEN_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'service-connect-secret-change-in-production';
 const ADMIN_TOKEN_EXPIRES = process.env.ADMIN_TOKEN_EXPIRES || '8h';
@@ -92,6 +93,9 @@ const AdminModel = {
         email: cleanText(user.email || pro.email, ''),
         phoneNumber,
         phone: cleanText(pro.phone || phoneNumber, phoneNumber),
+        gender: cleanText(user.gender || pro.gender, 'male'),
+        verificationStatus: cleanText(user.verificationStatus || pro.verificationStatus, 'verified'),
+        isActive: user.isActive !== undefined ? Boolean(user.isActive) : (pro.isActive !== false),
         serviceTypes,
         services: serviceTypes,
         customServices: toList(pro.customServices),
@@ -126,6 +130,9 @@ const AdminModel = {
           '',
         ),
         email: cleanText(data.email || existing.email, ''),
+        gender: cleanText(data.gender || existing.gender, 'male'),
+        verificationStatus: cleanText(data.verificationStatus || existing.verificationStatus, 'verified'),
+        isActive: data.isActive !== undefined ? Boolean(data.isActive) : (existing.isActive !== false),
       });
     }
 
@@ -171,6 +178,7 @@ const AdminModel = {
     const phoneNumber = String(payload.phoneNumber || payload.phone || '').trim();
     const email = String(payload.email || `${uid}@hirepro.local`).trim();
 
+    const isFemale = normalizeGender(payload.gender) === 'female';
     const user = {
       uid,
       email,
@@ -178,9 +186,9 @@ const AdminModel = {
       photoURL: String(payload.photoURL || ''),
         phoneNumber,
         role,
-        gender: String(payload.gender || 'male').toLowerCase() === 'female' ? 'female' : 'male',
-        verificationStatus: String(payload.gender || '').toLowerCase() === 'female' ? 'pending' : 'verified',
-        isActive: String(payload.gender || '').toLowerCase() !== 'female',
+        gender: isFemale ? 'female' : 'male',
+        verificationStatus: isFemale ? 'pending' : 'verified',
+        isActive: !isFemale,
         profileCompleted: true,
       createdAt: now,
       _createdAt: now,
@@ -276,9 +284,22 @@ const AdminModel = {
     const user = await dbGet(`users/${uid}`);
     const professional = await dbGet(`professionals/${uid}`);
     if (professional || String(user?.role || '').toLowerCase() === 'professional') {
-      await dbUpdate(`users/${uid}`, { isActive: false, _updatedAt: Date.now() });
-      await dbUpdate(`professionals/${uid}`, { isActive: false, _updatedAt: Date.now() });
-      return { protectedProfessional: true, message: 'Professional preserved and deactivated.' };
+      const deactivatedAt = Date.now();
+      await dbUpdate(`users/${uid}`, {
+        isActive: false,
+        verificationStatus: 'deactivated',
+        femaleVerificationRequired: false,
+        _updatedAt: deactivatedAt,
+      });
+      await dbUpdate(`professionals/${uid}`, {
+        isActive: false,
+        verificationStatus: 'deactivated',
+        _updatedAt: deactivatedAt,
+      });
+      return {
+        protectedProfessional: true,
+        message: 'Professional preserved and deactivated.',
+      };
     }
     const bookings = await dbGetAll('bookings') || [];
     const payments = await dbGetAll('payments') || [];
@@ -288,6 +309,8 @@ const AdminModel = {
     for (const bookingId of bookingIds) {
       await dbDelete(`bookings/${bookingId}`);
     }
+
+    await dbDelete(`userBookings/${uid}`);
 
     for (const payment of payments.filter((p) => p.customerId === uid || p.professionalId === uid)) {
       await dbDelete(`payments/${payment.paymentId}`);
@@ -310,8 +333,8 @@ const AdminModel = {
     }
 
     await dbDelete(`users/${uid}`);
-    await dbDelete(`professionals/${uid}`);
     await dbDelete(`professionalReviews/${uid}`);
+    await dbDelete(`professionals/${uid}`);
   },
 
   async updateProfessional(uid, payload) {
@@ -411,6 +434,11 @@ const AdminModel = {
         .filter((u) => u.role === 'admin' || String(u.displayName || '').toLowerCase() === 'huzaifa')
         .map((u) => u.uid),
     );
+    const keepProfessionalIds = new Set(
+      users
+        .filter((u) => String(u.role || '').toLowerCase() === 'professional')
+        .map((u) => u.uid),
+    );
 
     const keysToClear = [
       'bookings',
@@ -429,6 +457,14 @@ const AdminModel = {
     for (const user of users) {
       if (!user?.uid) continue;
       if (keepAdminIds.has(user.uid)) continue;
+      if (keepProfessionalIds.has(user.uid) || await dbGet(`professionals/${user.uid}`)) {
+        await dbUpdate(`users/${user.uid}`, {
+          isActive: true,
+          verificationStatus: String(user.verificationStatus || 'verified'),
+          _updatedAt: Date.now(),
+        });
+        continue;
+      }
       await dbDelete(`users/${user.uid}`);
     }
   },
