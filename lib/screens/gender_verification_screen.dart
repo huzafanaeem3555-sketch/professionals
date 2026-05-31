@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/auth_service.dart';
 import '../utils/constants.dart';
+import '../utils/auth_navigation.dart';
 import '../widgets/app_logo.dart';
 
 class GenderVerificationScreen extends StatelessWidget {
@@ -23,6 +25,16 @@ class GenderVerificationScreen extends StatelessWidget {
         const SnackBar(content: Text('Could not open WhatsApp.')),
       );
     }
+  }
+
+  Future<void> _checkAgain(BuildContext context) async {
+    await AuthNavigation.routeAfterAuth(context);
+  }
+
+  Future<void> _signOut(BuildContext context) async {
+    await AuthService().signOut();
+    if (!context.mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   @override
@@ -79,10 +91,15 @@ class GenderVerificationScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () =>
-                    Navigator.pushReplacementNamed(context, '/role-selection'),
+                onPressed: () => _checkAgain(context),
                 icon: const Icon(Icons.refresh),
                 label: const Text('I am verified, check again'),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => _signOut(context),
+                icon: const Icon(Icons.logout),
+                label: const Text('Go back to login'),
               ),
               const Spacer(),
             ],

@@ -117,6 +117,9 @@ class AuthService {
     final photo =
         firebaseUser.photoURL ?? backendUser?['photoURL']?.toString() ?? '';
     final role = backendUser?['role']?.toString();
+    final gender = backendUser?['gender']?.toString();
+    final verificationStatus =
+        backendUser?['verificationStatus']?.toString();
 
     await StorageService.setUid(firebaseUser.uid);
     await StorageService.setIdToken(idToken);
@@ -126,9 +129,11 @@ class AuthService {
       photo: photo,
       idToken: idToken,
     );
-    if (role != null && role.isNotEmpty) {
-      await StorageService.setRole(role);
-    }
+    await StorageService.setSessionMeta(
+      role: role,
+      gender: gender,
+      verificationStatus: verificationStatus,
+    );
 
     try {
       await FirebaseDatabase.instance.ref('users/${firebaseUser.uid}').update({
@@ -138,6 +143,9 @@ class AuthService {
         'name': name,
         'photoURL': photo,
         if (role != null && role.isNotEmpty) 'role': role,
+        if (gender != null && gender.isNotEmpty) 'gender': gender,
+        if (verificationStatus != null && verificationStatus.isNotEmpty)
+          'verificationStatus': verificationStatus,
         '_updatedAt': DateTime.now().millisecondsSinceEpoch,
       }).timeout(const Duration(seconds: 8));
     } catch (error) {

@@ -26,6 +26,22 @@ class FirebaseService {
     return fallback;
   }
 
+  static Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return <String, dynamic>{};
+  }
+
+  static Map<String, dynamic> _locationMap(dynamic value) {
+    final map = _asMap(value);
+    return {
+      'lat': _asDouble(map['lat']),
+      'lng': _asDouble(map['lng']),
+      'address': map['address']?.toString() ?? '',
+    };
+  }
+
   static String _normalizeGender(dynamic value) {
     return (value ?? '').toString().toLowerCase().trim() == 'female' ? 'female' : 'male';
   }
@@ -65,7 +81,7 @@ class FirebaseService {
       final userSnap = await _db.child('users/$currentUid').get();
       var isFemaleCustomer = false;
       if (userSnap.exists && userSnap.value != null) {
-        final user = Map<String, dynamic>.from(userSnap.value as Map);
+        final user = _asMap(userSnap.value);
         isFemaleCustomer = user['gender']?.toString().toLowerCase() == 'female';
       }
       final visiblePhone = isFemaleCustomer ? 'Hidden' : customerPhone;
@@ -126,10 +142,10 @@ class FirebaseService {
       }
 
       final results = <Map<String, dynamic>>[];
-      final profMap = Map<String, dynamic>.from(snapshot.value as Map);
+      final profMap = _asMap(snapshot.value);
 
       for (final uid in profMap.keys) {
-        final prof = Map<String, dynamic>.from(profMap[uid] as Map);
+        final prof = _asMap(profMap[uid]);
         prof['uid'] = uid;
 
         // Ensure legacy fields are populated
@@ -184,7 +200,7 @@ class FirebaseService {
     try {
       final snapshot = await _db.child('professionals/$uid').get();
       if (!snapshot.exists) return null;
-      final data = Map<String, dynamic>.from(snapshot.value as Map);
+      final data = _asMap(snapshot.value);
       data['uid'] = uid;
       if (data['phone'] == null && data['phoneNumber'] != null) {
         data['phone'] = data['phoneNumber'];
@@ -209,9 +225,9 @@ class FirebaseService {
       final snapshot = await _db.child('professionals').get();
       if (!snapshot.exists) return null;
 
-      final profMap = Map<String, dynamic>.from(snapshot.value as Map);
+      final profMap = _asMap(snapshot.value);
       for (final uid in profMap.keys) {
-        final prof = Map<String, dynamic>.from(profMap[uid] as Map);
+        final prof = _asMap(profMap[uid]);
         final profPhone = normalizePhone(
             prof['phone']?.toString() ?? prof['phoneNumber']?.toString() ?? '');
         if (profPhone == normalized) {
@@ -240,8 +256,9 @@ class FirebaseService {
 
     final phone = normalizePhone(
         data['phone']?.toString() ?? data['phoneNumber']?.toString() ?? '');
-    final lat = (data['location']?['lat'] ?? data['lat'] ?? 0).toDouble();
-    final lng = (data['location']?['lng'] ?? data['lng'] ?? 0).toDouble();
+    final location = _locationMap(data['location']);
+    final lat = _asDouble(location['lat'] ?? data['lat']);
+    final lng = _asDouble(location['lng'] ?? data['lng']);
 
     final payload = {
       'uid': uid,
@@ -253,7 +270,7 @@ class FirebaseService {
       'location': {
         'lat': lat,
         'lng': lng,
-        'address': data['location']?['address'] ?? data['address'] ?? '',
+        'address': location['address'] ?? data['address'] ?? '',
       },
       'description': data['description'] ?? '',
       'photoURL': data['photoURL'] ?? '',
@@ -304,7 +321,7 @@ class FirebaseService {
         'lat': lat,
         'lng': lng,
         'location': payload['location'],
-        'address': payload['location']['address'] ?? '',
+        'address': location['address'] ?? '',
         'profileCompleted': true,
         'role': 'professional',
         '_updatedAt': ServerValue.timestamp,
@@ -383,7 +400,7 @@ class FirebaseService {
     try {
       final customerSnap = await _db.child('users/$customerId').get();
       final customerData = customerSnap.exists && customerSnap.value != null
-          ? Map<String, dynamic>.from(customerSnap.value as Map)
+          ? _asMap(customerSnap.value)
           : <String, dynamic>{};
       final pro = await getProfessionalById(professionalId);
       final price = proposedPrice;
@@ -405,9 +422,9 @@ class FirebaseService {
         'commissionDeducted': false,
         'professionalPhone':
             pro?['phone']?.toString() ?? pro?['phoneNumber']?.toString() ?? '',
-        'professionalLocation': pro?['location'],
+        'professionalLocation': _locationMap(pro?['location']),
         'customerLocation': customerLocation ?? {'lat': 0, 'lng': 0},
-        'customerAddress': address ?? pro?['location']?['address'] ?? '',
+        'customerAddress': address ?? _locationMap(pro?['location'])['address'] ?? '',
         'address': address ?? '',
         'description': description ?? '',
         'customerPhone': customerData['phoneNumber']?.toString() ?? '',
@@ -498,10 +515,10 @@ class FirebaseService {
       if (!snapshot.exists) return [];
 
       final results = <Map<String, dynamic>>[];
-      final bookingsMap = Map<String, dynamic>.from(snapshot.value as Map);
+      final bookingsMap = _asMap(snapshot.value);
 
       for (final entry in bookingsMap.entries) {
-        final booking = Map<String, dynamic>.from(entry.value as Map);
+        final booking = _asMap(entry.value);
         booking['bookingId'] = entry.key;
 
         // Get professional details
@@ -558,10 +575,10 @@ class FirebaseService {
 
   List<Map<String, dynamic>> _parseBookingsSnapshot(DataSnapshot snapshot) {
     final results = <Map<String, dynamic>>[];
-    final bookingsMap = Map<String, dynamic>.from(snapshot.value as Map);
+    final bookingsMap = _asMap(snapshot.value);
 
     for (final entry in bookingsMap.entries) {
-      final booking = Map<String, dynamic>.from(entry.value as Map);
+      final booking = _asMap(entry.value);
       booking['bookingId'] = entry.key;
       booking['customerName'] = booking['customerName'] ??
           'Customer ${booking['customerId']?.substring(0, 8) ?? ''}';
@@ -625,7 +642,7 @@ class FirebaseService {
       // Update professional's average rating
       final booking = await _db.child('bookings/$bookingId').get();
       if (booking.exists) {
-        final data = booking.value as Map;
+        final data = _asMap(booking.value);
         final proId = data['professionalId'] ?? data['professionalPhone'];
         if (proId != null) {
           final pro = await getProfessionalById(proId) ??
@@ -727,14 +744,14 @@ class FirebaseService {
       if (!snapshot.exists) return [];
 
       final results = <Map<String, dynamic>>[];
-      final chatsMap = Map<String, dynamic>.from(snapshot.value as Map);
+      final chatsMap = _asMap(snapshot.value);
 
       for (final entry in chatsMap.entries) {
-        final chat = Map<String, dynamic>.from(entry.value as Map);
+        final chat = _asMap(entry.value);
         final meta = chat['meta'];
         if (meta == null) continue;
 
-        final metaMap = Map<String, dynamic>.from(meta as Map);
+        final metaMap = _asMap(meta);
         final participant1 = metaMap['participant1']?.toString() ?? '';
         final participant2 = metaMap['participant2']?.toString() ?? '';
 
@@ -799,7 +816,7 @@ class FirebaseService {
       if (bookingId != null && bookingId.isNotEmpty) {
         final snap = await _db.child('bookings/$bookingId').get();
         if (snap.exists) {
-          final data = Map<String, dynamic>.from(snap.value as Map);
+          final data = _asMap(snap.value);
           return data['status'] == 'confirmed';
         }
       }
@@ -807,9 +824,9 @@ class FirebaseService {
       final snapshot = await _db.child('bookings').get();
       if (!snapshot.exists) return false;
 
-      final bookings = Map<String, dynamic>.from(snapshot.value as Map);
+      final bookings = _asMap(snapshot.value);
       for (final entry in bookings.entries) {
-        final b = Map<String, dynamic>.from(entry.value as Map);
+        final b = _asMap(entry.value);
         if (b['status'] != 'confirmed') continue;
 
         final customerId = b['customerId']?.toString() ?? '';

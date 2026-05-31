@@ -89,6 +89,23 @@ class StorageService {
     }
   }
 
+  static Future<void> setSessionMeta({
+    String? role,
+    String? gender,
+    String? verificationStatus,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (role != null && role.isNotEmpty) {
+      await prefs.setString(_keyRole, role);
+    }
+    if (gender != null && gender.isNotEmpty) {
+      await prefs.setString(_keyGender, gender);
+    }
+    if (verificationStatus != null && verificationStatus.isNotEmpty) {
+      await prefs.setString(_keyVerificationStatus, verificationStatus);
+    }
+  }
+
   static Future<Map<String, String>> getUserDetails() async {
     try {
       final prefs = await SharedPreferences.getInstance();

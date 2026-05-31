@@ -454,10 +454,22 @@ class _AdminDashboardState extends State<AdminDashboard>
           children: [
             AppLogo(size: 34, padding: 2, shadow: false),
             SizedBox(width: 10),
-            Text('Admin Console',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Admin Console',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
+        centerTitle: false,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
