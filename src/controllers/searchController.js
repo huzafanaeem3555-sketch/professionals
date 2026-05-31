@@ -1,4 +1,5 @@
 const ProfessionalModel = require('../models/professionalModel');
+const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
 
 // Initialize Groq client ONLY if API key exists (Prevents Railway crash)
@@ -125,6 +126,7 @@ const SearchController = {
       if (matchedServices.length === 0) {
         matchedServices = this._keywordSearch(query);
       }
+      await ServiceAnalyticsModel.recordSearch(query, matchedServices);
       
       // Step 3: Get professionals matching the services
       const viewer = await resolveViewerContext(req);
@@ -171,7 +173,13 @@ const SearchController = {
       }));
       
       // Sort by relevance (highest first)
-      results.sort((a, b) => b.relevance - a.relevance);
+      results.sort((a, b) => {
+        const relevanceDiff = b.relevance - a.relevance;
+        if (relevanceDiff !== 0) return relevanceDiff;
+        const ratingDiff = Number(b.rating || 0) - Number(a.rating || 0);
+        if (ratingDiff !== 0) return ratingDiff;
+        return Number(b.totalRatings || 0) - Number(a.totalRatings || 0);
+      });
       
       return res.status(200).json({
         success: true,
@@ -305,9 +313,40 @@ If no service matches, return empty array for services.`;
     }
     
     // Rating boost
-    score += (professional.rating || 0);
+    score += (professional.rating || 0) * 3;
+    score += Math.min(Number(professional.totalRatings || 0), 50) / 5;
     
     return score;
+  },
+
+  async getPopularServices(req, res) {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit || 50), 1), 100);
+      const services = await ServiceAnalyticsModel.getPopularServices(limit);
+      return res.status(200).json({
+        success: true,
+        data: services,
+      });
+    } catch (error) {
+      console.error('popular services error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch popular services.',
+      });
+    }
+  },
+
+  async trackService(req, res) {
+    try {
+      const { query, serviceType } = req.body || {};
+      await ServiceAnalyticsModel.recordSearch(query || serviceType, serviceType ? [serviceType] : []);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to track service search.',
+      });
+    }
   },
   
   /**
@@ -328,6 +367,13 @@ If no service matches, return empty array for services.`;
       const query = q.trim().toLowerCase();
       const suggestions = new Set();
       const viewer = await resolveViewerContext(req);
+      const popularServices = await ServiceAnalyticsModel.getPopularServices(100);
+      const popularScore = new Map(
+        popularServices.map(item => [
+          ServiceAnalyticsModel.normalizeServiceKey(item.serviceKey || item.label),
+          Number(item.score || item.totalUsage || 0),
+        ])
+      );
       
       // Add matching service types
       for (const service of SERVICE_TYPES) {
@@ -357,7 +403,15 @@ If no service matches, return empty array for services.`;
       return res.status(200).json({
         success: true,
         data: {
-          suggestions: Array.from(suggestions).slice(0, 10)
+          suggestions: Array.from(suggestions)
+            .sort((a, b) => {
+              const scoreDiff =
+                (popularScore.get(ServiceAnalyticsModel.normalizeServiceKey(b)) || 0) -
+                (popularScore.get(ServiceAnalyticsModel.normalizeServiceKey(a)) || 0);
+              if (scoreDiff !== 0) return scoreDiff;
+              return String(a).localeCompare(String(b));
+            })
+            .slice(0, 10)
         }
       });
     } catch (error) {

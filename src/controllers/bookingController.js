@@ -9,6 +9,7 @@ const {
   sendJobCompletedByCustomerNotification,
 } = require('../utils/notifications');
 const { deductCommission } = require('../services/walletService');
+const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 
 const BookingController = {
   // POST /api/bookings - Customer creates booking
@@ -70,6 +71,7 @@ const BookingController = {
         professionalLocation: professional.location || null,
         contactMethod: req.body?.contactMethod || 'direct_contact',
       });
+      await ServiceAnalyticsModel.incrementService(serviceType, 'bookingCount').catch(() => null);
 
       // Send phone notification to professional. Android shows this even when
       // the Flutter app is closed because the payload includes notification.

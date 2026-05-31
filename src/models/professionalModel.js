@@ -192,8 +192,15 @@ const ProfessionalModel = {
       });
     }
 
-    // Sort by distance (nearest first)
-    results.sort((a, b) => a.distance - b.distance);
+    results.sort((a, b) => {
+      const ratingDiff = Number(b.rating || 0) - Number(a.rating || 0);
+      if (ratingDiff !== 0) return ratingDiff;
+      const ratingCountDiff = Number(b.totalRatings || 0) - Number(a.totalRatings || 0);
+      if (ratingCountDiff !== 0) return ratingCountDiff;
+      const jobDiff = Number(b.completedJobs || 0) - Number(a.completedJobs || 0);
+      if (jobDiff !== 0) return jobDiff;
+      return a.distance - b.distance;
+    });
     return results;
   },
 

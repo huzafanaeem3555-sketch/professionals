@@ -4,6 +4,7 @@ const { saveFcmToken, sendNotificationToUser } = require('../utils/notifications
 const { verifyToken } = require('../middleware/auth');
 const UserModel = require('../models/userModel');
 const ProfessionalModel = require('../models/professionalModel');
+const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 const { dbPush } = require('../config/firebase');
 
 function normalizeGender(value) {
@@ -132,6 +133,7 @@ router.post('/contact', verifyToken, async (req, res) => {
         body,
       }) || '';
     }
+    await ServiceAnalyticsModel.incrementService(serviceType, 'contactCount').catch(() => null);
 
     const result = await sendNotificationToUser(targetUserId, title, body, {
       type,
@@ -198,6 +200,7 @@ router.post('/contact-public', async (req, res) => {
         title,
         body,
       });
+    await ServiceAnalyticsModel.incrementService(serviceType, 'contactCount').catch(() => null);
 
     const notifyResult = await sendNotificationToUser(
       targetUserId,

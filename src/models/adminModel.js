@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { dbGet, dbGetAll, dbSet, dbUpdate, dbDelete } = require('../config/firebase');
 const { sendNotificationToUser } = require('../utils/notifications');
 const { normalizeGender } = require('../utils/accountPolicy');
+const ServiceAnalyticsModel = require('./serviceAnalyticsModel');
 
 const ADMIN_TOKEN_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'service-connect-secret-change-in-production';
 const ADMIN_TOKEN_EXPIRES = process.env.ADMIN_TOKEN_EXPIRES || '8h';
@@ -38,6 +39,7 @@ const AdminModel = {
     const users = await dbGetAll('users') || [];
     const bookings = await dbGetAll('bookings') || [];
     const leads = await dbGetAll('professionalContactLeads') || [];
+    const serviceUsage = await ServiceAnalyticsModel.getPopularServices(12);
     const completed = bookings.filter((b) => b.status === 'completed');
     const customerIds = new Set(
       users
@@ -68,6 +70,7 @@ const AdminModel = {
       totalCompletedJobs: completed.length,
       totalPendingJobs: bookings.filter((b) => ['pending_acceptance', 'pending_payment', 'confirmed', 'in_progress', 'pending_customer_response', 'pending_professional_response'].includes(b.status)).length,
       totalCommission: parseFloat(commissionFromBookings.toFixed(2)),
+      serviceUsage,
     };
   },
 
