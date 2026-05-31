@@ -191,7 +191,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
-                      'Female accounts are activated after WhatsApp voice verification by admin.',
+                      'Female accounts stay inactive until admin confirms your WhatsApp voice verification.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.textPrimary,

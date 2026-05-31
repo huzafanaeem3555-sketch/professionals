@@ -76,12 +76,22 @@ class AdminProvider extends ChangeNotifier {
     _fetching = true;
     if (showLoading) _setLoading(true);
     try {
+      Future<Map<String, dynamic>> safeCall(
+        Future<Map<String, dynamic>> future,
+      ) async {
+        try {
+          return await future;
+        } catch (e) {
+          return {'success': false, 'message': e.toString()};
+        }
+      }
+
       final results = await Future.wait([
-        _api.getAdminStats(),
-        _api.getAdminProfessionals(),
-        _api.getAdminCustomers(),
-        _api.getAdminBookings(),
-        _api.getAdminTransactions(),
+        safeCall(_api.getAdminStats()),
+        safeCall(_api.getAdminProfessionals()),
+        safeCall(_api.getAdminCustomers()),
+        safeCall(_api.getAdminBookings()),
+        safeCall(_api.getAdminTransactions()),
       ]);
 
       String? firstError;

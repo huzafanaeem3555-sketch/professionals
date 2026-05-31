@@ -887,7 +887,7 @@ class ApiService {
         final map = response.data as Map<String, dynamic>;
         final token = map['data']?['token']?.toString();
         if (token != null && token.isNotEmpty) {
-          _dio.options.headers['Authorization'] = 'Bearer $token';
+          await setBackendToken(token);
         }
       }
       return response.data;

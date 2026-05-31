@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import 'storage_service.dart';
 
 /// Direct Firebase Realtime Database service.
 /// Conforms to Firebase RTDB security rules using UID paths.
@@ -25,6 +26,29 @@ class FirebaseService {
     return fallback;
   }
 
+  static String _normalizeGender(dynamic value) {
+    return (value ?? '').toString().toLowerCase().trim() == 'female' ? 'female' : 'male';
+  }
+
+  Future<bool> _canViewFemaleProfessionals() async {
+    final role = await StorageService.getRole() ?? 'customer';
+    if (role == 'admin') return true;
+    final gender = await StorageService.getGender() ?? 'male';
+    final verificationStatus = await StorageService.getVerificationStatus() ?? 'verified';
+    return role == 'customer' &&
+        gender.toLowerCase() == 'female' &&
+        verificationStatus.toLowerCase() == 'verified';
+  }
+
+  bool _canShowProfessional(
+    Map<String, dynamic> prof, {
+    required bool canViewFemaleProfessionals,
+  }) {
+    if (prof['isActive'] == false) return false;
+    if (_normalizeGender(prof['gender']) != 'female') return true;
+    return canViewFemaleProfessionals;
+  }
+
   Future<bool> saveContactLead({
     required String professionalId,
     required String customerId,
@@ -44,10 +68,11 @@ class FirebaseService {
         final user = Map<String, dynamic>.from(userSnap.value as Map);
         isFemaleCustomer = user['gender']?.toString().toLowerCase() == 'female';
       }
+      final visiblePhone = isFemaleCustomer ? 'Hidden' : customerPhone;
       await _db.child('professionalContactLeads/$professionalId').push().set({
         'customerId': customerId,
         'customerName': customerName,
-        'customerPhone': isFemaleCustomer ? 'Hidden' : customerPhone,
+        'customerPhone': visiblePhone,
         'customerGender': isFemaleCustomer ? 'female' : 'male',
         'customerAddress': customerAddress,
         'customerLocation': customerLocation,
@@ -58,7 +83,7 @@ class FirebaseService {
             ? 'Customer sent WhatsApp message'
             : 'Customer called you',
         'body':
-            '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $customerPhone',
+            '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone',
         'createdAt': now,
         'expiresAt': now + 5 * 60 * 60 * 1000,
         '_createdAt': now,
@@ -85,11 +110,20 @@ class FirebaseService {
   /// Get all professionals (RTDB)
   Future<List<Map<String, dynamic>>> getAllProfessionals() async {
     try {
+      final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
       final snapshot = await _db
           .child('professionals')
           .get()
           .timeout(const Duration(seconds: 10));
-      if (!snapshot.exists) return _professionalsFromApi();
+      if (!snapshot.exists) {
+        final apiResults = await _professionalsFromApi();
+        return apiResults
+            .where((prof) => _canShowProfessional(
+                  prof,
+                  canViewFemaleProfessionals: canViewFemaleProfessionals,
+                ))
+            .toList();
+      }
 
       final results = <Map<String, dynamic>>[];
       final profMap = Map<String, dynamic>.from(snapshot.value as Map);
@@ -115,13 +149,33 @@ class FirebaseService {
           continue;
         }
 
+        if (!_canShowProfessional(
+          prof,
+          canViewFemaleProfessionals: canViewFemaleProfessionals,
+        )) {
+          continue;
+        }
+
         results.add(prof);
       }
       if (results.isNotEmpty) return results;
-      return _professionalsFromApi();
+      final apiResults = await _professionalsFromApi();
+      return apiResults
+          .where((prof) => _canShowProfessional(
+                prof,
+                canViewFemaleProfessionals: canViewFemaleProfessionals,
+              ))
+          .toList();
     } catch (e) {
       debugPrint('getAllProfessionals error: $e');
-      return _professionalsFromApi();
+      final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
+      final apiResults = await _professionalsFromApi();
+      return apiResults
+          .where((prof) => _canShowProfessional(
+                prof,
+                canViewFemaleProfessionals: canViewFemaleProfessionals,
+              ))
+          .toList();
     }
   }
 
@@ -145,6 +199,7 @@ class FirebaseService {
   /// Get professional by phone number (backward compatibility fallback)
   Future<Map<String, dynamic>?> getProfessionalByPhone(String phone) async {
     try {
+      final canViewFemaleProfessionals = await _canViewFemaleProfessionals();
       final normalized = normalizePhone(phone);
       // First try to look up as UID directly
       final direct = await getProfessionalById(phone);
@@ -162,6 +217,12 @@ class FirebaseService {
         if (profPhone == normalized) {
           prof['uid'] = uid;
           prof['phone'] = profPhone.isNotEmpty ? profPhone : uid;
+          if (!_canShowProfessional(
+            prof,
+            canViewFemaleProfessionals: canViewFemaleProfessionals,
+          )) {
+            return null;
+          }
           return prof;
         }
       }

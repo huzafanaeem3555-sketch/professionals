@@ -41,7 +41,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         backgroundColor: Colors.grey[900],
         title: const Text('Delete User', style: TextStyle(color: Colors.white)),
         content: Text(
-            'Are you sure you want to delete user "$name"? All their data, bookings, payments, and transactions will be removed.',
+            'Are you sure you want to delete user "$name"? Customer data, bookings, payments, and transactions will be removed. Professional accounts are preserved and deactivated instead of deleted.',
             style: TextStyle(color: Colors.grey[350])),
         actions: [
           TextButton(
@@ -843,6 +843,24 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  Widget _metaChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfessionalsTab(AdminProvider adminProv) {
     final list = adminProv.professionals;
     if (list.isEmpty) {
@@ -906,6 +924,24 @@ class _AdminDashboardState extends State<AdminDashboard>
                       Text(p['phoneNumber'] ?? '',
                           style:
                               TextStyle(color: Colors.grey[400], fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _metaChip('Gender: $gender', AppColors.primaryLight),
+                          _metaChip('Status: $status',
+                              status == 'verified'
+                                  ? AppColors.success
+                                  : AppColors.warning),
+                          _metaChip(
+                            'Active: ${(p['isActive'] ?? true) ? 'Yes' : 'No'}',
+                            (p['isActive'] ?? true)
+                                ? AppColors.success
+                                : Colors.redAccent,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -1039,6 +1075,24 @@ class _AdminDashboardState extends State<AdminDashboard>
                       Text(c['phoneNumber'] ?? '',
                           style:
                               TextStyle(color: Colors.grey[400], fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _metaChip('Gender: $gender', AppColors.accent),
+                          _metaChip('Status: $status',
+                              status == 'verified'
+                                  ? AppColors.success
+                                  : AppColors.warning),
+                          _metaChip(
+                            'Active: ${(c['isActive'] ?? true) ? 'Yes' : 'No'}',
+                            (c['isActive'] ?? true)
+                                ? AppColors.success
+                                : Colors.redAccent,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Total Bookings: ${c['totalBookings'] ?? 0}',
