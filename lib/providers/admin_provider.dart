@@ -145,6 +145,25 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> verifyUser(String uid, {bool verified = true}) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final res = await _api.verifyAdminUser(uid, verified: verified);
+      if (res['success'] == true) {
+        await fetchAll(showLoading: false);
+        return true;
+      }
+      _setError(res['message'] ?? 'Failed to update verification.');
+      return false;
+    } catch (e) {
+      _setError('Verification error: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<bool> createUser(Map<String, dynamic> data) async {
     _setLoading(true);
     _setError(null);

@@ -18,6 +18,7 @@ import 'screens/login_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/admin_dashboard.dart';
 import 'screens/role_selection_screen.dart';
+import 'screens/gender_verification_screen.dart';
 import 'screens/customer_home_screen.dart';
 import 'screens/professional_setup_screen.dart';
 import 'screens/professional_dashboard.dart';
@@ -80,6 +81,11 @@ class ServiceConnectApp extends StatelessWidget {
           '/': (ctx) => const SplashScreen(),
           '/login': (ctx) => const LoginScreen(),
           '/role-selection': (ctx) => const RoleSelectionScreen(),
+          '/gender-verification': (ctx) {
+            final role = ModalRoute.of(ctx)?.settings.arguments?.toString() ??
+                'customer';
+            return GenderVerificationScreen(role: role);
+          },
           '/customer-home': (ctx) => const CustomerHomeScreen(),
           '/professional-setup': (ctx) => const ProfessionalSetupScreen(),
           '/professional-home': (ctx) => const ProfessionalDashboard(),

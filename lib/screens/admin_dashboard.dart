@@ -71,6 +71,21 @@ class _AdminDashboardState extends State<AdminDashboard>
     }
   }
 
+  Future<void> _verifyUser(String uid, bool verified) async {
+    final success = await Provider.of<AdminProvider>(context, listen: false)
+        .verifyUser(uid, verified: verified);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? (verified ? 'Account verified' : 'Account set to pending')
+            : Provider.of<AdminProvider>(context, listen: false).error ??
+                'Verification update failed'),
+        backgroundColor: success ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
   Future<void> _deleteBooking(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -154,6 +169,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    final genderCtrl = TextEditingController(text: 'male');
     final servicesCtrl = TextEditingController();
     final customCtrl = TextEditingController();
     final expCtrl = TextEditingController(text: '0');
@@ -180,6 +196,8 @@ class _AdminDashboardState extends State<AdminDashboard>
                 _adminField(phoneCtrl, 'Phone'),
                 const SizedBox(height: 10),
                 _adminField(emailCtrl, 'Email'),
+                const SizedBox(height: 10),
+                _adminField(genderCtrl, 'Gender male/female'),
                 if (role == 'professional') ...[
                   const SizedBox(height: 10),
                   _adminField(servicesCtrl, 'Services comma separated'),
@@ -219,6 +237,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         'displayName': nameCtrl.text.trim(),
         'phoneNumber': phoneCtrl.text.trim(),
         'email': emailCtrl.text.trim(),
+        'gender': genderCtrl.text.trim(),
         if (role == 'professional') ...{
           'serviceTypes': servicesCtrl.text.trim(),
           'customServices': customCtrl.text.trim(),
@@ -242,6 +261,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     nameCtrl.dispose();
     phoneCtrl.dispose();
     emailCtrl.dispose();
+    genderCtrl.dispose();
     servicesCtrl.dispose();
     customCtrl.dispose();
     expCtrl.dispose();
@@ -258,6 +278,8 @@ class _AdminDashboardState extends State<AdminDashboard>
         TextEditingController(text: (p['rating'] ?? 0).toString());
     final experienceCtrl =
         TextEditingController(text: (p['experienceYears'] ?? 0).toString());
+    final genderCtrl =
+        TextEditingController(text: p['gender']?.toString() ?? 'male');
     final services = p['serviceTypes'] ?? p['services'] ?? [];
     final customServices = p['customServices'] ?? [];
     final servicesCtrl = TextEditingController(
@@ -290,6 +312,8 @@ class _AdminDashboardState extends State<AdminDashboard>
               _adminField(servicesCtrl, 'Services comma separated'),
               const SizedBox(height: 10),
               _adminField(customCtrl, 'Custom services comma separated'),
+              const SizedBox(height: 10),
+              _adminField(genderCtrl, 'Gender male/female'),
             ],
           ),
         ),
@@ -315,6 +339,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         'experienceYears': int.tryParse(experienceCtrl.text.trim()) ?? 0,
         'serviceTypes': servicesCtrl.text.trim(),
         'customServices': customCtrl.text.trim(),
+        'gender': genderCtrl.text.trim(),
       });
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -328,6 +353,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     experienceCtrl.dispose();
     servicesCtrl.dispose();
     customCtrl.dispose();
+    genderCtrl.dispose();
   }
 
   Widget _adminField(
@@ -797,6 +823,26 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  Widget _verificationBadge(String status) {
+    final verified = status == 'verified';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: (verified ? AppColors.success : AppColors.warning)
+            .withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        verified ? 'Female verified' : 'Female pending verification',
+        style: TextStyle(
+          color: verified ? AppColors.success : AppColors.warning,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfessionalsTab(AdminProvider adminProv) {
     final list = adminProv.professionals;
     if (list.isEmpty) {
@@ -812,6 +858,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       itemCount: list.length,
       itemBuilder: (context, index) {
         final p = list[index];
+        final gender = p['gender']?.toString().toLowerCase() ?? 'male';
+        final status = p['verificationStatus']?.toString() ?? 'verified';
         final serviceTypesList = p['serviceTypes'] ?? [];
         final serviceTypesString = serviceTypesList is List
             ? serviceTypesList.join(', ')
@@ -891,12 +939,24 @@ class _AdminDashboardState extends State<AdminDashboard>
                                   color: Colors.white, fontSize: 12)),
                         ],
                       ),
+                      if (gender == 'female') ...[
+                        const SizedBox(height: 8),
+                        _verificationBadge(status),
+                      ],
                     ],
                   ),
                 ),
                 Wrap(
                   spacing: 2,
                   children: [
+                    if (gender == 'female' && status != 'verified')
+                      IconButton(
+                        tooltip: 'Verify female account',
+                        icon: const Icon(Icons.verified_user,
+                            color: AppColors.success),
+                        onPressed: () =>
+                            _verifyUser(p['uid']?.toString() ?? '', true),
+                      ),
                     IconButton(
                       tooltip: 'Edit',
                       icon: const Icon(Icons.edit, color: Colors.white70),
@@ -910,13 +970,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                       onPressed: () => _showProfessionalReviews(
                         Map<String, dynamic>.from(p as Map),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Delete',
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: Colors.redAccent),
-                      onPressed: () => _deleteUser(
-                          p['uid'] ?? '', p['displayName'] ?? 'Professional'),
                     ),
                   ],
                 ),
@@ -943,6 +996,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       itemCount: list.length,
       itemBuilder: (context, index) {
         final c = list[index];
+        final gender = c['gender']?.toString().toLowerCase() ?? 'male';
+        final status = c['verificationStatus']?.toString() ?? 'verified';
 
         return Card(
           color: AppColors.primaryDark,
@@ -992,9 +1047,21 @@ class _AdminDashboardState extends State<AdminDashboard>
                             fontSize: 12,
                             fontWeight: FontWeight.bold),
                       ),
+                      if (gender == 'female') ...[
+                        const SizedBox(height: 8),
+                        _verificationBadge(status),
+                      ],
                     ],
                   ),
                 ),
+                if (gender == 'female' && status != 'verified')
+                  IconButton(
+                    tooltip: 'Verify female account',
+                    icon: const Icon(Icons.verified_user,
+                        color: AppColors.success),
+                    onPressed: () =>
+                        _verifyUser(c['uid']?.toString() ?? '', true),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded,
                       color: Colors.redAccent),

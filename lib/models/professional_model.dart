@@ -18,6 +18,9 @@ class ProfessionalModel {
   final List<String> portfolio;
   final List<String> brochureImages;
   final List<ProfessionalReview> reviews;
+  final String gender;
+  final String verificationStatus;
+  final bool isActive;
 
   ProfessionalModel({
     required this.uid,
@@ -39,6 +42,9 @@ class ProfessionalModel {
     this.portfolio = const [],
     this.brochureImages = const [],
     this.reviews = const [],
+    this.gender = 'male',
+    this.verificationStatus = 'verified',
+    this.isActive = true,
   });
 
   factory ProfessionalModel.fromJson(Map<String, dynamic> json) {
@@ -100,6 +106,11 @@ class ProfessionalModel {
                   ProfessionalReview.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : const [],
+      gender: (json['gender'] ?? 'male').toString().toLowerCase(),
+      verificationStatus:
+          (json['verificationStatus'] ?? json['verification'] ?? 'verified')
+              .toString(),
+      isActive: json['isActive'] != false,
     );
   }
 
@@ -123,6 +134,9 @@ class ProfessionalModel {
       'portfolio': portfolio,
       'brochureImages': brochureImages,
       'reviews': reviews.map((e) => e.toJson()).toList(),
+      'gender': gender,
+      'verificationStatus': verificationStatus,
+      'isActive': isActive,
     };
   }
 
@@ -146,6 +160,9 @@ class ProfessionalModel {
     List<String>? portfolio,
     List<String>? brochureImages,
     List<ProfessionalReview>? reviews,
+    String? gender,
+    String? verificationStatus,
+    bool? isActive,
   }) {
     return ProfessionalModel(
       uid: uid ?? this.uid,
@@ -167,6 +184,9 @@ class ProfessionalModel {
       portfolio: portfolio ?? this.portfolio,
       brochureImages: brochureImages ?? this.brochureImages,
       reviews: reviews ?? this.reviews,
+      gender: gender ?? this.gender,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      isActive: isActive ?? this.isActive,
     );
   }
 

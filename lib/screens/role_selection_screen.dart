@@ -15,6 +15,7 @@ class RoleSelectionScreen extends StatefulWidget {
 
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
+  String _gender = 'male';
 
   bool _isProfessionalProfileComplete(Map<String, dynamic> proMap) {
     final hasName = (proMap['name']?.toString().trim().isNotEmpty ?? false);
@@ -42,21 +43,51 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     try {
       final uid = user.uid;
+      final gender = _gender;
+      final userRef = FirebaseDatabase.instance.ref().child('users/$uid');
+      final existingUserSnap = await userRef.get();
+      var existingVerification = '';
+      if (existingUserSnap.exists && existingUserSnap.value != null) {
+        final existing =
+            Map<String, dynamic>.from(existingUserSnap.value as Map);
+        existingVerification = existing['verificationStatus']?.toString() ?? '';
+      }
+      final isFemale = gender == 'female';
+      final verificationStatus = isFemale && existingVerification == 'verified'
+          ? 'verified'
+          : (isFemale ? 'pending' : 'verified');
+      final isActive = !isFemale || verificationStatus == 'verified';
 
       // 1. Save role to SharedPreferences
       await StorageService.setRole(role);
+      await StorageService.setGender(gender);
+      await StorageService.setVerificationStatus(verificationStatus);
 
       // 2. Save role to Firebase Realtime Database users/{uid}/role
-      await FirebaseDatabase.instance.ref().child('users/$uid/role').set(role);
+      await userRef.update({
+        'role': role,
+        'gender': gender,
+        'verificationStatus': verificationStatus,
+        'isActive': isActive,
+        'femaleVerificationRequired': isFemale && !isActive,
+      });
 
       // 3. Save role via backend API
       try {
-        await ApiService().setRole(role);
+        await ApiService().setRole(role, gender: gender);
       } catch (apiErr) {
         debugPrint('Backend setRole error (continuing anyway): $apiErr');
       }
 
       if (!mounted) return;
+      if (isFemale && !isActive) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/gender-verification',
+          arguments: role,
+        );
+        return;
+      }
 
       if (role == 'customer') {
         await StorageService.getCustomerId();
@@ -124,7 +155,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Please select your role to continue',
+                'Please select your gender and role to continue',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
               ),
@@ -134,6 +165,43 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: CircularProgressIndicator(),
                 )
               else ...[
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'male',
+                      label: Text('Male'),
+                      icon: Icon(Icons.man),
+                    ),
+                    ButtonSegment(
+                      value: 'female',
+                      label: Text('Female'),
+                      icon: Icon(Icons.woman),
+                    ),
+                  ],
+                  selected: {_gender},
+                  onSelectionChanged: (value) =>
+                      setState(() => _gender = value.first),
+                ),
+                const SizedBox(height: 12),
+                if (_gender == 'female') ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Female accounts are activated after WhatsApp voice verification by admin.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 ElevatedButton.icon(
                   onPressed: () => _selectRole('customer'),
                   icon: const Icon(Icons.person_search, size: 22),

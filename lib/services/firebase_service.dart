@@ -37,10 +37,18 @@ class FirebaseService {
   }) async {
     try {
       final now = DateTime.now().millisecondsSinceEpoch;
+      final currentUid = FirebaseAuth.instance.currentUser?.uid ?? customerId;
+      final userSnap = await _db.child('users/$currentUid').get();
+      var isFemaleCustomer = false;
+      if (userSnap.exists && userSnap.value != null) {
+        final user = Map<String, dynamic>.from(userSnap.value as Map);
+        isFemaleCustomer = user['gender']?.toString().toLowerCase() == 'female';
+      }
       await _db.child('professionalContactLeads/$professionalId').push().set({
         'customerId': customerId,
         'customerName': customerName,
-        'customerPhone': customerPhone,
+        'customerPhone': isFemaleCustomer ? 'Hidden' : customerPhone,
+        'customerGender': isFemaleCustomer ? 'female' : 'male',
         'customerAddress': customerAddress,
         'customerLocation': customerLocation,
         'serviceType': serviceType,
@@ -52,7 +60,7 @@ class FirebaseService {
         'body':
             '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $customerPhone',
         'createdAt': now,
-        'expiresAt': now + 30 * 24 * 60 * 60 * 1000,
+        'expiresAt': now + 5 * 60 * 60 * 1000,
         '_createdAt': now,
       }).timeout(const Duration(seconds: 8));
       return true;

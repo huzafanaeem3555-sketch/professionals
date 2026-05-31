@@ -150,17 +150,25 @@ class ApiService {
     bool leadAlreadySaved = false,
   }) async {
     try {
+      final uid = await StorageService.getUid();
+      var gender = await StorageService.getGender() ?? 'male';
+      if (uid != null && uid.isNotEmpty) {
+        // Keep payload stable even if local gender is unavailable.
+        gender = gender.toLowerCase() == 'female' ? 'female' : 'male';
+      }
       final title = contactMethod == 'whatsapp'
           ? 'Customer sent WhatsApp message'
           : 'Customer called you';
+      final visiblePhone = gender == 'female' ? 'Hidden' : customerPhone;
       final body =
-          '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $customerPhone';
+          '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone';
       final response = await _withRetry(
         () => _dio.post('/notifications/contact-public', data: {
           'targetUserId': targetUserId,
           'customerId': customerId,
           'customerName': customerName,
-          'customerPhone': customerPhone,
+          'customerPhone': visiblePhone,
+          'customerGender': gender,
           'customerAddress': customerAddress,
           'serviceType': serviceType,
           'contactMethod': contactMethod,
@@ -207,10 +215,13 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> setRole(String role) async {
+  Future<Map<String, dynamic>> setRole(String role, {String? gender}) async {
     try {
       final response = await _withRetry(
-        () => _dio.post('/users/set-role', data: {'role': role}),
+        () => _dio.post('/users/set-role', data: {
+          'role': role,
+          if (gender != null) 'gender': gender,
+        }),
       );
       return response.data;
     } catch (e) {
@@ -945,6 +956,21 @@ class ApiService {
       final response = await _withRetry(
         () => _dio.delete('${ApiConstants.adminUsers}/$uid',
             options: _adminOptions),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyAdminUser(
+    String uid, {
+    bool verified = true,
+  }) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.patch('${ApiConstants.adminUsers}/$uid/verify',
+            data: {'verified': verified}, options: _adminOptions),
       );
       return response.data;
     } catch (e) {

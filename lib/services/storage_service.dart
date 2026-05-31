@@ -11,6 +11,8 @@ class StorageService {
   static const String _keyUserName = 'user_name';
   static const String _keyUserEmail = 'user_email';
   static const String _keyUserPhoto = 'user_photo';
+  static const String _keyGender = 'user_gender';
+  static const String _keyVerificationStatus = 'verification_status';
 
   static Future<void> setUid(String uid) async {
     final prefs = await SharedPreferences.getInstance();
@@ -30,6 +32,26 @@ class StorageService {
   static Future<String?> getRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyRole);
+  }
+
+  static Future<void> setGender(String gender) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyGender, gender);
+  }
+
+  static Future<String?> getGender() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyGender);
+  }
+
+  static Future<void> setVerificationStatus(String status) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyVerificationStatus, status);
+  }
+
+  static Future<String?> getVerificationStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyVerificationStatus);
   }
 
   static Future<void> setToken(String token) async {

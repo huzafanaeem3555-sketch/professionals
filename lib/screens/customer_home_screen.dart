@@ -43,6 +43,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   String? _locationError;
   double _distanceFilterKm = 0;
   Map<String, String> _userDetails = {};
+  String _customerGender = 'male';
+  String _customerVerificationStatus = 'verified';
   String? _aiSuggestedService;
   Timer? _aiSuggestDebounce;
   String? _voiceStatus;
@@ -98,6 +100,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
     _userDetails = await userDetailsFuture;
     final customerId = await customerIdFuture ?? '';
+    await _loadCustomerPrivacy();
     final bookingsFuture = _firebase.getBookingsForCustomer(customerId);
 
     var raw = await professionalsFuture;
@@ -134,7 +137,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           _lat, _lng, model.location.lat, model.location.lng);
       list.add(model.copyWith(distance: dist));
     }
-    list.sort((a, b) => (a.distance ?? 999).compareTo(b.distance ?? 999));
+    final visibleList = list.where(_canShowProfessional).toList();
+    visibleList
+        .sort((a, b) => (a.distance ?? 999).compareTo(b.distance ?? 999));
 
     final bookings = await bookingsFuture;
     final activeCount = bookings
@@ -149,7 +154,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
     if (mounted) {
       setState(() {
-        _all = list;
+        _all = visibleList;
         _activeBookingsCount = activeCount;
         _applyFilter();
         _buildSuggestions(_searchCtrl.text);
@@ -157,6 +162,35 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       });
       _animCtrl.forward(from: 0);
     }
+  }
+
+  Future<void> _loadCustomerPrivacy() async {
+    final uid = await StorageService.getUid();
+    _customerGender = await StorageService.getGender() ?? 'male';
+    _customerVerificationStatus =
+        await StorageService.getVerificationStatus() ?? 'verified';
+    if (uid == null || uid.isEmpty) return;
+    try {
+      final snap = await FirebaseDatabase.instance.ref('users/$uid').get();
+      if (snap.exists && snap.value != null) {
+        final data = Map<String, dynamic>.from(snap.value as Map);
+        _customerGender =
+            data['gender']?.toString().toLowerCase() ?? _customerGender;
+        _customerVerificationStatus = data['verificationStatus']?.toString() ??
+            _customerVerificationStatus;
+        await StorageService.setGender(_customerGender);
+        await StorageService.setVerificationStatus(_customerVerificationStatus);
+      }
+    } catch (_) {}
+  }
+
+  bool _canShowProfessional(ProfessionalModel pro) {
+    if (!pro.isActive) return false;
+    final proGender = pro.gender.toLowerCase();
+    if (proGender != 'female') return true;
+    return _customerGender == 'female' &&
+        _customerVerificationStatus == 'verified' &&
+        pro.verificationStatus == 'verified';
   }
 
   void _applyFilter() {
