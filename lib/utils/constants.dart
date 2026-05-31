@@ -98,6 +98,8 @@ class ApiConstants {
   // Search
   static const String search = '/search';
   static const String searchSuggest = '/search/suggest';
+  static const String searchPopular = '/search/popular';
+  static const String searchTrack = '/search/track';
 
   // Chat
   static const String sendMessage = '/chat/send';

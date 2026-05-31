@@ -35,6 +35,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   List<ProfessionalModel> _all = [];
   List<ProfessionalModel> _filtered = [];
   List<_SearchSuggestion> _suggestions = [];
+  Map<String, int> _servicePopularity = {};
   int _activeBookingsCount = 0;
   String? _filterService;
   String _myArea = '';
@@ -83,6 +84,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final userDetailsFuture = StorageService.getUserDetails();
     final customerIdFuture = StorageService.getUid();
     final professionalsFuture = _firebase.getAllProfessionals();
+    final popularServicesFuture = _api.getPopularServices(limit: 80);
 
     try {
       final pos = await LocationService()
@@ -138,10 +140,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       list.add(model.copyWith(distance: dist));
     }
     final visibleList = list.where(_canShowProfessional).toList();
-    visibleList
-        .sort((a, b) => (a.distance ?? 999).compareTo(b.distance ?? 999));
+    _sortProfessionals(visibleList);
 
     final bookings = await bookingsFuture;
+    final servicePopularity =
+        await _resolveServicePopularity(popularServicesFuture);
     final activeCount = bookings
         .where((b) => [
               'pending',
@@ -155,6 +158,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (mounted) {
       setState(() {
         _all = visibleList;
+        _servicePopularity = servicePopularity;
         _activeBookingsCount = activeCount;
         _applyFilter();
         _buildSuggestions(_searchCtrl.text);
@@ -228,6 +232,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         if (name.startsWith(q)) points += 80;
         if (name.contains(q)) points += 55;
         if (address.contains(q)) points += 20;
+        points += _professionalPopularityScore(p);
         if (p.isAvailable) points += 10;
         final distancePenalty = (p.distance ?? 999).clamp(0, 200).toInt();
         return points - distancePenalty;
@@ -238,6 +243,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         if (diff != 0) return diff;
         return (a.distance ?? 999).compareTo(b.distance ?? 999);
       });
+    } else {
+      _sortProfessionals(list);
     }
     _filtered = list;
   }
@@ -257,6 +264,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       return;
     }
     _aiSuggestDebounce = Timer(const Duration(milliseconds: 550), () async {
+      unawaited(_trackServiceSearch(query: q));
       await _applyAiServiceSearch(q);
     });
   }
@@ -458,6 +466,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         final label = _displayServiceName(service);
         final searchBlob = '$service $label'.toLowerCase();
         if (_matchesQuery(searchBlob, q)) {
+          final popularity = _serviceScore(service);
           suggestions.putIfAbsent(
             service.toLowerCase(),
             () => _SearchSuggestion(
@@ -467,6 +476,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                   .where(
                       (p) => p.allServices.any((s) => _sameService(s, service)))
                   .length,
+              popularity: popularity,
             ),
           );
         }
@@ -478,6 +488,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
             label: pro.name,
             professionalUid: pro.uid,
             matchCount: 1,
+            popularity: _professionalPopularityScore(pro),
           ),
         );
       }
@@ -485,6 +496,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
     final list = suggestions.values.toList()
       ..sort((a, b) {
+        final popularityDiff = b.popularity.compareTo(a.popularity);
+        if (popularityDiff != 0) return popularityDiff;
         final countDiff = b.matchCount.compareTo(a.matchCount);
         if (countDiff != 0) return countDiff;
         return a.label.compareTo(b.label);
@@ -500,6 +513,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           TextSelection.collapsed(offset: suggestion.label.length);
       _filterService = suggestion.serviceKey;
       _suggestions = [];
+      if (suggestion.serviceKey != null) {
+        unawaited(_trackServiceSearch(serviceType: suggestion.serviceKey));
+      }
       if (suggestion.professionalUid != null) {
         _filtered =
             _all.where((p) => p.uid == suggestion.professionalUid).toList();
@@ -541,6 +557,78 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  String _serviceKey(String value) {
+    return _normalizeSearchText(value).replaceAll(' ', '_');
+  }
+
+  int _serviceScore(String service) {
+    final keys = {
+      _serviceKey(service),
+      _serviceKey(service.replaceAll('_', ' ')),
+      _serviceKey(_displayServiceName(service)),
+    };
+    var best = 0;
+    for (final key in keys) {
+      final value = _servicePopularity[key] ?? 0;
+      if (value > best) best = value;
+    }
+    return best;
+  }
+
+  int _professionalPopularityScore(ProfessionalModel p) {
+    final serviceScore = p.allServices.fold<int>(0, (best, service) {
+      final score = _serviceScore(service);
+      return score > best ? score : best;
+    });
+    return (p.rating * 1000).round() +
+        (p.totalRatings * 12) +
+        (p.completedJobs * 8) +
+        (serviceScore * 4);
+  }
+
+  void _sortProfessionals(List<ProfessionalModel> list) {
+    list.sort((a, b) {
+      final scoreDiff = _professionalPopularityScore(b)
+          .compareTo(_professionalPopularityScore(a));
+      if (scoreDiff != 0) return scoreDiff;
+      return (a.distance ?? 999).compareTo(b.distance ?? 999);
+    });
+  }
+
+  Future<Map<String, int>> _resolveServicePopularity(
+    Future<Map<String, dynamic>> future,
+  ) async {
+    try {
+      final res = await future.timeout(const Duration(seconds: 8));
+      final data = res['data'];
+      if (res['success'] != true || data is! List) return {};
+      final map = <String, int>{};
+      for (final raw in data) {
+        if (raw is! Map) continue;
+        final item = Map<String, dynamic>.from(raw);
+        final rawKey = (item['serviceKey'] ?? item['label'] ?? '').toString();
+        final label = (item['label'] ?? rawKey).toString();
+        final score = (item['score'] is num)
+            ? (item['score'] as num).round()
+            : int.tryParse(item['score']?.toString() ?? '') ?? 0;
+        final usage = (item['totalUsage'] is num)
+            ? (item['totalUsage'] as num).round()
+            : int.tryParse(item['totalUsage']?.toString() ?? '') ?? 0;
+        final value = score > 0 ? score : usage;
+        if (value <= 0) continue;
+        map[_serviceKey(rawKey)] = value;
+        map[_serviceKey(label)] = value;
+      }
+      return map;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _trackServiceSearch({String? query, String? serviceType}) async {
+    await _api.trackServiceSearch(query: query, serviceType: serviceType);
   }
 
   bool _matchesQuery(String source, String query) {
@@ -896,7 +984,24 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
             service.trim().isNotEmpty && !baseServiceKeys.contains(service))
         .toSet()
         .toList()
-      ..sort();
+      ..sort((a, b) {
+        final scoreDiff = _serviceScore(b).compareTo(_serviceScore(a));
+        if (scoreDiff != 0) return scoreDiff;
+        return a.compareTo(b);
+      });
+    final categoryIndex = <String, int>{
+      for (var i = 0; i < AppStrings.serviceCategories.length; i++)
+        AppStrings.serviceCategories[i]['key'] as String: i,
+    };
+    final orderedCategories =
+        List<Map<String, dynamic>>.from(AppStrings.serviceCategories)
+          ..sort((a, b) {
+            final ak = a['key'] as String;
+            final bk = b['key'] as String;
+            final scoreDiff = _serviceScore(bk).compareTo(_serviceScore(ak));
+            if (scoreDiff != 0) return scoreDiff;
+            return (categoryIndex[ak] ?? 0).compareTo(categoryIndex[bk] ?? 0);
+          });
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1334,26 +1439,37 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                               _applyFilter();
                             }),
                           ),
-                          ...AppStrings.serviceCategories.map((c) {
+                          ...orderedCategories.map((c) {
                             final key = c['key'] as String;
+                            final score = _serviceScore(key);
                             return _CategoryChip(
-                              label: '${c['icon']} ${c['name']}',
+                              label:
+                                  '${c['icon']} ${c['name']}${score > 0 ? ' ($score)' : ''}',
                               selected: _filterService == key,
                               onTap: () => setState(() {
                                 _filterService =
                                     _filterService == key ? null : key;
+                                if (_filterService != null) {
+                                  unawaited(_trackServiceSearch(
+                                      serviceType: _filterService));
+                                }
                                 _applyFilter();
                               }),
                             );
                           }),
                           ...customServiceKeys.map((key) {
                             final label = key.replaceAll('_', ' ');
+                            final score = _serviceScore(key);
                             return _CategoryChip(
-                              label: label,
+                              label: '$label${score > 0 ? ' ($score)' : ''}',
                               selected: _filterService == key,
                               onTap: () => setState(() {
                                 _filterService =
                                     _filterService == key ? null : key;
+                                if (_filterService != null) {
+                                  unawaited(_trackServiceSearch(
+                                      serviceType: _filterService));
+                                }
                                 _applyFilter();
                               }),
                             );
@@ -1595,12 +1711,14 @@ class _SearchSuggestion {
   final String? serviceKey;
   final String? professionalUid;
   final int matchCount;
+  final int popularity;
 
   const _SearchSuggestion({
     required this.label,
     this.serviceKey,
     this.professionalUid,
     required this.matchCount,
+    this.popularity = 0,
   });
 }
 

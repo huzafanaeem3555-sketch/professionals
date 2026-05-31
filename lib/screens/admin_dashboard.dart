@@ -1008,6 +1008,9 @@ class _AdminDashboardState extends State<AdminDashboard>
             ),
             const SizedBox(height: 24),
 
+            _buildServiceUsagePanel(stats['serviceUsage']),
+            const SizedBox(height: 24),
+
             // Commission Summary Card
             Container(
               padding: const EdgeInsets.all(20),
@@ -1060,6 +1063,146 @@ class _AdminDashboardState extends State<AdminDashboard>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildServiceUsagePanel(dynamic rawUsage) {
+    final usage = rawUsage is List
+        ? rawUsage
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList()
+        : <Map<String, dynamic>>[];
+    if (usage.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: const Text(
+          'No service usage data yet.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.trending_up_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Most Used Services',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Sorted by searches, contacts, bookings, and available professionals.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          ...usage.take(8).map((item) {
+            final label = _shortText(item['label'], fallback: 'Service');
+            final search = _shortText(item['searchCount'], fallback: '0');
+            final contacts = _shortText(item['contactCount'], fallback: '0');
+            final bookings = _shortText(item['bookingCount'], fallback: '0');
+            final score = _shortText(item['score'], fallback: '0');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        _miniMetric('Score', score),
+                        _miniMetric('Search', search),
+                        _miniMetric('Contact', contacts),
+                        _miniMetric('Book', bookings),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniMetric(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

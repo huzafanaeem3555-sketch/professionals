@@ -783,6 +783,41 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getPopularServices({int limit = 50}) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(
+          ApiConstants.searchPopular,
+          queryParameters: {'limit': limit},
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> trackServiceSearch({
+    String? query,
+    String? serviceType,
+  }) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(
+          ApiConstants.searchTrack,
+          data: {
+            if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
+            if (serviceType != null && serviceType.trim().isNotEmpty)
+              'serviceType': serviceType.trim(),
+          },
+        ),
+      );
+      return response.data;
+    } catch (_) {
+      return {'success': false};
+    }
+  }
+
   // ─── GEOLOCATION ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getNearbyProfessionalsByLocation({

@@ -149,8 +149,13 @@ class ProfessionalProvider extends ChangeNotifier {
         }
       }
 
-      // Sort by distance
       models.sort((a, b) {
+        final ratingDiff = b.rating.compareTo(a.rating);
+        if (ratingDiff != 0) return ratingDiff;
+        final ratingCountDiff = b.totalRatings.compareTo(a.totalRatings);
+        if (ratingCountDiff != 0) return ratingCountDiff;
+        final jobDiff = b.completedJobs.compareTo(a.completedJobs);
+        if (jobDiff != 0) return jobDiff;
         if (a.distance == null && b.distance == null) return 0;
         if (a.distance == null) return 1;
         if (b.distance == null) return -1;
