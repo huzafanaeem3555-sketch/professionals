@@ -30,13 +30,13 @@ class AppTheme {
           fontSize: 30,
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
-          letterSpacing: -0.7,
+          letterSpacing: 0,
         ),
         headlineSmall: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
-          letterSpacing: -0.4,
+          letterSpacing: 0,
         ),
         titleLarge: TextStyle(
           fontSize: 20,
@@ -104,7 +104,7 @@ class AppTheme {
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
-          side: const BorderSide(color: AppColors.divider),
+          side: const BorderSide(color: AppColors.primary),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

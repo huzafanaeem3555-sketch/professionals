@@ -919,7 +919,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             colors: [
                               AppColors.primaryDark,
                               AppColors.primary,
-                              Color(0xFF6366F1),
+                              AppColors.primaryLight,
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,

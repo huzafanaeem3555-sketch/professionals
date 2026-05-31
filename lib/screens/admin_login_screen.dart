@@ -65,7 +65,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFE7F2E4), AppColors.background],
+                colors: [AppColors.surfaceLight, AppColors.background],
               ),
             ),
             child: Form(

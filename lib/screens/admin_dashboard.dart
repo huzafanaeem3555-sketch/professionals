@@ -46,15 +46,17 @@ class _AdminDashboardState extends State<AdminDashboard>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Delete User', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        title: const Text('Delete User',
+            style: TextStyle(color: AppColors.textPrimary)),
         content: Text(
             'Are you sure you want to delete user "$name"? Customer data, bookings, payments, and transactions will be removed. Professional accounts are preserved and deactivated instead of deleted.',
-            style: TextStyle(color: Colors.grey[350])),
+            style: const TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -145,16 +147,17 @@ class _AdminDashboardState extends State<AdminDashboard>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title:
-            const Text('Delete Booking', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        title: const Text('Delete Booking',
+            style: TextStyle(color: AppColors.textPrimary)),
         content: const Text(
             'Are you sure you want to delete this booking and its associated payments/transactions?',
-            style: TextStyle(color: Colors.grey)),
+            style: TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -183,17 +186,18 @@ class _AdminDashboardState extends State<AdminDashboard>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title:
-            const Text('Clear App Data', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        title: const Text('Clear App Data',
+            style: TextStyle(color: AppColors.textPrimary)),
         content: const Text(
           'This will delete all customers, professionals, bookings, transactions, chats and payments. Admin user will remain.',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -578,13 +582,14 @@ class _AdminDashboardState extends State<AdminDashboard>
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Feedbacks', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        title: const Text('Feedbacks',
+            style: TextStyle(color: AppColors.textPrimary)),
         content: SizedBox(
           width: double.maxFinite,
           child: reviews.isEmpty
               ? const Text('No feedback yet',
-                  style: TextStyle(color: Colors.white70))
+                  style: TextStyle(color: AppColors.textSecondary))
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: reviews.length,
@@ -594,11 +599,11 @@ class _AdminDashboardState extends State<AdminDashboard>
                       contentPadding: EdgeInsets.zero,
                       title: Text(
                         '${review['customerName'] ?? 'Customer'} - ${review['rating'] ?? 0} star',
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: AppColors.textPrimary),
                       ),
                       subtitle: Text(
                         review['review']?.toString() ?? '',
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline,
@@ -1007,9 +1012,16 @@ class _AdminDashboardState extends State<AdminDashboard>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.primaryDark,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primaryLight),
+                border: Border.all(color: AppColors.divider),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -1032,13 +1044,13 @@ class _AdminDashboardState extends State<AdminDashboard>
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.white),
+                              color: AppColors.textPrimary),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Commission is auto-deducted at a flat 10% rate from the professional\'s wallet balance upon successful completion of booking payments.',
-                          style:
-                              TextStyle(fontSize: 13, color: Color(0xFFDCE9D8)),
+                          style: TextStyle(
+                              fontSize: 13, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -1056,9 +1068,16 @@ class _AdminDashboardState extends State<AdminDashboard>
       String title, String value, IconData icon, Color accentColor) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.primaryDark,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryLight, width: 1.2),
+        border: Border.all(color: AppColors.divider, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1082,7 +1101,7 @@ class _AdminDashboardState extends State<AdminDashboard>
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -1091,7 +1110,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             title,
             style: TextStyle(
                 fontSize: 11,
-                color: const Color(0xFFC7D8C4),
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w500),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1679,10 +1698,10 @@ class _AdminDashboardState extends State<AdminDashboard>
             : 'N/A';
 
         return Card(
-          color: AppColors.primaryDark,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Colors.white12)),
+              side: const BorderSide(color: AppColors.divider)),
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1700,7 +1719,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                             'Booking: $shortBookingId',
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey,
+                                color: AppColors.textSecondary,
                                 fontSize: 13),
                           ),
                           _buildStatusBadge(b['status'] ?? ''),
@@ -1710,13 +1729,13 @@ class _AdminDashboardState extends State<AdminDashboard>
                       RichText(
                         text: TextSpan(
                           text: 'Customer: ',
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 13),
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13),
                           children: [
                             TextSpan(
                               text: b['customerName'] ?? 'Customer',
                               style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14),
                             ),
@@ -1727,13 +1746,13 @@ class _AdminDashboardState extends State<AdminDashboard>
                       RichText(
                         text: TextSpan(
                           text: 'Professional: ',
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 13),
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13),
                           children: [
                             TextSpan(
                               text: b['professionalName'] ?? 'Professional',
                               style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14),
                             ),
@@ -1753,8 +1772,8 @@ class _AdminDashboardState extends State<AdminDashboard>
                           ),
                           Text(
                             date,
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 12),
+                            style: const TextStyle(
+                                color: AppColors.textLight, fontSize: 12),
                           ),
                         ],
                       ),
@@ -1803,10 +1822,10 @@ class _AdminDashboardState extends State<AdminDashboard>
             : 'N/A';
 
         return Card(
-          color: AppColors.primaryDark,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Colors.white12)),
+              side: const BorderSide(color: AppColors.divider)),
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1820,27 +1839,29 @@ class _AdminDashboardState extends State<AdminDashboard>
                       'Tx ID: ${tx['transactionId'] ?? ''}',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey,
+                          color: AppColors.textSecondary,
                           fontSize: 13),
                     ),
                     Text(
                       date,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: const TextStyle(
+                          color: AppColors.textLight, fontSize: 12),
                     ),
                   ],
                 ),
-                const Divider(color: Colors.grey, height: 20),
+                const Divider(color: AppColors.divider, height: 20),
                 Text(
                   'Professional: ${tx['professionalName'] ?? 'Professional'}',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: Colors.white),
+                      color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Booking ID: ${tx['bookingId'] ?? ''}',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -1849,12 +1870,12 @@ class _AdminDashboardState extends State<AdminDashboard>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Paid by Customer',
+                        const Text('Paid by Customer',
                             style: TextStyle(
-                                color: Colors.grey[500], fontSize: 12)),
+                                color: AppColors.textSecondary, fontSize: 12)),
                         Text('PKR ${tx['amount'] ?? 0}',
                             style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold)),
                       ],

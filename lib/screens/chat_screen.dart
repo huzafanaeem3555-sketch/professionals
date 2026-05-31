@@ -47,9 +47,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     super.initState();
     _sendBtnCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 200));
-    _sendBtnScale =
-        Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(parent: _sendBtnCtrl, curve: Curves.elasticOut));
+    _sendBtnScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _sendBtnCtrl, curve: Curves.elasticOut));
 
     _messageController.addListener(() {
       final has = _messageController.text.trim().isNotEmpty;
@@ -73,13 +72,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _initChat() async {
-    _myId = await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    _myId = await StorageService.getUid() ??
+        FirebaseAuth.instance.currentUser?.uid ??
+        '';
 
     if (_myId.isEmpty) {
       if (mounted) {
         setState(() {
           _loading = false;
-          _statusMessage = 'Could not identify your account. Please log in again.';
+          _statusMessage =
+              'Could not identify your account. Please log in again.';
         });
       }
       return;
@@ -148,13 +150,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (text.isEmpty) return;
 
     _messageController.clear();
-    final success =
-        await _firebase.sendMessage(
-          _myId,
-          widget.otherUserId,
-          text,
-          bookingId: widget.bookingId,
-        );
+    final success = await _firebase.sendMessage(
+      _myId,
+      widget.otherUserId,
+      text,
+      bookingId: widget.bookingId,
+    );
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -222,7 +223,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4FF),
+      backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
       body: Column(
         children: [
@@ -242,8 +243,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         itemCount: groupedMessages.length,
                         itemBuilder: (ctx, i) {
                           final item = groupedMessages[i];
-                          if (item is Map &&
-                              item['_type'] == 'date') {
+                          if (item is Map && item['_type'] == 'date') {
                             return _buildDateDivider(item['label']);
                           }
                           final msg = item as Map<String, dynamic>;
@@ -293,10 +293,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             height: 40,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF818CF8), Color(0xFF6366F1)],
+                colors: [AppColors.primaryLight, AppColors.primary],
               ),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.4), width: 2),
             ),
             child: widget.otherUserPhoto != null &&
                     widget.otherUserPhoto!.isNotEmpty
@@ -429,7 +430,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: Row(
         children: [
           Expanded(
-              child: Divider(color: Colors.grey.withOpacity(0.3), thickness: 1)),
+              child:
+                  Divider(color: Colors.grey.withOpacity(0.3), thickness: 1)),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -437,8 +439,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.06), blurRadius: 6)
+                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6)
               ],
             ),
             child: Text(label,
@@ -449,7 +450,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 10),
           Expanded(
-              child: Divider(color: Colors.grey.withOpacity(0.3), thickness: 1)),
+              child:
+                  Divider(color: Colors.grey.withOpacity(0.3), thickness: 1)),
         ],
       ),
     );
@@ -528,7 +530,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                             end: Alignment.bottomRight,
                           )
                         : null,
-                    color: _hasText && _chatEnabled ? null : AppColors.surfaceLight,
+                    color: _hasText && _chatEnabled
+                        ? null
+                        : AppColors.surfaceLight,
                     shape: BoxShape.circle,
                     boxShadow: _hasText && _chatEnabled
                         ? [
@@ -585,7 +589,7 @@ class _MessageBubble extends StatelessWidget {
               height: 30,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                    colors: [Color(0xFF818CF8), Color(0xFF6366F1)]),
+                    colors: [AppColors.primaryLight, AppColors.primary]),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -617,10 +621,12 @@ class _MessageBubble extends StatelessWidget {
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
-                  bottomLeft:
-                      isMe ? const Radius.circular(18) : const Radius.circular(4),
-                  bottomRight:
-                      isMe ? const Radius.circular(4) : const Radius.circular(18),
+                  bottomLeft: isMe
+                      ? const Radius.circular(18)
+                      : const Radius.circular(4),
+                  bottomRight: isMe
+                      ? const Radius.circular(4)
+                      : const Radius.circular(18),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -658,8 +664,7 @@ class _MessageBubble extends StatelessWidget {
                         if (isMe) ...[
                           const SizedBox(width: 3),
                           Icon(Icons.done_all_rounded,
-                              size: 12,
-                              color: Colors.white60),
+                              size: 12, color: Colors.white60),
                         ],
                       ],
                     ),
@@ -677,12 +682,12 @@ class _MessageBubble extends StatelessWidget {
               height: 30,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                    colors: [AppColors.accent, Color(0xFF059669)]),
+                    colors: [AppColors.accent, AppColors.primaryLight]),
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Icon(Icons.person_rounded,
-                    color: Colors.white, size: 16),
+                child:
+                    Icon(Icons.person_rounded, color: Colors.white, size: 16),
               ),
             ),
           ],
