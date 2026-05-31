@@ -34,33 +34,36 @@ class AuthNavigation {
         (me?['role']?.toString() ?? await StorageService.getRole() ?? '')
             .trim()
             .toLowerCase();
-    final gender = (me?['gender']?.toString() ??
-            await StorageService.getGender() ??
-            'male')
-        .trim()
-        .toLowerCase();
-    final verificationStatus = (me?['verificationStatus']?.toString() ??
-            await StorageService.getVerificationStatus() ??
-            'verified')
-        .trim()
-        .toLowerCase();
+    final storedGender = await StorageService.getGender() ?? '';
+    final genderFromBackend =
+        me != null && me.containsKey('gender') ? me['gender'] : storedGender;
+    final gender = (genderFromBackend?.toString() ?? '').trim().toLowerCase();
+    final savedVerificationStatus =
+        await StorageService.getVerificationStatus() ?? '';
+    final verificationStatus =
+        (me?['verificationStatus']?.toString() ?? savedVerificationStatus)
+            .trim()
+            .toLowerCase();
+    final effectiveVerificationStatus = verificationStatus.isNotEmpty
+        ? verificationStatus
+        : (gender == 'female' ? 'pending' : 'verified');
     final isActive = me?['isActive'] == null
-        ? verificationStatus == 'verified'
+        ? effectiveVerificationStatus == 'verified'
         : me!['isActive'] == true;
-    final femalePending =
-        gender == 'female' && (!isActive || verificationStatus != 'verified');
+    final femalePending = gender == 'female' &&
+        (!isActive || effectiveVerificationStatus != 'verified');
     final profileCompleted =
         me?['profileCompleted'] == true || me?['profileCreated'] == true;
 
     await StorageService.setSessionMeta(
       role: role,
       gender: gender,
-      verificationStatus: verificationStatus,
+      verificationStatus: effectiveVerificationStatus,
     );
 
     if (!context.mounted) return;
 
-    if (role.isEmpty) {
+    if (role.isEmpty || gender.isEmpty) {
       Navigator.pushReplacementNamed(context, '/role-selection');
       return;
     }

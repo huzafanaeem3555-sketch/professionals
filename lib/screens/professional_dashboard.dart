@@ -406,9 +406,11 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        final uid = FirebaseAuth.instance.currentUser?.uid;
+                      onPressed: () async {
+                        final uid = await StorageService.getUid() ??
+                            FirebaseAuth.instance.currentUser?.uid;
                         if (uid != null && uid.isNotEmpty) {
+                          if (!mounted) return;
                           Navigator.pushNamed(
                             context,
                             '/professional-profile',
