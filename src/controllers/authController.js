@@ -26,6 +26,15 @@ const createProfileDisplayName = (emailOrPhone) => {
   return local || 'User';
 };
 
+const resolveExistingUserByEmail = async (email) => {
+  const existing = await UserModel.getByEmail(email);
+  if (!existing) return null;
+  return {
+    uid: existing.uid || existing._key,
+    user: existing,
+  };
+};
+
 const buildUserPayload = (user) => {
   const lat = user.lat ?? user.location?.lat ?? 0;
   const lng = user.lng ?? user.location?.lng ?? 0;
@@ -226,7 +235,7 @@ const AuthController = {
       const provider = verification.provider;
       const decoded = verification.payload;
 
-      const uid = provider === 'firebase' ? decoded.uid : `google:${decoded.sub}`;
+      let uid = provider === 'firebase' ? decoded.uid : `google:${decoded.sub}`;
       const email = decoded.email;
       const displayName =
         decoded.name || decoded.displayName || createProfileDisplayName(email);
@@ -235,16 +244,26 @@ const AuthController = {
       let user = await UserModel.getById(uid, true);
       let isNewUser = false;
       if (!user) {
-        user = await UserModel.upsert(uid, {
-          email,
-          displayName,
-          photoURL,
-          fcmToken: fcmToken || '',
-          phoneNumber: '',
-          role: null,
-          profileCompleted: false,
-        });
-        isNewUser = true;
+        const existingByEmail = await resolveExistingUserByEmail(email);
+        if (existingByEmail?.uid) {
+          uid = existingByEmail.uid;
+          user = existingByEmail.user;
+          if (fcmToken) {
+            await UserModel.updateFcmToken(uid, fcmToken);
+            user.fcmToken = fcmToken;
+          }
+        } else {
+          user = await UserModel.upsert(uid, {
+            email,
+            displayName,
+            photoURL,
+            fcmToken: fcmToken || '',
+            phoneNumber: '',
+            role: null,
+            profileCompleted: false,
+          });
+          isNewUser = true;
+        }
       } else {
         if (fcmToken) {
           await UserModel.updateFcmToken(uid, fcmToken);
@@ -427,7 +446,7 @@ const AuthController = {
       const provider = verification.provider;
       const decoded = verification.payload;
 
-      const uid = provider === 'firebase' ? decoded.uid : `google:${decoded.sub}`;
+      let uid = provider === 'firebase' ? decoded.uid : `google:${decoded.sub}`;
       const emailAddress = decoded.email;
       const displayName = decoded.name || decoded.displayName;
       const photoURL = decoded.picture || decoded.photoURL;
@@ -436,16 +455,30 @@ const AuthController = {
       let user = await UserModel.getById(uid, true);
       let isNewUser = false;
       if (!user) {
-        user = await UserModel.upsert(uid, {
-          email: emailAddress,
-          displayName: displayName || createProfileDisplayName(emailAddress),
-          photoURL: photoURL || '',
-          fcmToken: fcmToken || '',
-          phoneNumber: phone || '',
-          role: null,
-          profileCompleted: false,
-        });
-        isNewUser = true;
+        const existingByEmail = await resolveExistingUserByEmail(emailAddress);
+        if (existingByEmail?.uid) {
+          uid = existingByEmail.uid;
+          user = existingByEmail.user;
+          if (fcmToken) {
+            await UserModel.updateFcmToken(uid, fcmToken);
+            user.fcmToken = fcmToken;
+          }
+          if (phone && phone !== user.phoneNumber) {
+            await UserModel.updatePhoneNumber(uid, phone);
+            user.phoneNumber = phone;
+          }
+        } else {
+          user = await UserModel.upsert(uid, {
+            email: emailAddress,
+            displayName: displayName || createProfileDisplayName(emailAddress),
+            photoURL: photoURL || '',
+            fcmToken: fcmToken || '',
+            phoneNumber: phone || '',
+            role: null,
+            profileCompleted: false,
+          });
+          isNewUser = true;
+        }
       } else {
         if (fcmToken) {
           await UserModel.updateFcmToken(uid, fcmToken);
@@ -482,7 +515,7 @@ const AuthController = {
   async setRole(req, res) {
     try {
       const { uid } = req.user;
-      const { role, gender } = req.body;
+      const { role, gender, displayName, name } = req.body;
 
       if (!role || !['customer', 'professional'].includes(role)) {
         return res.status(400).json({
@@ -509,6 +542,10 @@ const AuthController = {
       const { db } = require('../config/firebase');
       await db.ref(`users/${uid}`).update({
         gender: normalizedGender,
+        ...((displayName || name) ? {
+          displayName: String(displayName || name).trim(),
+          name: String(displayName || name).trim(),
+        } : {}),
         verificationStatus,
         isActive,
         femaleVerificationRequired: normalizedGender === 'female' && !isActive,
