@@ -90,6 +90,8 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
         return Icons.local_offer_rounded;
       case 'job_offer_selected':
         return Icons.verified_rounded;
+      case 'job_offer_countered':
+        return Icons.price_change_rounded;
       case 'job_status_changed':
         return Icons.sync_alt_rounded;
       case 'payment_confirmed':

@@ -578,6 +578,13 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                         icon: const Icon(Icons.done_all_rounded),
                         label: const Text('Complete'),
                       ),
+                    OutlinedButton.icon(
+                      onPressed: postId.isEmpty || status != 'open'
+                          ? null
+                          : () => _sendOffer(postId, quick: true),
+                      icon: const Icon(Icons.done_rounded),
+                      label: const Text('I can do it'),
+                    ),
                     ElevatedButton.icon(
                       onPressed: postId.isEmpty || status != 'open'
                           ? null
@@ -611,51 +618,57 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     );
   }
 
-  Future<void> _sendOffer(String postId) async {
+  Future<void> _sendOffer(String postId, {bool quick = false}) async {
     final priceCtrl = TextEditingController();
-    final msgCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Send Offer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: priceCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Price PKR',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: msgCtrl,
-              minLines: 2,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Message',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Send')),
-        ],
-      ),
+    final msgCtrl = TextEditingController(
+      text: quick ? 'I am available. Please contact me on WhatsApp.' : '',
     );
+    bool ok = quick;
+    if (!quick) {
+      ok = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Send Offer'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: priceCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Price PKR optional',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: msgCtrl,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Message',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel')),
+                ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Send')),
+              ],
+            ),
+          ) ??
+          false;
+    }
     final price = double.tryParse(priceCtrl.text.trim()) ?? 0;
     final message = msgCtrl.text.trim();
     priceCtrl.dispose();
     msgCtrl.dispose();
-    if (ok != true || price <= 0) return;
+    if (ok != true) return;
     final res = await _api.createJobOffer(postId, {
       'price': price,
       'message': message.isEmpty ? 'I can do this work.' : message,
@@ -670,6 +683,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
             res['success'] == true ? AppColors.success : AppColors.error,
       ),
     );
+    if (res['success'] == true) await _loadMarketplaceTools();
   }
 
   Widget _buildGrowthTab() {
@@ -1060,38 +1074,67 @@ class _ToolCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.divider),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            child: Icon(icon, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 430;
+          final header = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: Icon(icon, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
+                header,
+                const SizedBox(height: 12),
+                ElevatedButton(onPressed: onPressed, child: Text(button)),
               ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton(onPressed: onPressed, child: Text(button)),
-        ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: header),
+              const SizedBox(width: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 170),
+                child: ElevatedButton(
+                  onPressed: onPressed,
+                  child: FittedBox(child: Text(button)),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

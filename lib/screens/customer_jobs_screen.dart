@@ -267,6 +267,75 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
     );
   }
 
+  Future<void> _counterOffer(Map<String, dynamic> offer) async {
+    final postId = _job['postId']?.toString() ?? '';
+    final offerId = offer['offerId']?.toString() ?? '';
+    if (postId.isEmpty || offerId.isEmpty) return;
+    final priceCtrl = TextEditingController();
+    final msgCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Counter Price'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: priceCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Your price PKR',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: msgCtrl,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Message optional',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+    final price = double.tryParse(priceCtrl.text.trim()) ?? 0;
+    final message = msgCtrl.text.trim();
+    priceCtrl.dispose();
+    msgCtrl.dispose();
+    if (ok != true || price <= 0) return;
+    final res = await _api.counterJobOffer(
+      postId: postId,
+      offerId: offerId,
+      counterPrice: price,
+      message: message,
+    );
+    if (res['success'] == true) await _loadOffers();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res['success'] == true
+            ? 'Counter price sent.'
+            : res['message']?.toString() ?? 'Counter failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = (_job['title'] ?? _job['serviceType'] ?? 'Job').toString();
@@ -392,6 +461,7 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
                     offer: offer,
                     selectedOfferId: _job['selectedOfferId']?.toString() ?? '',
                     onSelect: () => _selectOffer(offer),
+                    onCounter: () => _counterOffer(offer),
                   )),
           ],
         ),
@@ -404,11 +474,13 @@ class _OfferCard extends StatelessWidget {
   final Map<String, dynamic> offer;
   final String selectedOfferId;
   final VoidCallback onSelect;
+  final VoidCallback onCounter;
 
   const _OfferCard({
     required this.offer,
     required this.selectedOfferId,
     required this.onSelect,
+    required this.onCounter,
   });
 
   @override
@@ -419,7 +491,9 @@ class _OfferCard extends StatelessWidget {
     final service =
         (offer['serviceType'] ?? 'service').toString().replaceAll('_', ' ');
     final price = offer['price']?.toString() ?? '0';
+    final counterPrice = offer['counterPrice']?.toString() ?? '';
     final message = offer['message']?.toString() ?? '';
+    final customerMessage = offer['customerMessage']?.toString() ?? '';
     final status = offer['status']?.toString() ?? 'pending';
     final offerId = offer['offerId']?.toString() ?? '';
     final selected = selectedOfferId.isNotEmpty && selectedOfferId == offerId;
@@ -472,16 +546,28 @@ class _OfferCard extends StatelessWidget {
           Text('Offered price: PKR $price',
               style: const TextStyle(
                   color: AppColors.primary, fontWeight: FontWeight.bold)),
+          if (counterPrice.isNotEmpty && counterPrice != '0') ...[
+            const SizedBox(height: 6),
+            Text('Your counter: PKR $counterPrice',
+                style: const TextStyle(
+                    color: AppColors.warning, fontWeight: FontWeight.bold)),
+          ],
           if (message.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(message,
                 style: const TextStyle(color: AppColors.textSecondary)),
           ],
+          if (customerMessage.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('Counter note: $customerMessage',
+                style: const TextStyle(color: AppColors.textSecondary)),
+          ],
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 420;
+              final contactButtons = [
+                ElevatedButton.icon(
                   onPressed: phone.isEmpty
                       ? null
                       : () => launchContactUri(contactUriFor(
@@ -497,14 +583,67 @@ class _OfferCard extends StatelessWidget {
                     foregroundColor: Colors.white,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: selectedOfferId.isEmpty ? onSelect : null,
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text('Select'),
-              ),
-            ],
+                OutlinedButton.icon(
+                  onPressed: phone.isEmpty
+                      ? null
+                      : () => launchContactUri(contactUriFor(
+                            method: ContactMethod.call,
+                            phoneNumber: phone,
+                          )),
+                  icon: const Icon(Icons.call_rounded),
+                  label: const Text('Call'),
+                ),
+              ];
+              final actionButtons = [
+                OutlinedButton.icon(
+                  onPressed: selectedOfferId.isEmpty ? onCounter : null,
+                  icon: const Icon(Icons.price_change_rounded),
+                  label: const Text('Counter'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: selectedOfferId.isEmpty ? onSelect : null,
+                  icon: const Icon(Icons.check_circle_outline_rounded),
+                  label: const Text('Select'),
+                ),
+              ];
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ...contactButtons.map((button) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: button,
+                        )),
+                    Row(
+                      children: [
+                        Expanded(child: actionButtons[0]),
+                        const SizedBox(width: 8),
+                        Expanded(child: actionButtons[1]),
+                      ],
+                    ),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: contactButtons[0]),
+                      const SizedBox(width: 8),
+                      Expanded(child: contactButtons[1]),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: actionButtons[0]),
+                      const SizedBox(width: 8),
+                      Expanded(child: actionButtons[1]),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

@@ -957,6 +957,29 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> counterJobOffer({
+    required String postId,
+    required String offerId,
+    required double counterPrice,
+    String? message,
+  }) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.patch(
+          '${ApiConstants.marketplaceJobs}/$postId/offers/$offerId/counter',
+          data: {
+            'counterPrice': counterPrice,
+            if (message != null && message.trim().isNotEmpty)
+              'message': message.trim(),
+          },
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> updateJobStatus({
     required String postId,
     required String status,
