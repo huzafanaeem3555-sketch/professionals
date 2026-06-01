@@ -84,6 +84,14 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
         return Icons.check_circle_rounded;
       case 'customer_completed':
         return Icons.task_alt_rounded;
+      case 'job_post':
+        return Icons.work_outline_rounded;
+      case 'job_offer':
+        return Icons.local_offer_rounded;
+      case 'job_offer_selected':
+        return Icons.verified_rounded;
+      case 'job_status_changed':
+        return Icons.sync_alt_rounded;
       case 'payment_confirmed':
         return Icons.account_balance_wallet_rounded;
       default:

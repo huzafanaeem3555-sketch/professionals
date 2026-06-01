@@ -464,7 +464,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                     backgroundColor: pro.isAvailableNow
-                        ? const Color(0xFF25D366)
+                        ? AppColors.primary
                         : Colors.grey[400],
                     foregroundColor: Colors.white,
                   ),

@@ -20,6 +20,7 @@ import 'screens/admin_dashboard.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/gender_verification_screen.dart';
 import 'screens/customer_home_screen.dart';
+import 'screens/customer_jobs_screen.dart';
 import 'screens/professional_setup_screen.dart';
 import 'screens/professional_dashboard.dart';
 import 'screens/professional_profile_screen.dart';
@@ -87,6 +88,7 @@ class ServiceConnectApp extends StatelessWidget {
             return GenderVerificationScreen(role: role);
           },
           '/customer-home': (ctx) => const CustomerHomeScreen(),
+          '/customer-jobs': (ctx) => const CustomerJobsScreen(),
           '/professional-setup': (ctx) => const ProfessionalSetupScreen(),
           '/professional-home': (ctx) => const ProfessionalDashboard(),
           '/wallet': (ctx) => const WalletScreen(),

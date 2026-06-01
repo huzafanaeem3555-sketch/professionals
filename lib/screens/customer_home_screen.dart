@@ -987,6 +987,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   }
 
   Future<void> _postJobDialog() async {
+    final titleCtrl = TextEditingController();
     final serviceCtrl = TextEditingController(text: _filterService ?? '');
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController();
@@ -999,6 +1000,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Job title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
               TextField(
                 controller: serviceCtrl,
                 decoration: const InputDecoration(
@@ -1049,10 +1058,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         ],
       ),
     );
+    final title = titleCtrl.text.trim();
     final service = serviceCtrl.text.trim();
     final desc = descCtrl.text.trim();
     final budget = double.tryParse(budgetCtrl.text.trim()) ?? 0;
     final radius = double.tryParse(radiusCtrl.text.trim()) ?? 10;
+    titleCtrl.dispose();
     serviceCtrl.dispose();
     descCtrl.dispose();
     budgetCtrl.dispose();
@@ -1060,6 +1071,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (post != true || service.isEmpty || desc.isEmpty) return;
     final contactLocation = await _resolveCustomerContactLocation();
     final res = await _api.createJobPost({
+      'title': title.isEmpty ? service : title,
       'serviceType': service,
       'description': desc,
       'budget': budget,
@@ -1569,6 +1581,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     ),
                     actions: [
                       const NotificationBell(),
+                      IconButton(
+                        icon: const Icon(Icons.work_history_rounded,
+                            color: Colors.white),
+                        tooltip: 'My Jobs',
+                        onPressed: () async {
+                          await Navigator.pushNamed(context, '/customer-jobs');
+                          _load();
+                        },
+                      ),
                       // Bookings badge button
                       Stack(
                         alignment: Alignment.center,
@@ -2598,8 +2619,7 @@ class _ProfessionalCard extends StatelessWidget {
                     icon: Icons.chat,
                     onPressed: isAvailable ? onWhatsApp : null,
                     foreground: Colors.white,
-                    background:
-                        isAvailable ? const Color(0xFF25D366) : Colors.grey,
+                    background: isAvailable ? AppColors.primary : Colors.grey,
                   ),
                 ];
                 if (compact) {

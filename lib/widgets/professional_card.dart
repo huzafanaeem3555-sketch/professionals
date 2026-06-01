@@ -230,7 +230,8 @@ class ProfessionalCard extends StatelessWidget {
                     icon: const Icon(Icons.chat, size: 18),
                     label: const Text('WhatsApp'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

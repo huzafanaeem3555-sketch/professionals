@@ -941,6 +941,39 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> selectJobOffer({
+    required String postId,
+    required String offerId,
+  }) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.post(
+          '${ApiConstants.marketplaceJobs}/$postId/offers/$offerId/select',
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> updateJobStatus({
+    required String postId,
+    required String status,
+  }) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.patch(
+          '${ApiConstants.marketplaceJobs}/$postId/status',
+          data: {'status': status},
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> requestFeaturedListing() async {
     try {
       final response = await _withRetry(

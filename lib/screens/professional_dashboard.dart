@@ -519,6 +519,10 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           final service = (job['serviceType'] ?? 'service').toString();
           final desc = (job['description'] ?? '').toString();
           final budget = (job['budget'] ?? 0).toString();
+          final customerPhone = (job['customerPhone'] ?? '').toString();
+          final status = (job['status'] ?? 'open').toString();
+          final selectedForMe =
+              (job['selectedProfessionalId'] ?? '').toString().isNotEmpty;
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(14),
@@ -544,18 +548,65 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                 Text('Budget: PKR $budget',
                     style: const TextStyle(color: AppColors.primary)),
                 const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: postId.isEmpty ? null : () => _sendOffer(postId),
-                    icon: const Icon(Icons.local_offer_rounded),
-                    label: const Text('Send Offer'),
-                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: customerPhone.isEmpty
+                          ? null
+                          : () => launchContactUri(contactUriFor(
+                                method: ContactMethod.whatsapp,
+                                phoneNumber: customerPhone,
+                                message:
+                                    'Assalam-o-Alaikum, I saw your Hirepro job and can help.',
+                              )),
+                      icon: const Icon(Icons.chat_rounded),
+                      label: const Text('WhatsApp Customer'),
+                    ),
+                    if (selectedForMe && status == 'assigned')
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _updateJobStatus(postId, 'in_progress'),
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        label: const Text('Start'),
+                      ),
+                    if (selectedForMe && status == 'in_progress')
+                      OutlinedButton.icon(
+                        onPressed: () => _updateJobStatus(postId, 'completed'),
+                        icon: const Icon(Icons.done_all_rounded),
+                        label: const Text('Complete'),
+                      ),
+                    ElevatedButton.icon(
+                      onPressed: postId.isEmpty || status != 'open'
+                          ? null
+                          : () => _sendOffer(postId),
+                      icon: const Icon(Icons.local_offer_rounded),
+                      label: const Text('Send Offer'),
+                    ),
+                  ],
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _updateJobStatus(String postId, String status) async {
+    if (postId.isEmpty) return;
+    final res = await _api.updateJobStatus(postId: postId, status: status);
+    if (res['success'] == true) await _loadMarketplaceTools();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res['success'] == true
+            ? 'Job status updated.'
+            : res['message']?.toString() ?? 'Status update failed'),
+        backgroundColor:
+            res['success'] == true ? AppColors.success : AppColors.error,
       ),
     );
   }
@@ -967,7 +1018,8 @@ class _LeadCard extends StatelessWidget {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         ),
