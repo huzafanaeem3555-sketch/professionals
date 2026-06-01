@@ -98,6 +98,32 @@ const MarketplaceController = {
     return res.json({ success: true, data });
   },
 
+  async selectJobOffer(req, res) {
+    try {
+      const data = await MarketplaceModel.selectJobOffer(
+        uid(req),
+        req.params.postId,
+        req.params.offerId,
+      );
+      return res.json({ success: true, data });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  async updateJobStatus(req, res) {
+    try {
+      const data = await MarketplaceModel.updateJobStatus(
+        uid(req),
+        req.params.postId,
+        req.body?.status,
+      );
+      return res.json({ success: true, data });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
   async requestFeatured(req, res) {
     try {
       const data = await MarketplaceModel.requestFeatured(uid(req), req.body || {});

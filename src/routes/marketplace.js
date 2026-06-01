@@ -17,6 +17,8 @@ router.post('/jobs', verifyToken, MarketplaceController.createJobPost);
 router.get('/jobs', optionalAuth, MarketplaceController.listJobPosts);
 router.post('/jobs/:postId/offers', verifyToken, MarketplaceController.createJobOffer);
 router.get('/jobs/:postId/offers', verifyToken, MarketplaceController.listJobOffers);
+router.patch('/jobs/:postId/status', verifyToken, MarketplaceController.updateJobStatus);
+router.post('/jobs/:postId/offers/:offerId/select', verifyToken, MarketplaceController.selectJobOffer);
 router.post('/featured/request', verifyToken, MarketplaceController.requestFeatured);
 router.post('/certificates', verifyToken, MarketplaceController.uploadCertificate);
 router.get('/certificates/:professionalId?', optionalAuth, MarketplaceController.listCertificates);

@@ -188,8 +188,11 @@ const MarketplaceModel = {
     const radiusKm = Math.max(1, Math.min(100, toNumber(payload.radiusKm, 10)));
     const post = {
       postId,
+      title: clean(payload.title, clean(payload.serviceType, 'Service job')).slice(0, 120),
       customerId,
       customerName: clean(customer.displayName || customer.name, 'Customer'),
+      customerPhone: clean(customer.phoneNumber || customer.phone),
+      customerPhotoURL: clean(customer.photoURL),
       serviceType,
       description: clean(payload.description || payload.customerProblem, 'Service needed'),
       budget: toNumber(payload.budget),
@@ -204,23 +207,34 @@ const MarketplaceModel = {
     const professionals = (await ProfessionalModel.getAll()).filter(pro => {
       const services = [...(pro.services || []), ...(pro.customServices || [])]
         .map(s => normalizeService(s));
-      return pro.isActive !== false && pro.isAvailable !== false && services.includes(serviceType);
+      const distance = distanceKm(pro.location, post.location);
+      return pro.isActive !== false &&
+        pro.isAvailable !== false &&
+        services.includes(serviceType) &&
+        (distance === null || distance <= radiusKm);
     });
     await Promise.all(professionals.slice(0, 25).map(pro =>
       sendNotificationToUser(
         pro.uid,
         'New job post nearby',
-        `${post.customerName} needs ${serviceType.replace(/_/g, ' ')} work.`,
+        `${post.customerName} needs ${post.title}.`,
         { type: 'job_post', postId, serviceType },
       ).catch(() => null),
     ));
+    await sendNotificationToUser(
+      customerId,
+      'Job posted',
+      `Your job "${post.title}" is now live for professionals.`,
+      { type: 'job_status_changed', postId, status: 'open' },
+    ).catch(() => null);
     return post;
   },
 
   async listJobPosts(viewer) {
     const posts = await dbGetAll('jobPosts') || [];
-    const role = clean(viewer?.role).toLowerCase();
     const uid = clean(viewer?.uid);
+    const user = uid ? await UserModel.getById(uid, true).catch(() => null) : null;
+    const role = clean(viewer?.role || user?.role).toLowerCase();
     const pro = role === 'professional'
       ? await ProfessionalModel.getById(uid).catch(() => null)
       : null;
@@ -233,6 +247,8 @@ const MarketplaceModel = {
         if (role === 'customer') return post.customerId === uid;
         if (post.status === 'closed') return false;
         if (!pro) return true;
+        if (!['open', 'assigned', 'in_progress'].includes(clean(post.status, 'open'))) return false;
+        if (post.selectedProfessionalId && post.selectedProfessionalId !== uid) return false;
         if (!proServices.includes(normalizeService(post.serviceType))) return false;
         const distance = distanceKm(pro.location, post.location);
         return distance === null || distance <= toNumber(post.radiusKm, 10);
@@ -259,6 +275,8 @@ const MarketplaceModel = {
       professionalId,
       professionalName: clean(pro.name || pro.displayName, 'Professional'),
       professionalPhone: clean(pro.phoneNumber || pro.phone),
+      professionalPhotoURL: clean(pro.photoURL),
+      serviceType: post.serviceType || (Array.isArray(pro.services) ? pro.services[0] : ''),
       price: toNumber(payload.price),
       message: clean(payload.message, 'I can do this work.'),
       status: 'pending',
@@ -284,6 +302,75 @@ const MarketplaceModel = {
     return Object.entries(raw)
       .map(([offerId, value]) => ({ offerId, ...(value || {}) }))
       .sort((a, b) => toNumber(a.price) - toNumber(b.price));
+  },
+
+  async selectJobOffer(customerId, postId, offerId) {
+    const post = await dbGet(`jobPosts/${postId}`);
+    if (!post) throw new Error('Job post not found.');
+    if (post.customerId !== customerId) throw new Error('Only the job owner can select an offer.');
+    const offer = await dbGet(`jobPostOffers/${postId}/${offerId}`);
+    if (!offer) throw new Error('Offer not found.');
+    const now = Date.now();
+    await dbUpdate(`jobPostOffers/${postId}/${offerId}`, {
+      status: 'selected',
+      updatedAt: now,
+    });
+    const allOffers = await dbGet(`jobPostOffers/${postId}`) || {};
+    await Promise.all(Object.entries(allOffers).map(([id]) => {
+      if (id === offerId) return Promise.resolve();
+      return dbUpdate(`jobPostOffers/${postId}/${id}`, {
+        status: 'not_selected',
+        updatedAt: now,
+      }).catch(() => null);
+    }));
+    const updates = {
+      status: 'assigned',
+      selectedOfferId: offerId,
+      selectedProfessionalId: offer.professionalId,
+      selectedProfessionalName: offer.professionalName,
+      selectedPrice: toNumber(offer.price),
+      updatedAt: now,
+    };
+    await dbUpdate(`jobPosts/${postId}`, updates);
+    await Promise.all([
+      sendNotificationToUser(
+        offer.professionalId,
+        'Your offer was selected',
+        `${post.customerName || 'Customer'} selected you for "${post.title || post.serviceType}".`,
+        { type: 'job_offer_selected', postId, offerId, status: 'assigned' },
+      ).catch(() => null),
+      sendNotificationToUser(
+        customerId,
+        'Professional selected',
+        `${offer.professionalName} has been selected for your job.`,
+        { type: 'job_status_changed', postId, offerId, status: 'assigned' },
+      ).catch(() => null),
+    ]);
+    return { postId, offerId, ...updates };
+  },
+
+  async updateJobStatus(userId, postId, status) {
+    const allowed = ['open', 'assigned', 'in_progress', 'completed', 'cancelled', 'closed'];
+    const safeStatus = allowed.includes(clean(status).toLowerCase())
+      ? clean(status).toLowerCase()
+      : 'open';
+    const post = await dbGet(`jobPosts/${postId}`);
+    if (!post) throw new Error('Job post not found.');
+    if (post.customerId !== userId && post.selectedProfessionalId !== userId) {
+      throw new Error('You cannot update this job.');
+    }
+    const updates = { status: safeStatus, updatedAt: Date.now() };
+    await dbUpdate(`jobPosts/${postId}`, updates);
+    const notifyIds = [post.customerId, post.selectedProfessionalId].filter(Boolean);
+    await Promise.all([...new Set(notifyIds)].map(uid =>
+      sendNotificationToUser(
+        uid,
+        'Job status updated',
+        `Job "${post.title || post.serviceType}" is now ${safeStatus.replace(/_/g, ' ')}.`,
+        { type: 'job_status_changed', postId, status: safeStatus },
+      ).catch(() => null),
+    ));
+    return { postId, ...updates };
   },
 
   async requestFeatured(professionalId, payload) {
