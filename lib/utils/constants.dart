@@ -11,7 +11,8 @@ class ApiConstants {
   // ============================================================
   // PRODUCTION SERVER URL
   // ============================================================
-  static const String productionBaseUrl = 'http://182.180.96.214:3000/api';
+  static const String productionBaseUrl =
+      'https://rapid-updated-satellite-finds.trycloudflare.com/api';
 
   // ============================================================
   // LOCAL DEVELOPMENT URLs (For testing only)
