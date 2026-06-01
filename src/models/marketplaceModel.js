@@ -205,18 +205,13 @@ const MarketplaceModel = {
     };
     await dbSet(`jobPosts/${postId}`, post);
     const professionals = (await ProfessionalModel.getAll()).filter(pro => {
-      const services = [...(pro.services || []), ...(pro.customServices || [])]
-        .map(s => normalizeService(s));
-      const distance = distanceKm(pro.location, post.location);
       return pro.isActive !== false &&
-        pro.isAvailable !== false &&
-        services.includes(serviceType) &&
-        (distance === null || distance <= radiusKm);
+        pro.isAvailable !== false;
     });
-    await Promise.all(professionals.slice(0, 25).map(pro =>
+    await Promise.all(professionals.map(pro =>
       sendNotificationToUser(
         pro.uid,
-        'New job post nearby',
+        'New job post',
         `${post.customerName} needs ${post.title}.`,
         { type: 'job_post', postId, serviceType },
       ).catch(() => null),
@@ -249,15 +244,14 @@ const MarketplaceModel = {
         if (!pro) return true;
         if (!['open', 'assigned', 'in_progress'].includes(clean(post.status, 'open'))) return false;
         if (post.selectedProfessionalId && post.selectedProfessionalId !== uid) return false;
-        if (!proServices.includes(normalizeService(post.serviceType))) return false;
-        const distance = distanceKm(pro.location, post.location);
-        return distance === null || distance <= toNumber(post.radiusKm, 10);
+        return true;
       })
       .map(post => {
         if (!pro) return post;
         const distance = distanceKm(pro.location, post.location);
         return {
           ...post,
+          serviceMatched: proServices.includes(normalizeService(post.serviceType)),
           distanceKm: distance === null ? null : Number(distance.toFixed(2)),
         };
       })
@@ -302,6 +296,30 @@ const MarketplaceModel = {
     return Object.entries(raw)
       .map(([offerId, value]) => ({ offerId, ...(value || {}) }))
       .sort((a, b) => toNumber(a.price) - toNumber(b.price));
+  },
+
+  async counterJobOffer(customerId, postId, offerId, payload) {
+    const post = await dbGet(`jobPosts/${postId}`);
+    if (!post) throw new Error('Job post not found.');
+    if (post.customerId !== customerId) throw new Error('Only the job owner can counter an offer.');
+    const offer = await dbGet(`jobPostOffers/${postId}/${offerId}`);
+    if (!offer) throw new Error('Offer not found.');
+    const counterPrice = toNumber(payload.counterPrice ?? payload.price, 0);
+    if (counterPrice <= 0) throw new Error('counterPrice is required.');
+    const updates = {
+      counterPrice,
+      customerMessage: clean(payload.message, 'Please confirm this counter price.'),
+      status: 'countered',
+      updatedAt: Date.now(),
+    };
+    await dbUpdate(`jobPostOffers/${postId}/${offerId}`, updates);
+    await sendNotificationToUser(
+      offer.professionalId,
+      'Counter price received',
+      `${post.customerName || 'Customer'} countered your offer at PKR ${counterPrice}.`,
+      { type: 'job_offer_countered', postId, offerId, counterPrice },
+    ).catch(() => null);
+    return { postId, offerId, ...updates };
   },
 
   async selectJobOffer(customerId, postId, offerId) {

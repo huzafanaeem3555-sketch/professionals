@@ -111,6 +111,20 @@ const MarketplaceController = {
     }
   },
 
+  async counterJobOffer(req, res) {
+    try {
+      const data = await MarketplaceModel.counterJobOffer(
+        uid(req),
+        req.params.postId,
+        req.params.offerId,
+        req.body || {},
+      );
+      return res.json({ success: true, data });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
   async updateJobStatus(req, res) {
     try {
       const data = await MarketplaceModel.updateJobStatus(
