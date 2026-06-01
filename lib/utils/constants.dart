@@ -9,10 +9,9 @@ class MapConstants {
 /// API Constants for Backend Connection
 class ApiConstants {
   // ============================================================
-  // ✅ RAILWAY PRODUCTION URL (LIVE - DO NOT CHANGE)
+  // PRODUCTION SERVER URL
   // ============================================================
-  static const String railwayBaseUrl =
-      'https://professionals-production-c9b2.up.railway.app/api';
+  static const String productionBaseUrl = 'http://182.180.96.214:3000/api';
 
   // ============================================================
   // LOCAL DEVELOPMENT URLs (For testing only)
@@ -22,8 +21,8 @@ class ApiConstants {
   static const String localhostUrl = 'http://localhost:5000/api';
 
   // ============================================================
-  // 🔥 IMPORTANT: Set this to FALSE for Railway Production
-  // 🔥 Set this to TRUE for Local Testing
+  // IMPORTANT: Set this to FALSE for production server
+  // Set this to TRUE for local testing
   // ============================================================
   static const bool isDevelopment = false; // ✅ PRODUCTION MODE
 
@@ -33,17 +32,17 @@ class ApiConstants {
       return localBaseUrl;
     }
 
-    // For production (Railway)
+    // For production server.
     const fromDefine = String.fromEnvironment('API_BASE_URL');
     if (fromDefine.isNotEmpty) return fromDefine;
 
-    return railwayBaseUrl;
+    return productionBaseUrl;
   }
 
   /// Smart base URL with auto-detection
   static String get smartBaseUrl {
     if (!isDevelopment) {
-      return railwayBaseUrl;
+      return productionBaseUrl;
     }
     return localBaseUrl;
   }
@@ -58,7 +57,7 @@ class ApiConstants {
       ];
     }
     return [
-      railwayBaseUrl,
+      productionBaseUrl,
     ];
   }
 
