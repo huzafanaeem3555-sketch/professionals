@@ -24,7 +24,7 @@ class GenderVerificationScreen extends StatelessWidget {
     final name = storedName.isNotEmpty ? storedName : firebaseName;
     final phoneLine = phone.isNotEmpty ? 'Phone: $phone\n' : '';
     final message = Uri.encodeComponent(
-      'Assalam-o-Alaikum, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on HirePro.\n'
+      'Hello, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on HirePro.\n'
       'Name: ${name.isNotEmpty ? name : 'Please confirm my account'}\n'
       '$phoneLine'
       'I will send my voice note for verification.',

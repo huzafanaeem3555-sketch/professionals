@@ -212,6 +212,33 @@ class _AdminDashboardState extends State<AdminDashboard>
     }
   }
 
+  Future<void> _toggleTopListedProfessional(Map<String, dynamic> p) async {
+    final uid = p['uid']?.toString() ?? '';
+    if (uid.isEmpty) return;
+    final currentlyFeatured = p['isFeatured'] == true;
+    final success = await Provider.of<AdminProvider>(context, listen: false)
+        .updateProfessional(uid, {
+      'isFeatured': !currentlyFeatured,
+      'featuredUntil': !currentlyFeatured
+          ? DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch
+          : 0,
+      'planName': !currentlyFeatured ? 'Premium' : '',
+      'sponsoredStatus': !currentlyFeatured ? 'active' : 'inactive',
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? (currentlyFeatured
+                ? 'Top listing removed.'
+                : 'Professional marked as top listed.')
+            : 'Top listing update failed.'),
+        backgroundColor: success ? AppColors.success : AppColors.error,
+      ),
+    );
+    if (success) _refreshData();
+  }
+
   Future<void> _clearAllData() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1828,6 +1855,14 @@ class _AdminDashboardState extends State<AdminDashboard>
               label: 'Reviews',
               color: Colors.amber.shade700,
               onPressed: () => _showProfessionalReviews(p),
+            ),
+            _adminTextAction(
+              icon: p['isFeatured'] == true
+                  ? Icons.star_rounded
+                  : Icons.star_border_rounded,
+              label: p['isFeatured'] == true ? 'Remove Top' : 'Top Listed',
+              color: AppColors.warning,
+              onPressed: () => _toggleTopListedProfessional(p),
             ),
             _adminTextAction(
               icon: Icons.info_outline,

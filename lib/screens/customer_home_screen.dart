@@ -289,7 +289,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     setState(() {
       _voiceListening = true;
       _voiceAvailable = true;
-      _voiceStatus = 'Listening... Urdu, Roman Urdu, or English bolain.';
+      _voiceStatus = 'Listening... speak the service or issue in English.';
     });
     try {
       final words = await _voiceChannel
@@ -949,6 +949,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (mounted) _load();
   }
 
+  Future<void> _openAiEstimator() async {
+    await Navigator.pushNamed(context, '/ai-estimator');
+    if (mounted) _load();
+  }
+
+  Future<void> _openFeatureGuide() async {
+    await Navigator.pushNamed(context, '/feature-guide');
+  }
+
   void _showSavedProfessionals() {
     setState(() {
       _filtered = _all.where((p) => _favoriteIds.contains(p.uid)).toList();
@@ -1336,7 +1345,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         method: method,
         phoneNumber: pro.phone,
         message:
-            'Assalam-o-Alaikum, I found your profile on HirePro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
+            'Hello, I found your profile on HirePro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
       );
 
       final launched = await launchContactUri(uri);
@@ -1598,9 +1607,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
               favoriteCount: _favoriteIds.length,
               onAutoMatch: _autoMatchBest,
               onPostJob: _postJobDialog,
+              onEstimator: _openAiEstimator,
               onJobs: _openCustomerJobs,
               onSaved: _showSavedProfessionals,
               onReferral: _applyReferralDialog,
+              onGuide: _openFeatureGuide,
             ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -2013,7 +2024,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             ),
                             Text(
                               _distanceFilterKm == 0
-                                  ? '0 km par all professionals show honge. Slider increase karein to selected km ke andar professionals filter honge.'
+                                  ? '0 km shows all professionals. Increase the slider to filter professionals within the selected distance.'
                                   : 'Showing professionals within ${_distanceFilterKm.round()} km.',
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
@@ -2445,17 +2456,21 @@ class _CustomerActionBar extends StatelessWidget {
   final int favoriteCount;
   final VoidCallback onAutoMatch;
   final VoidCallback onPostJob;
+  final VoidCallback onEstimator;
   final VoidCallback onJobs;
   final VoidCallback onSaved;
   final VoidCallback onReferral;
+  final VoidCallback onGuide;
 
   const _CustomerActionBar({
     required this.favoriteCount,
     required this.onAutoMatch,
     required this.onPostJob,
+    required this.onEstimator,
     required this.onJobs,
     required this.onSaved,
     required this.onReferral,
+    required this.onGuide,
   });
 
   @override
@@ -2475,35 +2490,48 @@ class _CustomerActionBar extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          children: [
-            _BottomAction(
-              label: 'Match',
-              icon: Icons.auto_awesome_rounded,
-              onTap: onAutoMatch,
-              highlighted: true,
-            ),
-            _BottomAction(
-              label: 'Post',
-              icon: Icons.post_add_rounded,
-              onTap: onPostJob,
-            ),
-            _BottomAction(
-              label: 'My Jobs',
-              icon: Icons.work_history_rounded,
-              onTap: onJobs,
-            ),
-            _BottomAction(
-              label: favoriteCount > 0 ? 'Saved $favoriteCount' : 'Saved',
-              icon: Icons.bookmark_rounded,
-              onTap: onSaved,
-            ),
-            _BottomAction(
-              label: 'Referral',
-              icon: Icons.card_giftcard_rounded,
-              onTap: onReferral,
-            ),
-          ],
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _BottomAction(
+                label: 'Match',
+                icon: Icons.auto_awesome_rounded,
+                onTap: onAutoMatch,
+                highlighted: true,
+              ),
+              _BottomAction(
+                label: 'AI',
+                icon: Icons.psychology_rounded,
+                onTap: onEstimator,
+              ),
+              _BottomAction(
+                label: 'Post',
+                icon: Icons.post_add_rounded,
+                onTap: onPostJob,
+              ),
+              _BottomAction(
+                label: 'My Jobs',
+                icon: Icons.work_history_rounded,
+                onTap: onJobs,
+              ),
+              _BottomAction(
+                label: favoriteCount > 0 ? 'Saved $favoriteCount' : 'Saved',
+                icon: Icons.bookmark_rounded,
+                onTap: onSaved,
+              ),
+              _BottomAction(
+                label: 'Referral',
+                icon: Icons.card_giftcard_rounded,
+                onTap: onReferral,
+              ),
+              _BottomAction(
+                label: 'Guide',
+                icon: Icons.menu_book_rounded,
+                onTap: onGuide,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2526,7 +2554,8 @@ class _BottomAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = highlighted ? AppColors.primary : AppColors.textSecondary;
-    return Expanded(
+    return SizedBox(
+      width: 76,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),

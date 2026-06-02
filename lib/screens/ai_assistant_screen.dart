@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import 'package:intl/intl.dart';
@@ -22,10 +22,9 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   @override
   void initState() {
     super.initState();
-    // Welcome message
     _messages.add(_ChatMsg(
       text:
-          'Assalam-o-Alaikum! ðŸ‘‹\n\nMain HirePro ka AI Assistant hoon (Groq llama3 powered).\n\nMain aapki help kar sakta hoon:\nâ€¢ Sahi service type find karna\nâ€¢ EasyPaisa payment process samajhna\nâ€¢ Booking related questions\nâ€¢ Professionals ke baare mein\n\nKya poochna hai?',
+          'Hello! 👋\n\nI am the HirePro AI Assistant.\n\nI can help you with:\n• Finding the right service type\n• Understanding payment steps\n• Booking questions\n• Professional profile guidance\n\nWhat would you like to ask?',
       isAI: true,
       time: DateTime.now(),
     ));
@@ -46,7 +45,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('ðŸ¤–', style: TextStyle(fontSize: 20)),
+                child: Icon(Icons.smart_toy_rounded,
+                    color: AppColors.groqPurple, size: 20),
               ),
             ),
             const SizedBox(width: 12),
@@ -71,7 +71,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                 _messages.clear();
                 _history.clear();
                 _messages.add(_ChatMsg(
-                  text: 'Chat cleared! Koi naya sawal puchein.',
+                  text: 'Chat cleared. Ask a new question.',
                   isAI: true,
                   time: DateTime.now(),
                 ));
@@ -91,19 +91,17 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               child: Row(
                 children: [
                   _QuickChip(
-                      'ðŸ’¡ Recommend a service',
+                      'Recommend a service',
                       () => _quickSend(
-                          'Meri nali band ho gayi hai, kya karoon?')),
+                          'My kitchen drain is blocked. Which service do I need?')),
+                  _QuickChip('Payment help',
+                      () => _quickSend('How do I pay for a booking?')),
                   _QuickChip(
-                      'ðŸ’¸ EasyPaisa kaise karein?',
-                      () =>
-                          _quickSend('EasyPaisa se payment kaise karte hain?')),
-                  _QuickChip(
-                      'ðŸ“‹ Booking process?',
+                      'Booking process?',
                       () => _quickSend(
-                          'Professional hire karne ka process kya hai?')),
-                  _QuickChip('â­ Rating system?',
-                      () => _quickSend('Rating kaise dete hain?')),
+                          'What is the process to hire a professional?')),
+                  _QuickChip('Rating system?',
+                      () => _quickSend('How do I rate a professional?')),
                 ],
               ),
             ),
@@ -137,7 +135,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                       maxLines: 3,
                       minLines: 1,
                       decoration: InputDecoration(
-                        hintText: 'Kuch bhi puchein...',
+                        hintText: 'Ask anything...',
                         filled: true,
                         fillColor: const Color(0xFFF5F5F5),
                         border: OutlineInputBorder(
@@ -199,7 +197,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     try {
       final response = await _api.sendAIMessage(text, _history);
       final reply =
-          response['data']['reply'] ?? 'Sorry, koi response nahi mila.';
+          response['data']['reply'] ?? 'Sorry, no response was received.';
 
       _history.add({'role': 'assistant', 'content': reply});
 
@@ -216,7 +214,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         setState(() {
           _messages.add(_ChatMsg(
             text:
-                'AI assistant abhi unavailable hai. Internet connection check karein.',
+                'AI assistant is currently unavailable. Please check your internet connection.',
             isAI: true,
             time: DateTime.now(),
           ));
@@ -266,7 +264,7 @@ class _MessageBubble extends StatelessWidget {
             if (msg.isAI)
               const Padding(
                 padding: EdgeInsets.only(left: 4, bottom: 4),
-                child: Text('ðŸ¤– AI Assistant',
+                child: Text('AI Assistant',
                     style: TextStyle(
                         fontSize: 11,
                         color: AppColors.groqPurple,
@@ -339,7 +337,8 @@ class _TypingIndicator extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('ðŸ¤– ', style: TextStyle(fontSize: 14)),
+            const Icon(Icons.smart_toy_rounded,
+                size: 14, color: AppColors.groqPurple),
             const SizedBox(width: 4),
             const SizedBox(
               width: 40,

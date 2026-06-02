@@ -21,6 +21,8 @@ import 'screens/role_selection_screen.dart';
 import 'screens/gender_verification_screen.dart';
 import 'screens/customer_home_screen.dart';
 import 'screens/customer_jobs_screen.dart';
+import 'screens/ai_estimator_screen.dart';
+import 'screens/app_feature_guide_screen.dart';
 import 'screens/professional_setup_screen.dart';
 import 'screens/professional_dashboard.dart';
 import 'screens/professional_profile_screen.dart';
@@ -89,6 +91,8 @@ class ServiceConnectApp extends StatelessWidget {
           },
           '/customer-home': (ctx) => const CustomerHomeScreen(),
           '/customer-jobs': (ctx) => const CustomerJobsScreen(),
+          '/ai-estimator': (ctx) => const AiEstimatorScreen(),
+          '/feature-guide': (ctx) => const AppFeatureGuideScreen(),
           '/professional-setup': (ctx) => const ProfessionalSetupScreen(),
           '/professional-home': (ctx) => const ProfessionalDashboard(),
           '/wallet': (ctx) => const WalletScreen(),

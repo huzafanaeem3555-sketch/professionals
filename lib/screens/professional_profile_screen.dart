@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unnecessary_null_comparison, unnecessary_non_null_assertion, invalid_null_aware_operator, dead_null_aware_expression
+// ignore_for_file: unnecessary_null_comparison, unnecessary_non_null_assertion, invalid_null_aware_operator, dead_null_aware_expression
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -761,7 +761,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       method: method,
       phoneNumber: pro.phone,
       message:
-          'Assalam-o-Alaikum, I found your profile on HirePro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
+          'Hello, I found your profile on HirePro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
     );
     final launched = await launchContactUri(uri);
     if (!launched && context.mounted) {

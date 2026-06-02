@@ -586,7 +586,7 @@ class _OfferCard extends StatelessWidget {
                             method: ContactMethod.whatsapp,
                             phoneNumber: phone,
                             message:
-                                'Assalam-o-Alaikum, I saw your offer on my HirePro job.',
+                                'Hello, I saw your offer on my HirePro job.',
                           )),
                   icon: const Icon(Icons.chat_rounded, color: Colors.white),
                   label: const Text('Contact on WhatsApp'),

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -598,7 +598,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                                 method: ContactMethod.whatsapp,
                                 phoneNumber: customerPhone,
                                 message:
-                                    'Assalam-o-Alaikum, I saw your HirePro job and can help.',
+                                    'Hello, I saw your HirePro job and can help.',
                               )),
                       icon: const Icon(Icons.chat_rounded),
                       label: const Text('WhatsApp Customer'),
@@ -728,10 +728,44 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _GrowthOverview(
+          contacts: _leads.length,
+          jobs: _jobPosts.length,
+          packages: _servicePackages.length,
+          certificates: _certificates.length,
+        ),
+        const SizedBox(height: 12),
+        _ToolCard(
+          title: 'Featured Professional Plans',
+          subtitle:
+              'Monthly plans: Basic, Featured, and Premium. Contact admin on WhatsApp 03195682936 to activate top placement.',
+          icon: Icons.workspace_premium_rounded,
+          button: 'View Plans',
+          onPressed: _showFeaturedPlans,
+        ),
+        const SizedBox(height: 12),
+        _ToolCard(
+          title: 'Sponsored Services',
+          subtitle:
+              'Request paid sponsored visibility on service category pages. Admin approval is required.',
+          icon: Icons.ads_click_rounded,
+          button: 'Request Sponsored Ad',
+          onPressed: _requestSponsoredAd,
+        ),
+        const SizedBox(height: 12),
+        _ToolCard(
+          title: 'Professional Analytics',
+          subtitle:
+              'Track contacts, job opportunities, ranking signals, service packages, and growth performance.',
+          icon: Icons.insights_rounded,
+          button: 'Open Analytics',
+          onPressed: _showAnalytics,
+        ),
+        const SizedBox(height: 12),
         _ToolCard(
           title: 'Featured Listing',
           subtitle:
-              'Paid top listing ke liye WhatsApp 03195682936 par admin se contact karein.',
+              'Send a featured request, then contact admin on WhatsApp 03195682936 for monthly payment.',
           icon: Icons.campaign_rounded,
           button: 'Request Featured',
           onPressed: _requestFeatured,
@@ -740,7 +774,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
         _ToolCard(
           title: 'Skill Certificate',
           subtitle:
-              'License/certificate link add karein. Admin review ke liye save ho jayega.',
+              'Add a license or certificate link. Admin can review it from the panel.',
           icon: Icons.workspace_premium_rounded,
           button: 'Upload Certificate',
           onPressed: _uploadCertificate,
@@ -749,7 +783,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
         _ToolCard(
           title: 'Service Packages',
           subtitle:
-              'Fixed price packages add karein, jaise AC service PKR 2500 ya deep cleaning PKR 6000.',
+              'Create fixed-price packages such as AC service PKR 2500 or deep cleaning PKR 6000.',
           icon: Icons.sell_rounded,
           button: 'Add Package',
           onPressed: _addServicePackage,
@@ -880,6 +914,105 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
             : res['message']?.toString() ?? 'Request failed'),
         backgroundColor:
             res['success'] == true ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
+
+  Future<void> _requestSponsoredAd() async {
+    await launchContactUri(contactUriFor(
+      method: ContactMethod.whatsapp,
+      phoneNumber: '03195682936',
+      message:
+          'Hello HirePro admin, I want to activate a sponsored service ad for my professional profile. My name: $_name',
+    ));
+  }
+
+  Future<void> _showFeaturedPlans() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Featured Professional Plans'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            _PlanRow(
+              title: 'Basic',
+              detail:
+                  'Profile boost, plan request support, and visibility review.',
+            ),
+            _PlanRow(
+              title: 'Featured',
+              detail:
+                  'Featured badge plus higher placement in service listings.',
+            ),
+            _PlanRow(
+              title: 'Premium',
+              detail:
+                  'Top listing, sponsored category visibility, and analytics access.',
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Monthly payment is handled by admin. Contact 03195682936 on WhatsApp.',
+              style: TextStyle(color: AppColors.textSecondary, height: 1.35),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _requestSponsoredAd();
+            },
+            child: const Text('Contact Admin'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAnalytics() async {
+    final rankingScore = (_leads.length * 12) +
+        (_jobPosts.length * 3) +
+        (_servicePackages.length * 8) +
+        (_certificates.length * 10) +
+        (_isAvailable ? 15 : 0);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Professional Analytics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AnalyticsLine('Profile contacts', '${_leads.length}'),
+            _AnalyticsLine('Available jobs', '${_jobPosts.length}'),
+            _AnalyticsLine('Service packages', '${_servicePackages.length}'),
+            _AnalyticsLine('Certificates', '${_certificates.length}'),
+            _AnalyticsLine('Ranking score', '$rankingScore'),
+            const SizedBox(height: 10),
+            const Text(
+              'Premium professionals can use analytics to improve ranking, response time, and customer conversion.',
+              style: TextStyle(color: AppColors.textSecondary, height: 1.35),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _requestSponsoredAd();
+            },
+            child: const Text('Upgrade Plan'),
+          ),
+        ],
       ),
     );
   }
@@ -1159,7 +1292,7 @@ class _LeadCard extends StatelessWidget {
                                     method: ContactMethod.whatsapp,
                                     phoneNumber: phone,
                                     message:
-                                        'Assalam-o-Alaikum, I received your request on HirePro.');
+                                        'Hello, I received your request on HirePro.');
                                 await launchContactUri(uri);
                               }
                             : null,
@@ -1279,6 +1412,166 @@ class _ToolCard extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _GrowthOverview extends StatelessWidget {
+  final int contacts;
+  final int jobs;
+  final int packages;
+  final int certificates;
+
+  const _GrowthOverview({
+    required this.contacts,
+    required this.jobs,
+    required this.packages,
+    required this.certificates,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Growth Center',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Use paid plans, sponsored placement, packages, certificates, and analytics to improve customer conversion.',
+            style: TextStyle(color: Colors.white70, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MiniGrowthPill('Contacts', '$contacts'),
+              _MiniGrowthPill('Jobs', '$jobs'),
+              _MiniGrowthPill('Packages', '$packages'),
+              _MiniGrowthPill('Certificates', '$certificates'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniGrowthPill extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MiniGrowthPill(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanRow extends StatelessWidget {
+  final String title;
+  final String detail;
+
+  const _PlanRow({required this.title, required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_rounded,
+              color: AppColors.primary, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  detail,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyticsLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _AnalyticsLine(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }
