@@ -17,6 +17,7 @@ class ProfessionalModel {
   final double hourlyRate;
   final List<String> portfolio;
   final List<String> brochureImages;
+  final List<Map<String, dynamic>> servicePackages;
   final List<ProfessionalReview> reviews;
   final String gender;
   final String verificationStatus;
@@ -43,6 +44,7 @@ class ProfessionalModel {
     this.hourlyRate = 0,
     this.portfolio = const [],
     this.brochureImages = const [],
+    this.servicePackages = const [],
     this.reviews = const [],
     this.gender = 'male',
     this.verificationStatus = 'verified',
@@ -68,6 +70,22 @@ class ProfessionalModel {
       if (value is int) return value.toDouble();
       if (value is String) return double.tryParse(value) ?? 0;
       return 0;
+    }
+
+    List<Map<String, dynamic>> packageList(dynamic value) {
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      if (value is Map) {
+        return value.values
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return const [];
     }
 
     return ProfessionalModel(
@@ -103,6 +121,7 @@ class ProfessionalModel {
           : (json['bannerImages'] is List)
               ? List<String>.from(json['bannerImages'])
               : const [],
+      servicePackages: packageList(json['servicePackages']),
       reviews: (json['reviews'] is List)
           ? (json['reviews'] as List)
               .whereType<Map>()
@@ -139,6 +158,7 @@ class ProfessionalModel {
       'hourlyRate': hourlyRate,
       'portfolio': portfolio,
       'brochureImages': brochureImages,
+      'servicePackages': servicePackages,
       'reviews': reviews.map((e) => e.toJson()).toList(),
       'gender': gender,
       'verificationStatus': verificationStatus,
@@ -167,6 +187,7 @@ class ProfessionalModel {
     double? hourlyRate,
     List<String>? portfolio,
     List<String>? brochureImages,
+    List<Map<String, dynamic>>? servicePackages,
     List<ProfessionalReview>? reviews,
     String? gender,
     String? verificationStatus,
@@ -193,6 +214,7 @@ class ProfessionalModel {
       hourlyRate: hourlyRate ?? this.hourlyRate,
       portfolio: portfolio ?? this.portfolio,
       brochureImages: brochureImages ?? this.brochureImages,
+      servicePackages: servicePackages ?? this.servicePackages,
       reviews: reviews ?? this.reviews,
       gender: gender ?? this.gender,
       verificationStatus: verificationStatus ?? this.verificationStatus,
@@ -228,7 +250,7 @@ class ProfessionalModel {
 
   List<String> get serviceTypes => allServices;
   bool get isAvailableNow => isAvailable;
-  List<dynamic> get fixedPriceServices => const [];
+  List<dynamic> get fixedPriceServices => servicePackages;
   double get lat => location.lat;
   double get lng => location.lng;
   String get address => location.address;

@@ -1,4 +1,4 @@
-import 'package:firebase_database/firebase_database.dart';
+﻿import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,8 +20,8 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
-    'service_connect_channel',
-    'Hirepro Alerts',
+    'HirePro_channel',
+    'HirePro Alerts',
     description: 'Notifications for customer and professional actions',
     importance: Importance.high,
   );
@@ -117,7 +117,7 @@ class NotificationService {
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
     final title = message.notification?.title ??
         message.data['title']?.toString() ??
-        'Hirepro';
+        'HirePro';
     final body =
         message.notification?.body ?? message.data['body']?.toString() ?? '';
 

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -34,6 +34,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   List<Map<String, dynamic>> _leads = [];
   List<Map<String, dynamic>> _jobPosts = [];
   List<Map<String, dynamic>> _certificates = [];
+  List<Map<String, dynamic>> _servicePackages = [];
 
   @override
   void initState() {
@@ -75,6 +76,18 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
               : 'male';
           _photoURL = data['photoURL']?.toString() ?? '';
           _isAvailable = data['isAvailable'] ?? true;
+          final packages = data['servicePackages'];
+          _servicePackages = packages is Map
+              ? packages.values
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : packages is List
+                  ? packages
+                      .whereType<Map>()
+                      .map((e) => Map<String, dynamic>.from(e))
+                      .toList()
+                  : [];
           _loadingProfile = false;
         });
       } else if (mounted) {
@@ -521,6 +534,8 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           final budget = (job['budget'] ?? 0).toString();
           final customerPhone = (job['customerPhone'] ?? '').toString();
           final status = (job['status'] ?? 'open').toString();
+          final isUrgent = job['isUrgent'] == true ||
+              job['priority']?.toString() == 'urgent';
           final selectedForMe =
               (job['selectedProfessionalId'] ?? '').toString().isNotEmpty;
           return Container(
@@ -534,12 +549,35 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  service.replaceAll('_', ' '),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        service.replaceAll('_', ' '),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (isUrgent)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Need Now',
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(desc,
@@ -560,7 +598,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                                 method: ContactMethod.whatsapp,
                                 phoneNumber: customerPhone,
                                 message:
-                                    'Assalam-o-Alaikum, I saw your Hirepro job and can help.',
+                                    'Assalam-o-Alaikum, I saw your HirePro job and can help.',
                               )),
                       icon: const Icon(Icons.chat_rounded),
                       label: const Text('WhatsApp Customer'),
@@ -707,6 +745,39 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           button: 'Upload Certificate',
           onPressed: _uploadCertificate,
         ),
+        const SizedBox(height: 12),
+        _ToolCard(
+          title: 'Service Packages',
+          subtitle:
+              'Fixed price packages add karein, jaise AC service PKR 2500 ya deep cleaning PKR 6000.',
+          icon: Icons.sell_rounded,
+          button: 'Add Package',
+          onPressed: _addServicePackage,
+        ),
+        if (_servicePackages.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          const Text(
+            'Service Packages',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._servicePackages.map((pkg) => ListTile(
+                leading:
+                    const Icon(Icons.sell_rounded, color: AppColors.primary),
+                title: Text(pkg['title']?.toString() ?? 'Package'),
+                subtitle: Text(pkg['description']?.toString() ?? ''),
+                trailing: Text(
+                  'PKR ${pkg['price'] ?? 0}',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )),
+        ],
         if (_certificates.isNotEmpty) ...[
           const SizedBox(height: 18),
           const Text(
@@ -723,6 +794,79 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
               )),
         ],
       ],
+    );
+  }
+
+  Future<void> _addServicePackage() async {
+    final titleCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Service Package'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Package title',
+                hintText: 'AC service',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: priceCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Price PKR'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: descCtrl,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Short details',
+                hintText: 'What is included?',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    final title = titleCtrl.text.trim();
+    final price = double.tryParse(priceCtrl.text.trim()) ?? 0;
+    final description = descCtrl.text.trim();
+    titleCtrl.dispose();
+    priceCtrl.dispose();
+    descCtrl.dispose();
+    if (ok != true || title.isEmpty || price <= 0) return;
+    final uid =
+        await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    await _db.child('professionals/$uid/servicePackages').push().set({
+      'title': title,
+      'price': price.round(),
+      'description': description,
+      'createdAt': DateTime.now().millisecondsSinceEpoch,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Service package saved. Customers can see it.'),
+        backgroundColor: AppColors.success,
+      ),
     );
   }
 
@@ -1015,7 +1159,7 @@ class _LeadCard extends StatelessWidget {
                                     method: ContactMethod.whatsapp,
                                     phoneNumber: phone,
                                     message:
-                                        'Assalam-o-Alaikum, I received your request on Hirepro.');
+                                        'Assalam-o-Alaikum, I received your request on HirePro.');
                                 await launchContactUri(uri);
                               }
                             : null,

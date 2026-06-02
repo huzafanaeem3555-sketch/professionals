@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-/// Google Maps / Geocoding — must match AndroidManifest meta-data API key.
+/// Google Maps / Geocoding â€” must match AndroidManifest meta-data API key.
 class MapConstants {
   static const String googleMapsApiKey =
       'AIzaSyA2jauIr0PY3aEEsAEJ0CFTGWi_yaTSMiw';
@@ -25,7 +25,7 @@ class ApiConstants {
   // IMPORTANT: Set this to FALSE for production server
   // Set this to TRUE for local testing
   // ============================================================
-  static const bool isDevelopment = false; // ✅ PRODUCTION MODE
+  static const bool isDevelopment = false; // âœ… PRODUCTION MODE
 
   static String get baseUrl {
     // For local development testing
@@ -171,26 +171,26 @@ class AppColors {
 
 /// App Strings
 class AppStrings {
-  static const String appName = 'Hirepro';
+  static const String appName = 'HirePro';
   static const String appTagline = 'Your trusted professional network';
 
   static const List<Map<String, dynamic>> serviceCategories = [
-    {'name': 'Plumber', 'icon': '🔧', 'key': 'plumber'},
-    {'name': 'Electrician', 'icon': '⚡', 'key': 'electrician'},
-    {'name': 'Carpenter', 'icon': '🪚', 'key': 'carpenter'},
-    {'name': 'AC Mechanic', 'icon': '❄️', 'key': 'ac_mechanic'},
-    {'name': 'Painter', 'icon': '🎨', 'key': 'painter'},
-    {'name': 'Cleaner', 'icon': '🧹', 'key': 'cleaner'},
-    {'name': 'Tutor', 'icon': '📚', 'key': 'tutor'},
-    {'name': 'Driver', 'icon': '🚗', 'key': 'driver'},
-    {'name': 'Chef', 'icon': '👨‍🍳', 'key': 'chef'},
-    {'name': 'Beautician', 'icon': '💄', 'key': 'beautician'},
-    {'name': 'IT Technician', 'icon': '💻', 'key': 'it_technician'},
-    {'name': 'Security Guard', 'icon': '👮', 'key': 'security_guard'},
-    {'name': 'Gardener', 'icon': '🌱', 'key': 'gardener'},
-    {'name': 'Mechanic', 'icon': '🔩', 'key': 'mechanic'},
-    {'name': 'Welder', 'icon': '🔥', 'key': 'welder'},
-    {'name': 'Mason', 'icon': '🧱', 'key': 'mason'},
+    {'name': 'Plumber', 'icon': 'ðŸ”§', 'key': 'plumber'},
+    {'name': 'Electrician', 'icon': 'âš¡', 'key': 'electrician'},
+    {'name': 'Carpenter', 'icon': 'ðŸªš', 'key': 'carpenter'},
+    {'name': 'AC Mechanic', 'icon': 'â„ï¸', 'key': 'ac_mechanic'},
+    {'name': 'Painter', 'icon': 'ðŸŽ¨', 'key': 'painter'},
+    {'name': 'Cleaner', 'icon': 'ðŸ§¹', 'key': 'cleaner'},
+    {'name': 'Tutor', 'icon': 'ðŸ“š', 'key': 'tutor'},
+    {'name': 'Driver', 'icon': 'ðŸš—', 'key': 'driver'},
+    {'name': 'Chef', 'icon': 'ðŸ‘¨â€ðŸ³', 'key': 'chef'},
+    {'name': 'Beautician', 'icon': 'ðŸ’„', 'key': 'beautician'},
+    {'name': 'IT Technician', 'icon': 'ðŸ’»', 'key': 'it_technician'},
+    {'name': 'Security Guard', 'icon': 'ðŸ‘®', 'key': 'security_guard'},
+    {'name': 'Gardener', 'icon': 'ðŸŒ±', 'key': 'gardener'},
+    {'name': 'Mechanic', 'icon': 'ðŸ”©', 'key': 'mechanic'},
+    {'name': 'Welder', 'icon': 'ðŸ”¥', 'key': 'welder'},
+    {'name': 'Mason', 'icon': 'ðŸ§±', 'key': 'mason'},
   ];
 
   static const List<String> popularServices = [
@@ -208,7 +208,7 @@ class ServiceLabels {
   static Map<String, dynamic> labelFor(String key) {
     final cat = AppStrings.serviceCategories.firstWhere(
       (c) => c['key'] == key,
-      orElse: () => {'name': key, 'icon': '📌', 'key': key},
+      orElse: () => {'name': key, 'icon': 'ðŸ“Œ', 'key': key},
     );
     return cat;
   }

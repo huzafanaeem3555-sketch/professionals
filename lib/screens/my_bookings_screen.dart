@@ -5,6 +5,7 @@ import '../utils/constants.dart';
 import '../services/storage_service.dart';
 import '../services/firebase_service.dart';
 import '../models/booking_model.dart';
+import 'booking_screen.dart';
 import 'booking_tracking_screen.dart';
 import 'customer_booking_detail.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -126,7 +127,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   void _openChat(Map<String, dynamic> booking) {
-    final proId = booking['professionalId']?.toString() ?? booking['professionalPhone']?.toString() ?? '';
+    final proId = booking['professionalId']?.toString() ??
+        booking['professionalPhone']?.toString() ??
+        '';
     final proName = booking['professionalName']?.toString() ?? 'Professional';
     Navigator.pushNamed(context, '/chat', arguments: {
       'otherUserId': proId,
@@ -170,6 +173,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       context,
       MaterialPageRoute(
         builder: (_) => CustomerBookingDetailScreen(booking: booking),
+      ),
+    );
+  }
+
+  void _repeatBooking(Map<String, dynamic> booking) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingScreen(
+          professionalId: booking['professionalId']?.toString(),
+          serviceType: booking['serviceType']?.toString(),
+        ),
       ),
     );
   }
@@ -227,15 +242,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Skip')),
+                onPressed: () => Navigator.pop(ctx), child: const Text('Skip')),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 await _firebase.rateBooking(
                   booking['bookingId'],
                   rating,
-                  reviewCtrl.text.trim().isEmpty ? null : reviewCtrl.text.trim(),
+                  reviewCtrl.text.trim().isEmpty
+                      ? null
+                      : reviewCtrl.text.trim(),
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -246,8 +262,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
               child: const Text('Submit'),
             ),
           ],
@@ -268,9 +284,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     ];
     final active =
         _bookings.where((b) => activeStatuses.contains(b['status'])).toList();
-    final done = _bookings
-        .where((b) => !activeStatuses.contains(b['status']))
-        .toList();
+    final done =
+        _bookings.where((b) => !activeStatuses.contains(b['status'])).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -325,8 +340,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               isActive
                   ? 'Book a professional from the home screen'
                   : 'Completed bookings will appear here',
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],
@@ -349,6 +364,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           onDetail: () => _openBookingDetail(list[i]),
           onCancel: () => _cancelBooking(list[i]['bookingId']),
           onRate: () => _rateBooking(list[i]),
+          onRepeat: () => _repeatBooking(list[i]),
         ),
       ),
     );
@@ -366,6 +382,7 @@ class _BookingCard extends StatelessWidget {
   final VoidCallback onDetail;
   final VoidCallback onCancel;
   final VoidCallback onRate;
+  final VoidCallback onRepeat;
 
   const _BookingCard({
     required this.booking,
@@ -377,6 +394,7 @@ class _BookingCard extends StatelessWidget {
     required this.onDetail,
     required this.onCancel,
     required this.onRate,
+    required this.onRepeat,
   });
 
   String _statusLabel(String status) {
@@ -457,23 +475,21 @@ class _BookingCard extends StatelessWidget {
           // Status header bar
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.08),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(20)),
               border: Border(
-                  bottom:
-                      BorderSide(color: statusColor.withOpacity(0.15))),
+                  bottom: BorderSide(color: statusColor.withOpacity(0.15))),
             ),
             child: Row(
               children: [
                 Container(
                   width: 9,
                   height: 9,
-                  decoration: BoxDecoration(
-                      color: statusColor, shape: BoxShape.circle),
+                  decoration:
+                      BoxDecoration(color: statusColor, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -614,6 +630,13 @@ class _BookingCard extends StatelessWidget {
                         ),
                       if (isCompleted && (booking['customerRating'] == null))
                         _actionButton('⭐ Rate', AppColors.star, onRate),
+                      if (isCompleted)
+                        _actionButton(
+                          'Repeat',
+                          AppColors.primary,
+                          onRepeat,
+                          filled: true,
+                        ),
                       if (isActive &&
                           !isCompleted &&
                           !isConfirmed &&
@@ -642,7 +665,9 @@ class _BookingCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
-          color: filled ? color : (isOutline ? Colors.transparent : color.withOpacity(0.08)),
+          color: filled
+              ? color
+              : (isOutline ? Colors.transparent : color.withOpacity(0.08)),
           borderRadius: BorderRadius.circular(10),
           border: isOutline ? Border.all(color: color, width: 1.5) : null,
         ),

@@ -29,6 +29,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   final _firebase = FirebaseService();
   final _api = ApiService();
   final _searchCtrl = TextEditingController();
+  final _areaCtrl = TextEditingController();
 
   double _lat = 0;
   double _lng = 0;
@@ -39,6 +40,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   Set<String> _favoriteIds = {};
   int _activeBookingsCount = 0;
   String? _filterService;
+  String _areaFilter = '';
   String _myArea = '';
   bool _loading = true;
   bool _booking = false;
@@ -72,6 +74,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   void dispose() {
     _aiSuggestDebounce?.cancel();
     _searchCtrl.dispose();
+    _areaCtrl.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
@@ -210,6 +213,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (_lat != 0 && _lng != 0 && _distanceFilterKm > 0) {
       list =
           list.where((p) => (p.distance ?? 999) <= _distanceFilterKm).toList();
+    }
+    if (_areaFilter.trim().isNotEmpty) {
+      final area = _normalizeSearchText(_areaFilter);
+      list = list.where((p) {
+        final address = _normalizeSearchText(p.address);
+        final serviceText = _normalizeSearchText(p.serviceText);
+        return address.contains(area) || serviceText.contains(area);
+      }).toList();
     }
     if (_filterService != null && _filterService!.isNotEmpty) {
       list = list.where((p) {
@@ -401,8 +412,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'wiring',
         'fan',
         'switch',
-        'بجلی',
-        'پنکھا',
+        'Ø¨Ø¬Ù„ÛŒ',
+        'Ù¾Ù†Ú©Ú¾Ø§',
       ],
       'plumber': [
         'plumber',
@@ -412,8 +423,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'nal',
         'tap',
         'bathroom',
-        'پانی',
-        'نل',
+        'Ù¾Ø§Ù†ÛŒ',
+        'Ù†Ù„',
       ],
       'carpenter': [
         'carpenter',
@@ -422,7 +433,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'door',
         'darwaza',
         'lakri',
-        'لکڑی',
+        'Ù„Ú©Ú‘ÛŒ',
       ],
       'ac_mechanic': [
         'ac',
@@ -433,11 +444,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'refrigerator',
         'thanda',
       ],
-      'painter': ['paint', 'painter', 'rang', 'wall', 'رنگ'],
-      'cleaner': ['clean', 'cleaner', 'safai', 'صفائی'],
+      'painter': ['paint', 'painter', 'rang', 'wall', 'Ø±Ù†Ú¯'],
+      'cleaner': ['clean', 'cleaner', 'safai', 'ØµÙØ§Ø¦ÛŒ'],
       'tutor': ['teacher', 'tutor', 'study', 'parhai', 'math', 'english'],
-      'driver': ['driver', 'car', 'gaari', 'gari', 'گاڑی'],
-      'chef': ['cook', 'chef', 'cooking', 'khana', 'کھانا'],
+      'driver': ['driver', 'car', 'gaari', 'gari', 'Ú¯Ø§Ú‘ÛŒ'],
+      'chef': ['cook', 'chef', 'cooking', 'khana', 'Ú©Ú¾Ø§Ù†Ø§'],
       'beautician': ['beauty', 'salon', 'makeup', 'mehndi', 'bridal'],
       'it_technician': [
         'computer',
@@ -1054,70 +1065,83 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController();
     final radiusCtrl = TextEditingController(text: '10');
+    var urgent = false;
     final post = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Post a Job'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Job title',
-                  border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Post a Job'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SwitchListTile.adaptive(
+                  value: urgent,
+                  onChanged: (value) => setDialogState(() => urgent = value),
+                  contentPadding: EdgeInsets.zero,
+                  activeColor: AppColors.error,
+                  title: const Text('Need Now'),
+                  subtitle:
+                      const Text('Send priority alert to nearby online pros.'),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: serviceCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Service',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Job title',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descCtrl,
-                minLines: 3,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Work details',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: serviceCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Service',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: budgetCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Budget PKR',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: descCtrl,
+                  minLines: 3,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Work details',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: radiusCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Radius KM',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: budgetCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Budget PKR',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                TextField(
+                  controller: radiusCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Radius KM',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(urgent ? 'Post Urgent' : 'Post'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Post'),
-          ),
-        ],
       ),
     );
     final title = titleCtrl.text.trim();
@@ -1139,6 +1163,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       'description': desc,
       'budget': budget,
       'radiusKm': radius,
+      'isUrgent': urgent,
+      'priority': urgent ? 'urgent' : 'normal',
       'location': contactLocation['location'],
       'address': contactLocation['address'],
     });
@@ -1146,7 +1172,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (res['success'] == true) {
       await NotificationService.showLocal(
         title: 'Job posted',
-        body: 'Your job is live. Professionals will receive a phone alert.',
+        body: urgent
+            ? 'Urgent job is live. Nearby professionals will receive priority alert.'
+            : 'Your job is live. Professionals will receive a phone alert.',
       );
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1308,7 +1336,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         method: method,
         phoneNumber: pro.phone,
         message:
-            'Assalam-o-Alaikum, I found your profile on Hirepro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
+            'Assalam-o-Alaikum, I found your profile on HirePro and want to contact you about ${serviceType.replaceAll('_', ' ')}.',
       );
 
       final launched = await launchContactUri(uri);
@@ -1580,7 +1608,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
               onRefresh: _load,
               child: CustomScrollView(
                 slivers: [
-                  // ── App bar / Hero ──────────────────────────────────────
+                  // â”€â”€ App bar / Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverAppBar(
                     expandedHeight: 220,
                     floating: false,
@@ -1729,7 +1757,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     ],
                   ),
 
-                  // ── Search bar ──────────────────────────────────────────
+                  // â”€â”€ Search bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -1904,7 +1932,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       ),
                     ),
 
-                  // ── Category filter chips ───────────────────────────────
+                  // â”€â”€ Category filter chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
@@ -1993,6 +2021,37 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                 height: 1.35,
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _areaCtrl,
+                              onChanged: (value) {
+                                setState(() {
+                                  _areaFilter = value;
+                                  _applyFilter();
+                                });
+                              },
+                              decoration: InputDecoration(
+                                labelText: 'Area / city filter',
+                                hintText: 'Example: Lahore, DHA, Saddar',
+                                prefixIcon: const Icon(
+                                  Icons.location_city_rounded,
+                                  color: AppColors.primary,
+                                ),
+                                suffixIcon: _areaFilter.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Clear area filter',
+                                        icon: const Icon(Icons.close_rounded),
+                                        onPressed: () {
+                                          setState(() {
+                                            _areaCtrl.clear();
+                                            _areaFilter = '';
+                                            _applyFilter();
+                                          });
+                                        },
+                                      ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -2056,39 +2115,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _autoMatchBest,
-                            icon: const Icon(Icons.auto_awesome_rounded),
-                            label: const Text('Auto Match'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _postJobDialog,
-                            icon: const Icon(Icons.post_add_rounded),
-                            label: const Text('Post Job'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _applyReferralDialog,
-                            icon: const Icon(Icons.card_giftcard_rounded),
-                            label: const Text('Referral'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _showSavedProfessionals,
-                            icon: const Icon(Icons.bookmark_rounded),
-                            label: Text('Saved (${_favoriteIds.length})'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
                       child: Row(
                         children: const [
                           Expanded(
@@ -2163,7 +2190,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       ),
                     ),
 
-                  // ── Section header ──────────────────────────────────────
+                  // â”€â”€ Section header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -2199,7 +2226,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     ),
                   ),
 
-                  // ── Professional cards ──────────────────────────────────
+                  // â”€â”€ Professional cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   if (_filtered.isEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
@@ -2271,7 +2298,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   }
 }
 
-// ── Category Chip ─────────────────────────────────────────────────────────────
+// â”€â”€ Category Chip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -2317,7 +2344,7 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-// ── Professional Card ─────────────────────────────────────────────────────────
+// â”€â”€ Professional Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SearchSuggestion {
   final String label;
   final String? serviceKey;
@@ -2570,11 +2597,30 @@ class _ProfessionalCard extends StatelessWidget {
     return icon.isEmpty ? name : '$icon $name';
   }
 
+  List<String> _passportBadges() {
+    final badges = <String>[];
+    if (professional.isFeatured) badges.add('Featured');
+    if (professional.trustScore >= 85) badges.add('Reliable');
+    if (professional.isAvailable) badges.add('Fast Responder');
+    if (professional.rating >= 4.5 && professional.totalRatings >= 3) {
+      badges.add('Top Rated');
+    }
+    if (professional.completedJobs >= 10) badges.add('Repeat Choice');
+    if (badges.isEmpty) badges.add('Verified Profile');
+    return badges.take(3).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final services =
         professional.serviceTypes.take(3).map(_serviceLabel).join(' | ');
     final isAvailable = professional.isAvailable;
+    final badges = _passportBadges();
+    final package = professional.servicePackages.isNotEmpty
+        ? professional.servicePackages.first
+        : null;
+    final packageTitle = package?['title']?.toString() ?? '';
+    final packagePrice = package?['price']?.toString() ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
@@ -2702,6 +2748,38 @@ class _ProfessionalCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: badges
+                            .map(
+                              (badge) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.18),
+                                  ),
+                                ),
+                                child: Text(
+                                  badge,
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
                     ],
                   ),
                 ),
@@ -2796,6 +2874,29 @@ class _ProfessionalCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ],
+            if (packageTitle.isNotEmpty || packagePrice.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${packageTitle.isEmpty ? 'Service Package' : packageTitle}'
+                  '${packagePrice.isEmpty ? '' : ' - PKR $packagePrice'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ],
             const SizedBox(height: 14),

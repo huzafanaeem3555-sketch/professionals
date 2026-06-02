@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import '../utils/constants.dart';
@@ -113,14 +113,19 @@ class _AdminDashboardState extends State<AdminDashboard>
     if (uid.isEmpty) return const SizedBox.shrink();
 
     return Wrap(
-      spacing: 2,
-      runSpacing: 2,
+      spacing: 6,
+      runSpacing: 6,
       children: [
-        IconButton(
-          tooltip: verified ? 'Set pending' : 'Verify account',
-          icon: Icon(
-            verified ? Icons.undo_rounded : Icons.verified_user,
-            color: verified ? AppColors.warning : AppColors.success,
+        OutlinedButton.icon(
+          icon: Icon(verified ? Icons.undo_rounded : Icons.verified_user),
+          label: Text(verified ? 'Set Pending' : 'Verify'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: verified ? AppColors.warning : AppColors.success,
+            side: BorderSide(
+              color: verified ? AppColors.warning : AppColors.success,
+            ),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
           ),
           onPressed: () => _verifyUser(
             uid,
@@ -128,11 +133,16 @@ class _AdminDashboardState extends State<AdminDashboard>
             isActive: !verified ? true : false,
           ),
         ),
-        IconButton(
-          tooltip: active ? 'Deactivate account' : 'Activate account',
-          icon: Icon(
-            active ? Icons.block_rounded : Icons.check_circle_outline,
-            color: active ? Colors.redAccent : AppColors.success,
+        OutlinedButton.icon(
+          icon: Icon(active ? Icons.block_rounded : Icons.check_circle_outline),
+          label: Text(active ? 'Deactivate' : 'Activate'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: active ? Colors.redAccent : AppColors.success,
+            side: BorderSide(
+              color: active ? Colors.redAccent : AppColors.success,
+            ),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
           ),
           onPressed: () => _verifyUser(
             uid,
@@ -141,6 +151,25 @@ class _AdminDashboardState extends State<AdminDashboard>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _adminTextAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.65)),
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+      ),
     );
   }
 
@@ -1788,26 +1817,23 @@ class _AdminDashboardState extends State<AdminDashboard>
           subtitle: serviceTypesString.isEmpty ? null : serviceTypesString,
           actions: [
             _adminUserActions(p),
-            Tooltip(
-              message: 'Edit professional profile fields',
-              child: IconButton(
-                icon: const Icon(Icons.edit, color: AppColors.primary),
-                onPressed: () => _editProfessional(p),
-              ),
+            _adminTextAction(
+              icon: Icons.edit,
+              label: 'Edit',
+              color: AppColors.primary,
+              onPressed: () => _editProfessional(p),
             ),
-            Tooltip(
-              message: 'Open professional reviews',
-              child: IconButton(
-                icon: const Icon(Icons.reviews, color: Colors.amber),
-                onPressed: () => _showProfessionalReviews(p),
-              ),
+            _adminTextAction(
+              icon: Icons.reviews,
+              label: 'Reviews',
+              color: Colors.amber.shade700,
+              onPressed: () => _showProfessionalReviews(p),
             ),
-            Tooltip(
-              message: 'Open full profile details',
-              child: IconButton(
-                icon: const Icon(Icons.info_outline, color: AppColors.primary),
-                onPressed: () => _showUserDetails(p, type: 'professional'),
-              ),
+            _adminTextAction(
+              icon: Icons.info_outline,
+              label: 'Details',
+              color: AppColors.primary,
+              onPressed: () => _showUserDetails(p, type: 'professional'),
             ),
           ],
         );
@@ -1845,24 +1871,19 @@ class _AdminDashboardState extends State<AdminDashboard>
           subtitle: 'Bookings: ${c['totalBookings'] ?? 0}',
           actions: [
             _adminUserActions(c),
-            Tooltip(
-              message: 'Open full customer details',
-              child: IconButton(
-                icon: const Icon(Icons.info_outline, color: AppColors.accent),
-                onPressed: () => _showUserDetails(c, type: 'customer'),
-              ),
+            _adminTextAction(
+              icon: Icons.info_outline,
+              label: 'Details',
+              color: AppColors.primary,
+              onPressed: () => _showUserDetails(c, type: 'customer'),
             ),
-            Tooltip(
-              message: 'Delete customer data',
-              child: IconButton(
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: Colors.redAccent,
-                ),
-                onPressed: () => _deleteUser(
-                  c['uid'] ?? '',
-                  c['displayName'] ?? 'Customer',
-                ),
+            _adminTextAction(
+              icon: Icons.delete_outline_rounded,
+              label: 'Delete',
+              color: Colors.redAccent,
+              onPressed: () => _deleteUser(
+                c['uid'] ?? '',
+                c['displayName'] ?? 'Customer',
               ),
             ),
           ],
@@ -2079,7 +2100,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                                 method: ContactMethod.whatsapp,
                                 phoneNumber: proPhone,
                                 message:
-                                    'Hirepro admin: customer complaint received. Please respond about complaint ID $id.',
+                                    'HirePro admin: customer complaint received. Please respond about complaint ID $id.',
                               )),
                       icon: const Icon(Icons.chat_rounded),
                       label: const Text('WhatsApp Pro'),

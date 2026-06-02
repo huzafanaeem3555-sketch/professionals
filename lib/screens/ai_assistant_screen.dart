@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import 'package:intl/intl.dart';
@@ -25,7 +25,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     // Welcome message
     _messages.add(_ChatMsg(
       text:
-          'Assalam-o-Alaikum! 👋\n\nMain Hirepro ka AI Assistant hoon (Groq llama3 powered).\n\nMain aapki help kar sakta hoon:\n• Sahi service type find karna\n• EasyPaisa payment process samajhna\n• Booking related questions\n• Professionals ke baare mein\n\nKya poochna hai?',
+          'Assalam-o-Alaikum! ðŸ‘‹\n\nMain HirePro ka AI Assistant hoon (Groq llama3 powered).\n\nMain aapki help kar sakta hoon:\nâ€¢ Sahi service type find karna\nâ€¢ EasyPaisa payment process samajhna\nâ€¢ Booking related questions\nâ€¢ Professionals ke baare mein\n\nKya poochna hai?',
       isAI: true,
       time: DateTime.now(),
     ));
@@ -46,7 +46,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Center(
-                child: Text('🤖', style: TextStyle(fontSize: 20)),
+                child: Text('ðŸ¤–', style: TextStyle(fontSize: 20)),
               ),
             ),
             const SizedBox(width: 12),
@@ -91,18 +91,18 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               child: Row(
                 children: [
                   _QuickChip(
-                      '💡 Recommend a service',
+                      'ðŸ’¡ Recommend a service',
                       () => _quickSend(
                           'Meri nali band ho gayi hai, kya karoon?')),
                   _QuickChip(
-                      '💸 EasyPaisa kaise karein?',
+                      'ðŸ’¸ EasyPaisa kaise karein?',
                       () =>
                           _quickSend('EasyPaisa se payment kaise karte hain?')),
                   _QuickChip(
-                      '📋 Booking process?',
+                      'ðŸ“‹ Booking process?',
                       () => _quickSend(
                           'Professional hire karne ka process kya hai?')),
-                  _QuickChip('⭐ Rating system?',
+                  _QuickChip('â­ Rating system?',
                       () => _quickSend('Rating kaise dete hain?')),
                 ],
               ),
@@ -266,7 +266,7 @@ class _MessageBubble extends StatelessWidget {
             if (msg.isAI)
               const Padding(
                 padding: EdgeInsets.only(left: 4, bottom: 4),
-                child: Text('🤖 AI Assistant',
+                child: Text('ðŸ¤– AI Assistant',
                     style: TextStyle(
                         fontSize: 11,
                         color: AppColors.groqPurple,
@@ -339,7 +339,7 @@ class _TypingIndicator extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🤖 ', style: TextStyle(fontSize: 14)),
+            const Text('ðŸ¤– ', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 4),
             const SizedBox(
               width: 40,

@@ -100,6 +100,8 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
                             .toString()
                             .replaceAll('_', ' ');
                         final status = (job['status'] ?? 'open').toString();
+                        final isUrgent = job['isUrgent'] == true ||
+                            job['priority']?.toString() == 'urgent';
                         final offers = _toInt(job['offerCount']);
                         return Card(
                           color: Colors.white,
@@ -140,6 +142,10 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
                                           ),
                                         ),
                                       ),
+                                      if (isUrgent) ...[
+                                        const _StatusPill(status: 'Need Now'),
+                                        const SizedBox(width: 6),
+                                      ],
                                       _StatusPill(status: status),
                                     ],
                                   ),
@@ -344,6 +350,8 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
     final description = (_job['description'] ?? '').toString();
     final budget = (_job['budget'] ?? 0).toString();
     final status = (_job['status'] ?? 'open').toString();
+    final isUrgent =
+        _job['isUrgent'] == true || _job['priority']?.toString() == 'urgent';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -375,6 +383,10 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
                           ),
                         ),
                       ),
+                      if (isUrgent) ...[
+                        const _StatusPill(status: 'Need Now'),
+                        const SizedBox(width: 6),
+                      ],
                       _StatusPill(status: status),
                     ],
                   ),
@@ -574,7 +586,7 @@ class _OfferCard extends StatelessWidget {
                             method: ContactMethod.whatsapp,
                             phoneNumber: phone,
                             message:
-                                'Assalam-o-Alaikum, I saw your offer on my Hirepro job.',
+                                'Assalam-o-Alaikum, I saw your offer on my HirePro job.',
                           )),
                   icon: const Icon(Icons.chat_rounded, color: Colors.white),
                   label: const Text('Contact on WhatsApp'),

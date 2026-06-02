@@ -1,4 +1,4 @@
-package com.serviceconnect.app
+﻿package com.serviceconnect.app
 
 import android.Manifest
 import android.content.Intent
@@ -88,7 +88,7 @@ class MainActivity : FlutterActivity() {
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(
                 RecognizerIntent.EXTRA_PROMPT,
-                "Hirepro service search"
+                "HirePro service search"
             )
         }
         speechRecognizer?.startListening(intent)

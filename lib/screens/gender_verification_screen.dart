@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -24,7 +24,7 @@ class GenderVerificationScreen extends StatelessWidget {
     final name = storedName.isNotEmpty ? storedName : firebaseName;
     final phoneLine = phone.isNotEmpty ? 'Phone: $phone\n' : '';
     final message = Uri.encodeComponent(
-      'Assalam-o-Alaikum, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on Hirepro.\n'
+      'Assalam-o-Alaikum, I want to verify my female ${role == 'professional' ? 'professional' : 'customer'} account on HirePro.\n'
       'Name: ${name.isNotEmpty ? name : 'Please confirm my account'}\n'
       '$phoneLine'
       'I will send my voice note for verification.',

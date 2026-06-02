@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.serviceconnect.app">
@@ -56,7 +56,7 @@
     </queries>
 
     <application
-        android:label="Hirepro"
+        android:label="HirePro"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
@@ -73,7 +73,7 @@
         <!-- Firebase Notification Channel -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="service_connect_channel" />
+            android:value="HirePro_channel" />
 
         <activity
             android:name=".MainActivity"

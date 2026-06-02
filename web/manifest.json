@@ -1,6 +1,6 @@
-{
-    "name": "service_connect",
-    "short_name": "service_connect",
+﻿{
+    "name": "HirePro",
+    "short_name": "HirePro",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
