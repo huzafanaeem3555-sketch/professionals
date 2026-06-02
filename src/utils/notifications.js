@@ -1,5 +1,6 @@
 const { messaging } = require('../config/firebase');
 const { dbGet, dbUpdate, dbPush } = require('../config/firebase');
+const axios = require('axios');
 
 function normalizeData(data = {}) {
   return Object.entries(data || {}).reduce((acc, [key, value]) => {
@@ -12,7 +13,7 @@ function normalizeData(data = {}) {
 async function saveNotificationInboxItem(userId, title, body, data = {}) {
   if (!userId) return null;
   return await dbPush(`userNotifications/${userId}`, {
-    title: title || 'Hirepro',
+    title: title || 'HirePro',
     body: body || '',
     data: normalizeData(data),
     type: data?.type || 'general',
@@ -25,11 +26,34 @@ async function saveNotificationInboxItem(userId, title, body, data = {}) {
 
 async function sendRawNotification(token, title, body, data = {}) {
   if (!token) return { success: false, error: 'No token found' };
-  if (!messaging) return { success: false, error: 'Firebase messaging is not initialized' };
+  if (!messaging) {
+    const serverKey = process.env.FCM_SERVER_KEY || process.env.FIREBASE_SERVER_KEY;
+    if (!serverKey) {
+      return { success: true, inboxOnly: true, error: 'Firebase messaging is not initialized' };
+    }
+    const response = await axios.post(
+      'https://fcm.googleapis.com/fcm/send',
+      {
+        to: token,
+        priority: 'high',
+        notification: { title: title || 'HirePro', body: body || '' },
+        data: normalizeData(data),
+        android: { notification: { channel_id: 'HirePro_channel' } },
+      },
+      {
+        timeout: 12000,
+        headers: {
+          Authorization: `key=${serverKey}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+    return { success: true, response: response.data, provider: 'fcm_http' };
+  }
 
   const message = {
     notification: {
-      title: title || 'Hirepro',
+      title: title || 'HirePro',
       body: body || '',
     },
     data: normalizeData(data),
@@ -38,7 +62,7 @@ async function sendRawNotification(token, title, body, data = {}) {
       priority: 'high',
       notification: {
         sound: 'default',
-        channelId: 'service_connect_channel',
+        channelId: 'HirePro_channel',
         clickAction: 'FLUTTER_NOTIFICATION_CLICK',
       },
     },
@@ -102,9 +126,20 @@ async function sendNotificationToMultipleUsers(userIds, title, body, data = {}) 
       return { success: true, inboxOnly: true, count: 0 };
     }
 
+    if (!messaging) {
+      const results = await Promise.allSettled(
+        tokens.map(token => sendRawNotification(token, title, body, normalizedData)),
+      );
+      return {
+        success: true,
+        provider: 'fcm_http',
+        count: results.filter(item => item.status === 'fulfilled').length,
+      };
+    }
+
     const response = await messaging.sendEachForMulticast({
       notification: {
-        title: title || 'Hirepro',
+        title: title || 'HirePro',
         body: body || '',
       },
       data: normalizedData,
@@ -113,7 +148,7 @@ async function sendNotificationToMultipleUsers(userIds, title, body, data = {}) 
         priority: 'high',
         notification: {
           sound: 'default',
-          channelId: 'service_connect_channel',
+          channelId: 'HirePro_channel',
           clickAction: 'FLUTTER_NOTIFICATION_CLICK',
         },
       },

@@ -186,6 +186,7 @@ const MarketplaceModel = {
       ? payload.location
       : { lat: toNumber(payload.lat), lng: toNumber(payload.lng), address: clean(payload.address) };
     const radiusKm = Math.max(1, Math.min(100, toNumber(payload.radiusKm, 10)));
+    const isUrgent = payload.isUrgent === true || clean(payload.priority).toLowerCase() === 'urgent';
     const post = {
       postId,
       title: clean(payload.title, clean(payload.serviceType, 'Service job')).slice(0, 120),
@@ -197,6 +198,8 @@ const MarketplaceModel = {
       description: clean(payload.description || payload.customerProblem, 'Service needed'),
       budget: toNumber(payload.budget),
       radiusKm,
+      isUrgent,
+      priority: isUrgent ? 'urgent' : 'normal',
       location,
       status: 'open',
       offerCount: 0,
@@ -205,22 +208,33 @@ const MarketplaceModel = {
     };
     await dbSet(`jobPosts/${postId}`, post);
     const professionals = (await ProfessionalModel.getAll()).filter(pro => {
-      return pro.isActive !== false &&
-        pro.isAvailable !== false;
+      if (pro.isActive === false || pro.isAvailable === false) return false;
+      const services = [
+        ...(Array.isArray(pro.services) ? pro.services : []),
+        ...(Array.isArray(pro.customServices) ? pro.customServices : []),
+      ].map(normalizeService);
+      const serviceMatches = services.length === 0 || services.includes(serviceType);
+      const distance = distanceKm(pro.location, post.location);
+      const insideRadius = distance === null || distance <= radiusKm;
+      return serviceMatches && insideRadius;
     });
     await Promise.all(professionals.map(pro =>
       sendNotificationToUser(
         pro.uid,
-        'New job post',
-        `${post.customerName} needs ${post.title}.`,
-        { type: 'job_post', postId, serviceType },
+        isUrgent ? 'Need Now: urgent job near you' : 'New job post',
+        isUrgent
+          ? `${post.customerName} needs urgent ${post.title}. Respond quickly.`
+          : `${post.customerName} needs ${post.title}.`,
+        { type: 'job_post', postId, serviceType, priority: post.priority },
       ).catch(() => null),
     ));
     await sendNotificationToUser(
       customerId,
-      'Job posted',
-      `Your job "${post.title}" is now live for professionals.`,
-      { type: 'job_status_changed', postId, status: 'open' },
+      isUrgent ? 'Urgent job posted' : 'Job posted',
+      isUrgent
+        ? `Your urgent job "${post.title}" is now live for nearby professionals.`
+        : `Your job "${post.title}" is now live for professionals.`,
+      { type: 'job_status_changed', postId, status: 'open', priority: post.priority },
     ).catch(() => null);
     return post;
   },

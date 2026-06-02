@@ -238,7 +238,7 @@ router.post('/test', async (req, res) => {
     const result = await sendNotificationToUser(
       userId, 
       title || 'Test Notification', 
-      body || 'This is a test notification from Hirepro'
+      body || 'This is a test notification from HirePro'
     );
     
     res.json(result);

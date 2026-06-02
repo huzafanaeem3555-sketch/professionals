@@ -108,7 +108,7 @@ const ProfessionalModel = {
 
   // Create new professional profile
   async create(uid, profileData) {
-    const { name, services, customServices, description, phoneNumber, photoURL, location, rating, isAvailable, hourlyRate, experienceYears, brochureImages } = profileData;
+    const { name, services, customServices, description, phoneNumber, photoURL, location, rating, isAvailable, hourlyRate, experienceYears, brochureImages, servicePackages } = profileData;
     
     const professional = {
       name: name || '',
@@ -118,6 +118,7 @@ const ProfessionalModel = {
       phoneNumber: phoneNumber || '',
       photoURL: photoURL || '',
       brochureImages: Array.isArray(brochureImages) ? brochureImages.map(String).filter(Boolean) : [],
+      servicePackages: Array.isArray(servicePackages) ? servicePackages : (servicePackages && typeof servicePackages === 'object' ? servicePackages : []),
       location: location || { lat: 0, lng: 0, address: '' },
       walletBalance: profileData.walletBalance !== undefined ? Number(profileData.walletBalance) : 5000,
       totalEarnings: profileData.totalEarnings !== undefined ? Number(profileData.totalEarnings) : 0,

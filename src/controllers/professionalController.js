@@ -175,7 +175,7 @@ const ProfessionalController = {
   async upsertProfile(req, res) {
     try {
       const uid = req.user.uid;
-      const { name, services, customServices, phoneNumber, location, photoURL, description, hourlyRate, experienceYears, brochureImages } = req.body;
+      const { name, services, customServices, phoneNumber, location, photoURL, description, hourlyRate, experienceYears, brochureImages, servicePackages } = req.body;
       const normalizedServices = normalizeServiceList(services);
       const normalizedCustomServices = normalizeServiceList(customServices);
       
@@ -217,6 +217,7 @@ const ProfessionalController = {
         description: description || existing?.description || '',
         photoURL: photoURL || existing?.photoURL || '',
         brochureImages: Array.isArray(brochureImages) ? brochureImages.map(String).filter(Boolean) : (existing?.brochureImages || []),
+        servicePackages: Array.isArray(servicePackages) ? servicePackages : (existing?.servicePackages || []),
         hourlyRate: hourlyRate ? parseFloat(hourlyRate) : (existing?.hourlyRate || 500),
         experienceYears: experienceYears !== undefined ? Number(experienceYears) : (existing?.experienceYears || 0),
         walletBalance: existing ? existing.walletBalance : 5000,
