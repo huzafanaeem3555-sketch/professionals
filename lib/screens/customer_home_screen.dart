@@ -933,6 +933,68 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     }
   }
 
+  Future<void> _openCustomerJobs() async {
+    await Navigator.pushNamed(context, '/customer-jobs');
+    if (mounted) _load();
+  }
+
+  void _showSavedProfessionals() {
+    setState(() {
+      _filtered = _all.where((p) => _favoriteIds.contains(p.uid)).toList();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _favoriteIds.isEmpty
+              ? 'No saved professionals yet.'
+              : 'Showing ${_favoriteIds.length} saved professionals.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFeedbackFor(ProfessionalModel pro) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Feedback: ${pro.name}'),
+        content: const Text(
+          'Rate completed work from My Bookings, or send an issue directly to admin.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'profile'),
+            child: const Text('View Profile'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'complaint'),
+            child: const Text('Complaint'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'bookings'),
+            child: const Text('Rate Job'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'complaint') {
+      await _submitComplaint(pro);
+    } else if (action == 'bookings') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+      );
+      if (mounted) _load();
+    } else if (action == 'profile') {
+      Navigator.pushNamed(
+        context,
+        '/professional-profile',
+        arguments: {'uid': pro.uid},
+      );
+    }
+  }
+
   Future<void> _applyReferralDialog() async {
     final controller = TextEditingController();
     final apply = await showDialog<bool>(
@@ -1070,6 +1132,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     radiusCtrl.dispose();
     if (post != true || service.isEmpty || desc.isEmpty) return;
     final contactLocation = await _resolveCustomerContactLocation();
+    await NotificationService.syncTokenForCurrentUser();
     final res = await _api.createJobPost({
       'title': title.isEmpty ? service : title,
       'serviceType': service,
@@ -1080,6 +1143,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       'address': contactLocation['address'],
     });
     if (!mounted) return;
+    if (res['success'] == true) {
+      await NotificationService.showLocal(
+        title: 'Job posted',
+        body: 'Your job is live. Professionals will receive a phone alert.',
+      );
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(res['success'] == true
@@ -1087,6 +1156,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
             : res['message']?.toString() ?? 'Job post failed'),
         backgroundColor:
             res['success'] == true ? AppColors.success : AppColors.error,
+        action: res['success'] == true
+            ? SnackBarAction(
+                label: 'My Jobs',
+                textColor: Colors.white,
+                onPressed: _openCustomerJobs,
+              )
+            : null,
       ),
     );
   }
@@ -1488,6 +1564,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: _loading
+          ? null
+          : _CustomerActionBar(
+              favoriteCount: _favoriteIds.length,
+              onAutoMatch: _autoMatchBest,
+              onPostJob: _postJobDialog,
+              onJobs: _openCustomerJobs,
+              onSaved: _showSavedProfessionals,
+              onReferral: _applyReferralDialog,
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -1585,10 +1671,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                         icon: const Icon(Icons.work_history_rounded,
                             color: Colors.white),
                         tooltip: 'My Jobs',
-                        onPressed: () async {
-                          await Navigator.pushNamed(context, '/customer-jobs');
-                          _load();
-                        },
+                        onPressed: _openCustomerJobs,
                       ),
                       // Bookings badge button
                       Stack(
@@ -1994,13 +2077,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             label: const Text('Referral'),
                           ),
                           OutlinedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _filtered = _all
-                                    .where((p) => _favoriteIds.contains(p.uid))
-                                    .toList();
-                              });
-                            },
+                            onPressed: _showSavedProfessionals,
                             icon: const Icon(Icons.bookmark_rounded),
                             label: Text('Saved (${_favoriteIds.length})'),
                           ),
@@ -2164,6 +2241,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                 arguments: {'uid': pro.uid},
                               ),
                               onFavorite: () => _toggleFavorite(pro),
+                              onFeedback: () => _openFeedbackFor(pro),
                               onComplaint: () => _submitComplaint(pro),
                               onReferral: () => _createReferral(pro),
                               onCall: _booking
@@ -2185,7 +2263,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       ),
                     ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 118)),
                 ],
               ),
             ),
@@ -2336,12 +2414,136 @@ class _TrustCard extends StatelessWidget {
   }
 }
 
+class _CustomerActionBar extends StatelessWidget {
+  final int favoriteCount;
+  final VoidCallback onAutoMatch;
+  final VoidCallback onPostJob;
+  final VoidCallback onJobs;
+  final VoidCallback onSaved;
+  final VoidCallback onReferral;
+
+  const _CustomerActionBar({
+    required this.favoriteCount,
+    required this.onAutoMatch,
+    required this.onPostJob,
+    required this.onJobs,
+    required this.onSaved,
+    required this.onReferral,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(top: BorderSide(color: AppColors.divider)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            _BottomAction(
+              label: 'Match',
+              icon: Icons.auto_awesome_rounded,
+              onTap: onAutoMatch,
+              highlighted: true,
+            ),
+            _BottomAction(
+              label: 'Post',
+              icon: Icons.post_add_rounded,
+              onTap: onPostJob,
+            ),
+            _BottomAction(
+              label: 'My Jobs',
+              icon: Icons.work_history_rounded,
+              onTap: onJobs,
+            ),
+            _BottomAction(
+              label: favoriteCount > 0 ? 'Saved $favoriteCount' : 'Saved',
+              icon: Icons.bookmark_rounded,
+              onTap: onSaved,
+            ),
+            _BottomAction(
+              label: 'Referral',
+              icon: Icons.card_giftcard_rounded,
+              onTap: onReferral,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomAction extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool highlighted;
+
+  const _BottomAction({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlighted ? AppColors.primary : AppColors.textSecondary;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 58),
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
+          decoration: BoxDecoration(
+            color: highlighted
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 21, color: color),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: highlighted ? FontWeight.w800 : FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfessionalCard extends StatelessWidget {
   final ProfessionalModel professional;
   final VoidCallback? onCall;
   final VoidCallback? onWhatsApp;
   final VoidCallback? onViewProfile;
   final VoidCallback? onFavorite;
+  final VoidCallback? onFeedback;
   final VoidCallback? onComplaint;
   final VoidCallback? onReferral;
   final bool isFavorite;
@@ -2352,6 +2554,7 @@ class _ProfessionalCard extends StatelessWidget {
     this.onWhatsApp,
     this.onViewProfile,
     this.onFavorite,
+    this.onFeedback,
     this.onComplaint,
     this.onReferral,
     this.isFavorite = false,
@@ -2608,6 +2811,13 @@ class _ProfessionalCard extends StatelessWidget {
                     outlined: true,
                   ),
                   _CardActionButton(
+                    label: 'Feedback',
+                    icon: Icons.rate_review_outlined,
+                    onPressed: onFeedback,
+                    foreground: AppColors.primary,
+                    outlined: true,
+                  ),
+                  _CardActionButton(
                     label: 'Call',
                     icon: Icons.call,
                     onPressed: isAvailable ? onCall : null,
@@ -2633,7 +2843,13 @@ class _ProfessionalCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      SizedBox(width: double.infinity, child: buttons[2]),
+                      Row(
+                        children: [
+                          Expanded(child: buttons[2]),
+                          const SizedBox(width: 8),
+                          Expanded(child: buttons[3]),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -2670,6 +2886,8 @@ class _ProfessionalCard extends StatelessWidget {
                         Expanded(child: buttons[1]),
                         const SizedBox(width: 8),
                         Expanded(child: buttons[2]),
+                        const SizedBox(width: 8),
+                        Expanded(child: buttons[3]),
                       ],
                     ),
                     const SizedBox(height: 8),
