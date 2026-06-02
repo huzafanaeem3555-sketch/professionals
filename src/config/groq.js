@@ -84,9 +84,9 @@ Return strict JSON only: {"serviceType": "...", "priceMin": 500, "priceMax": 200
  */
 async function getAIAssistantReply(userMessage, conversationHistory = []) {
   const systemPrompt = `You are a friendly customer support assistant for Service Connect Pakistan.
-You help users with: booking services, finding professionals, understanding the EasyPaisa payment process, and general support.
+You help users with: booking services, finding professionals, understanding payment steps, and general support.
 EasyPaisa number: 03455876761. Commission is 10% of agreed price.
-Keep replies concise (under 100 words). Be helpful and professional. Respond in English or Roman Urdu based on user's language.`;
+Keep replies concise (under 100 words). Be helpful and professional. Always respond in English only.`;
 
   const messages = [
     ...conversationHistory.slice(-6), // Last 6 messages for context
@@ -97,7 +97,7 @@ Keep replies concise (under 100 words). Be helpful and professional. Respond in 
     return await groqChat(messages, systemPrompt);
   } catch (err) {
     console.error('Groq assistant error:', err.message);
-    return 'Maaf kijiye, abhi AI assistant available nahi hai. Baad mein try karein.';
+    return 'Sorry, the AI assistant is currently unavailable. Please try again later.';
   }
 }
 
