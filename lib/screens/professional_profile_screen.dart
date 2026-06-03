@@ -239,7 +239,10 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                 title: 'About',
                 icon: Icons.person,
                 child: Text(
-                  pro.description,
+                  EnglishText.sanitize(
+                    pro.description,
+                    fallback: 'Professional description not available.',
+                  ),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     height: 1.6,

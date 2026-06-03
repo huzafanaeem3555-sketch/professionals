@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 /// Google Maps / Geocoding â€” must match AndroidManifest meta-data API key.
 class MapConstants {
@@ -203,14 +203,39 @@ class AppStrings {
   ];
 }
 
+class EnglishText {
+  static String sanitize(String? value, {String fallback = ''}) {
+    final input = value ?? '';
+    final withoutCjk = input.replaceAll(RegExp(r'[\u4e00-\u9fff]+'), ' ');
+    final cleaned = withoutCjk.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.isEmpty) return fallback;
+    return cleaned;
+  }
+}
+
 /// Service Labels Helper
 class ServiceLabels {
   static Map<String, dynamic> labelFor(String key) {
+    final normalizedKey = EnglishText.sanitize(key)
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]+'), '')
+        .trim();
     final cat = AppStrings.serviceCategories.firstWhere(
-      (c) => c['key'] == key,
-      orElse: () => {'name': key, 'icon': 'ðŸ“Œ', 'key': key},
+      (c) =>
+          (c['key']?.toString() ?? '') == normalizedKey ||
+          (c['name']?.toString().toLowerCase() ?? '') == normalizedKey,
+      orElse: () => {
+        'name': EnglishText.sanitize(key, fallback: 'Service'),
+        'icon': '📌',
+        'key': normalizedKey.isNotEmpty ? normalizedKey : 'service'
+      },
     );
-    return cat;
+    return {
+      'name':
+          EnglishText.sanitize(cat['name']?.toString(), fallback: 'Service'),
+      'icon': cat['icon'] ?? '📌',
+      'key': normalizedKey,
+    };
   }
 
   static String getIcon(String key) {

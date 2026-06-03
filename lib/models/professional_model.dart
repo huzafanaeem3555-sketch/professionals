@@ -1,3 +1,5 @@
+import '../utils/constants.dart';
+
 class ProfessionalModel {
   final String uid;
   final String phone;
@@ -231,7 +233,7 @@ class ProfessionalModel {
     final seen = <String>{};
     final merged = <String>[];
     for (final service in [...services, ...customServices]) {
-      final normalized = service.trim();
+      final normalized = EnglishText.sanitize(service, fallback: 'Service');
       if (normalized.isEmpty) continue;
       final key = normalized.toLowerCase();
       if (seen.add(key)) merged.add(normalized);

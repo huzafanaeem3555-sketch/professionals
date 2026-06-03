@@ -111,9 +111,7 @@ class ProfessionalCard extends StatelessWidget {
                         // Services
                         Text(
                           professional.serviceTypes.take(3).map((s) {
-                            final cat = AppStrings.serviceCategories.firstWhere(
-                                (c) => c['key'] == s,
-                                orElse: () => {'name': s, 'icon': 'SV'});
+                            final cat = ServiceLabels.labelFor(s);
                             return '${cat['icon']} ${cat['name']}';
                           }).join('  '),
                           style: const TextStyle(
