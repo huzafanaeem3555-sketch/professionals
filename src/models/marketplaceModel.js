@@ -185,7 +185,7 @@ const MarketplaceModel = {
     const location = payload.location && typeof payload.location === 'object'
       ? payload.location
       : { lat: toNumber(payload.lat), lng: toNumber(payload.lng), address: clean(payload.address) };
-    const radiusKm = Math.max(1, Math.min(100, toNumber(payload.radiusKm, 10)));
+    const radiusKm = Math.max(1, Math.min(100, toNumber(payload.radiusKm, 20)));
     const isUrgent = payload.isUrgent === true || clean(payload.priority).toLowerCase() === 'urgent';
     const post = {
       postId,

@@ -8,11 +8,11 @@ const GeolocationController = {
   /**
    * Get nearby professionals based on customer location and filters.
    * Requires: lat, lng in query/body
-   * Optional: radiusKm (default 10), serviceType, minRating, maxPrice
-   */
+   * Optional: radiusKm (default 20), serviceType, minRating, maxPrice
+  */
   async getNearbyProfessionals(req, res) {
     try {
-      const { lat, lng, radiusKm = 10, serviceType, minRating, maxPrice } = req.query || req.body;
+      const { lat, lng, radiusKm = 20, serviceType, minRating, maxPrice } = req.query || req.body;
 
       if (!lat || !lng) {
         return res.status(400).json({
@@ -31,7 +31,7 @@ const GeolocationController = {
         });
       }
 
-      const radiusNum = radiusKm ? parseFloat(radiusKm) : 10;
+      const radiusNum = radiusKm ? parseFloat(radiusKm) : 20;
 
       const filters = {
         lat: latNum,

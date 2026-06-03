@@ -47,7 +47,7 @@ async function groqChat(messages, systemPrompt = null) {
  */
 async function getServiceRecommendation(userDescription) {
   const systemPrompt = `You are HirePro's service-matching assistant for Pakistan.
-The user text can be English, Urdu script, or Roman Urdu from voice transcription. Translate the user's intent and choose exactly one serviceType only from:
+The user text can be English or a spoken-language transcription. Translate the user's intent and choose exactly one serviceType only from:
 plumber, electrician, carpenter, ac_mechanic, painter, cleaner, tutor, driver, chef, beautician, it_technician, security_guard.
 
 Examples:
