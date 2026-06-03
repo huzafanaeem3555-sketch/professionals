@@ -4,6 +4,10 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import '../models/geolocation_model.dart';
 import '../models/booking_model.dart';
+import '../models/professional_model.dart';
+import '../services/api_service.dart';
+import '../services/location_service.dart';
+import '../utils/contact_actions.dart';
 import '../utils/constants.dart';
 
 class BookingTrackingScreen extends StatefulWidget {
@@ -21,14 +25,22 @@ class BookingTrackingScreen extends StatefulWidget {
 }
 
 class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
+  final _api = ApiService();
   GoogleMapController? mapController;
   ProfessionalLocationModel? professionalLocation;
+  Map<String, dynamic>? _bookingData;
+  Map<String, dynamic>? _customerLocation;
+  List<ProfessionalModel> _backupProfessionals = [];
   bool _isLoading = true;
+  bool _loadingBackup = false;
+  bool _backupRecommended = false;
+  double? _distanceKm;
+  int? _etaMinutes;
   String? _errorMessage;
   Timer? _updateTimer;
+  Timer? _etaTimer;
   Set<Marker> _markers = {};
   Set<Circle> _circles = {};
-
 
   StreamSubscription? _locationSubscription;
 
@@ -42,6 +54,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   void dispose() {
     _locationSubscription?.cancel();
     _updateTimer?.cancel();
+    _etaTimer?.cancel();
     try {
       mapController?.dispose();
     } catch (_) {}
@@ -74,9 +87,122 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     return 0.0;
   }
 
+  Map<String, dynamic>? _readLocation(dynamic value) {
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      final lat = (map['lat'] as num?)?.toDouble();
+      final lng = (map['lng'] as num?)?.toDouble();
+      if (lat != null && lng != null && (lat != 0 || lng != 0)) {
+        return {
+          'lat': lat,
+          'lng': lng,
+          'address': map['address']?.toString() ?? '',
+        };
+      }
+    }
+    return null;
+  }
+
+  Future<void> _refreshArrivalGuarantee() async {
+    final pro = professionalLocation;
+    final customerLoc = _customerLocation;
+    if (!mounted || pro == null || customerLoc == null) {
+      return;
+    }
+
+    final customerLat = (customerLoc['lat'] as num?)?.toDouble();
+    final customerLng = (customerLoc['lng'] as num?)?.toDouble();
+    if (customerLat == null || customerLng == null) return;
+
+    final distance = LocationService.haversineKm(
+      customerLat,
+      customerLng,
+      pro.lat,
+      pro.lng,
+    );
+    final eta = (distance * 2.5 + 5).round().clamp(5, 180);
+    final shouldSuggestBackup = eta > 25 || pro.lat == 0 || pro.lng == 0;
+
+    if (!mounted) return;
+    setState(() {
+      _distanceKm = double.parse(distance.toStringAsFixed(1));
+      _etaMinutes = eta;
+      _backupRecommended = shouldSuggestBackup;
+    });
+
+    if (shouldSuggestBackup) {
+      await _loadBackupProfessionals();
+    }
+  }
+
+  Future<void> _loadBackupProfessionals() async {
+    final booking = _bookingData;
+    final customerLoc = _customerLocation;
+    final pro = professionalLocation;
+    if (booking == null ||
+        customerLoc == null ||
+        pro == null ||
+        _loadingBackup) {
+      return;
+    }
+
+    final customerLat = (customerLoc['lat'] as num?)?.toDouble();
+    final customerLng = (customerLoc['lng'] as num?)?.toDouble();
+    if (customerLat == null || customerLng == null) return;
+
+    setState(() => _loadingBackup = true);
+    try {
+      final res = await _api.getNearbyProfessionalsByLocation(
+        lat: customerLat,
+        lng: customerLng,
+        radiusKm: 20,
+        serviceType: booking['serviceType']?.toString(),
+      );
+      final list = <ProfessionalModel>[];
+      if (res['success'] == true && res['data'] != null) {
+        final data = res['data'];
+        final rawList = data is Map && data['professionals'] is List
+            ? List.from(data['professionals'] as List)
+            : data is List
+                ? List.from(data)
+                : <dynamic>[];
+        for (final item in rawList) {
+          if (item is! Map) continue;
+          final map = Map<String, dynamic>.from(item);
+          if ((map['uid']?.toString() ?? '') == pro.uid) continue;
+          list.add(ProfessionalModel.fromMap(map));
+        }
+        list.sort((a, b) {
+          final da = a.distance ?? 999;
+          final db = b.distance ?? 999;
+          final diff = da.compareTo(db);
+          if (diff != 0) return diff;
+          return b.rating.compareTo(a.rating);
+        });
+      }
+      if (mounted) {
+        setState(() => _backupProfessionals = list.take(3).toList());
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _backupProfessionals = []);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingBackup = false);
+      }
+    }
+  }
+
   Future<void> _initRealtimeTracking() async {
     await _loadProfessionalLocation();
     if (professionalLocation != null && mounted) {
+      _etaTimer?.cancel();
+      _etaTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+        if (mounted) {
+          _refreshArrivalGuarantee();
+        }
+      });
       final proUid = professionalLocation!.uid;
       _locationSubscription?.cancel();
       _locationSubscription = FirebaseDatabase.instance
@@ -85,7 +211,8 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
           .listen((event) {
         if (!mounted) return;
         if (event.snapshot.exists) {
-          final userData = Map<String, dynamic>.from(event.snapshot.value as Map);
+          final userData =
+              Map<String, dynamic>.from(event.snapshot.value as Map);
           final lat = _parseLatitude(userData);
           final lng = _parseLongitude(userData);
           if (lat != 0.0 && lng != 0.0 && professionalLocation != null) {
@@ -97,12 +224,14 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
                 lat: lat,
                 lng: lng,
                 address: userData['address'] ?? professionalLocation!.address,
-                phoneNumber: userData['phoneNumber'] ?? professionalLocation!.phoneNumber,
+                phoneNumber: userData['phoneNumber'] ??
+                    professionalLocation!.phoneNumber,
                 rating: professionalLocation!.rating,
                 totalRatings: professionalLocation!.totalRatings,
                 serviceType: professionalLocation!.serviceType,
               );
               _updateMarkers();
+              _refreshArrivalGuarantee();
             });
           }
         }
@@ -116,7 +245,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
           .ref('bookings/${widget.bookingId}')
           .get()
           .timeout(const Duration(seconds: 5));
-          
+
       if (!bookingSnap.exists) {
         if (mounted) {
           setState(() {
@@ -126,20 +255,23 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
         }
         return;
       }
-      
+
       final bookingData = Map<String, dynamic>.from(bookingSnap.value as Map);
+      _bookingData = bookingData;
+      _customerLocation = _readLocation(bookingData['customerLocation']) ??
+          _readLocation(bookingData['location']);
       final proUid = bookingData['professionalId'] as String;
-      
+
       final userSnap = await FirebaseDatabase.instance
           .ref('users/$proUid')
           .get()
           .timeout(const Duration(seconds: 5));
-          
+
       final profSnap = await FirebaseDatabase.instance
           .ref('professionals/$proUid')
           .get()
           .timeout(const Duration(seconds: 5));
-          
+
       if (!userSnap.exists) {
         if (mounted) {
           setState(() {
@@ -149,12 +281,12 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
         }
         return;
       }
-      
+
       final userData = Map<String, dynamic>.from(userSnap.value as Map);
-      final profData = profSnap.exists 
-          ? Map<String, dynamic>.from(profSnap.value as Map) 
+      final profData = profSnap.exists
+          ? Map<String, dynamic>.from(profSnap.value as Map)
           : <String, dynamic>{};
-          
+
       final merged = {
         'uid': proUid,
         'displayName': userData['displayName'] ?? '',
@@ -175,6 +307,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
           _errorMessage = null;
           _updateMarkers();
         });
+        await _refreshArrivalGuarantee();
       }
     } catch (e) {
       if (mounted) {
@@ -213,7 +346,8 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       mapController?.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
-            target: LatLng(professionalLocation!.lat, professionalLocation!.lng),
+            target:
+                LatLng(professionalLocation!.lat, professionalLocation!.lng),
             zoom: 16,
           ),
         ),
@@ -226,7 +360,8 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       mapController?.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
-            target: LatLng(professionalLocation!.lat, professionalLocation!.lng),
+            target:
+                LatLng(professionalLocation!.lat, professionalLocation!.lng),
             zoom: 16,
           ),
         ),
@@ -307,7 +442,8 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
         GoogleMap(
           onMapCreated: _onMapCreated,
           initialCameraPosition: CameraPosition(
-            target: LatLng(professionalLocation!.lat, professionalLocation!.lng),
+            target:
+                LatLng(professionalLocation!.lat, professionalLocation!.lng),
             zoom: 16,
           ),
           markers: _markers,
@@ -356,14 +492,14 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.person),
-                              ),
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.person),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -491,10 +627,13 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
                   ),
                   const SizedBox(height: 12),
 
+                  _buildArrivalGuaranteeCard(),
+                  const SizedBox(height: 12),
+
                   // Distance if available
                   if (professionalLocation!.distance != null)
                     Text(
-                      '📍 Distance: ${professionalLocation!.distance!.toStringAsFixed(1)} km',
+                      'Distance: ${professionalLocation!.distance!.toStringAsFixed(1)} km',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -508,5 +647,179 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       ],
     );
   }
+
+  Widget _buildArrivalGuaranteeCard() {
+    final eta = _etaMinutes;
+    final distance = _distanceKm;
+    final badgeColor =
+        _backupRecommended ? AppColors.warning : AppColors.success;
+    final badgeText = _backupRecommended ? 'Backup recommended' : 'On time';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: badgeColor, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Arrival Guarantee',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                badgeText,
+                style: TextStyle(
+                  color: badgeColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            distance != null
+                ? 'Live distance: ${distance.toStringAsFixed(1)} km'
+                : 'Live distance: unavailable',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          Text(
+            eta != null
+                ? 'Estimated arrival: about $eta minutes'
+                : 'Estimated arrival: calculating...',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loadingBackup ? null : _loadBackupProfessionals,
+                  icon: const Icon(Icons.swap_horiz_rounded),
+                  label: const Text('Suggest Backup'),
+                ),
+              ),
+            ],
+          ),
+          if (_loadingBackup) ...[
+            const SizedBox(height: 10),
+            const LinearProgressIndicator(),
+          ],
+          if (_backupProfessionals.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Best nearby alternatives',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ..._backupProfessionals.map(
+              (pro) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _BackupProfessionalTile(
+                  professional: pro,
+                  onCall: () => launchContactUri(contactUriFor(
+                    method: ContactMethod.call,
+                    phoneNumber: pro.phone,
+                  )),
+                  onWhatsApp: () => launchContactUri(contactUriFor(
+                    method: ContactMethod.whatsapp,
+                    phoneNumber: pro.phone,
+                    message:
+                        'Hello, I found your profile on HirePro and need a backup professional for ${pro.serviceText}.',
+                  )),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
+class _BackupProfessionalTile extends StatelessWidget {
+  final ProfessionalModel professional;
+  final VoidCallback onCall;
+  final VoidCallback onWhatsApp;
+
+  const _BackupProfessionalTile({
+    required this.professional,
+    required this.onCall,
+    required this.onWhatsApp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            professional.name,
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            professional.serviceText,
+            style: const TextStyle(color: AppColors.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            professional.distance != null
+                ? '${professional.distance!.toStringAsFixed(1)} km away'
+                : 'Nearby professional',
+            style: const TextStyle(color: AppColors.textLight, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onCall,
+                  child: const Text('Call'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: onWhatsApp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('WhatsApp'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

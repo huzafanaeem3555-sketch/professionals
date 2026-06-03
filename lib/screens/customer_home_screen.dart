@@ -495,7 +495,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       ],
       'electrician': [
         'bijli ka masla',
-        'light nahi',
+        'light not working',
         'fan slow',
         'switch board',
         'socket',
@@ -514,7 +514,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'wire jal gai'
       ],
       'ac_mechanic': [
-        'ac thanda nahi',
+        'ac not cooling',
         'ac cooling',
         'ac gas',
         'split ac',
@@ -578,7 +578,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'academy'
       ],
       'driver': [
-        'driver chahiye',
+        'driver needed',
         'car driver',
         'pick and drop',
         'school van',
@@ -589,7 +589,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       ],
       'chef': [
         'khana pakana',
-        'cook chahiye',
+        'cook needed',
         'bawarchi',
         'roti',
         'biryani',
@@ -1073,7 +1073,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final serviceCtrl = TextEditingController(text: _filterService ?? '');
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController();
-    final radiusCtrl = TextEditingController(text: '10');
+    final radiusCtrl = TextEditingController(text: '20');
     var urgent = false;
     final post = await showDialog<bool>(
       context: context,
@@ -1157,7 +1157,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final service = serviceCtrl.text.trim();
     final desc = descCtrl.text.trim();
     final budget = double.tryParse(budgetCtrl.text.trim()) ?? 0;
-    final radius = double.tryParse(radiusCtrl.text.trim()) ?? 10;
+    final radius = double.tryParse(radiusCtrl.text.trim()) ?? 20;
     titleCtrl.dispose();
     serviceCtrl.dispose();
     descCtrl.dispose();
