@@ -2,22 +2,25 @@ const AdminModel = require('../models/adminModel');
 const { dbGetAll, dbSet } = require('../config/firebase');
 const MarketplaceModel = require('../models/marketplaceModel');
 
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'Huzaifajutt123@@@@';
+const ADMIN_DISPLAY_NAME = 'Huzaifa';
+
 const AdminController = {
   async login(req, res) {
     try {
       const { username } = req.body;
       if (!username) {
-        return res.status(400).json({ success: false, message: 'username is required.' });
+        return res.status(400).json({ success: false, message: 'Admin secret is required.' });
       }
 
-      if (String(username).toLowerCase() !== 'huzaifa') {
-        return res.status(401).json({ success: false, message: 'Invalid admin username.' });
+      if (String(username) !== ADMIN_SECRET) {
+        return res.status(401).json({ success: false, message: 'Invalid admin secret.' });
       }
 
       // Check if user exists in the 'users' node with role "admin"
       const users = await dbGetAll('users') || [];
       let adminUser = users.find(
-        (u) => u.role === 'admin' && String(u.displayName).toLowerCase() === 'huzaifa'
+        (u) => u.role === 'admin' && String(u.displayName).toLowerCase() === ADMIN_DISPLAY_NAME.toLowerCase()
       );
 
       if (!adminUser) {
@@ -25,7 +28,7 @@ const AdminController = {
         const adminPayload = {
           uid: 'admin_huzaifa',
           email: 'admin@serviceconnect.pk',
-          displayName: 'Huzaifa',
+          displayName: ADMIN_DISPLAY_NAME,
           photoURL: '',
           phoneNumber: '+923000000000',
           role: 'admin',
