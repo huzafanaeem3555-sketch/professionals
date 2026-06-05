@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "581660506706-dbtjpp4ust4hm2s13lldn84gt6tr3uqu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hitech.HirePro",
+            "certificate_hash": "00807d761847ba6d34370cbe7eedc4f3b2881d78"
+          }
+        },
+        {
           "client_id": "581660506706-rle7rsp19n1hc7l04tgp2dq53j0ijhb3.apps.googleusercontent.com",
           "client_type": 3
         }

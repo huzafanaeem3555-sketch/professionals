@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Your trusted partner for home services in Pakistan',
+                    'Your trusted partner for home and office business services',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white.withValues(alpha: 0.7),
@@ -181,6 +181,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             _LoginFeature(label: 'Nearby matching'),
                             _LoginFeature(label: 'Live tracking'),
                             _LoginFeature(label: 'Negotiated pricing'),
+                            _LoginFeature(label: 'Verified pros'),
+                            _LoginFeature(label: 'Live pro location'),
+                            _LoginFeature(label: 'Job offers'),
                           ],
                         ),
                         const SizedBox(height: 24),

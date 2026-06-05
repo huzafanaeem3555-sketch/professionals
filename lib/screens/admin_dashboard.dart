@@ -51,7 +51,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         title: const Text('Delete User',
             style: TextStyle(color: AppColors.textPrimary)),
         content: Text(
-            'Are you sure you want to delete user "$name"? Customer data, bookings, payments, and transactions will be removed. Professional accounts are preserved and deactivated instead of deleted.',
+            'Are you sure you want to delete "$name"? This will fully remove the account and related app data including bookings, payments, transactions, leads, saved records, job posts, offers, complaints, and professional profile data.',
             style: const TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(
@@ -1869,6 +1869,15 @@ class _AdminDashboardState extends State<AdminDashboard>
               label: 'Details',
               color: AppColors.primary,
               onPressed: () => _showUserDetails(p, type: 'professional'),
+            ),
+            _adminTextAction(
+              icon: Icons.delete_outline_rounded,
+              label: 'Delete',
+              color: Colors.redAccent,
+              onPressed: () => _deleteUser(
+                p['uid'] ?? '',
+                p['displayName'] ?? p['name'] ?? 'Professional',
+              ),
             ),
           ],
         );
