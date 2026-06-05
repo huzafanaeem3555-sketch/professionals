@@ -233,8 +233,8 @@ class ProfessionalModel {
     final seen = <String>{};
     final merged = <String>[];
     for (final service in [...services, ...customServices]) {
-      final normalized = EnglishText.sanitize(service, fallback: 'Service');
-      if (normalized.isEmpty) continue;
+      final normalized = ServiceLabels.getName(service);
+      if (normalized.isEmpty || normalized == 'Service') continue;
       final key = normalized.toLowerCase();
       if (seen.add(key)) merged.add(normalized);
     }

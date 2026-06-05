@@ -112,7 +112,7 @@ class ProfessionalCard extends StatelessWidget {
                         Text(
                           professional.serviceTypes.take(3).map((s) {
                             final cat = ServiceLabels.labelFor(s);
-                            return '${cat['icon']} ${cat['name']}';
+                            return cat['name'].toString();
                           }).join('  '),
                           style: const TextStyle(
                             color: AppColors.textSecondary,

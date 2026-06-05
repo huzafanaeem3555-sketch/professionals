@@ -412,8 +412,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'wiring',
         'fan',
         'switch',
-        'Ø¨Ø¬Ù„ÛŒ',
-        'Ù¾Ù†Ú©Ú¾Ø§',
       ],
       'plumber': [
         'plumber',
@@ -423,8 +421,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'nal',
         'tap',
         'bathroom',
-        'Ù¾Ø§Ù†ÛŒ',
-        'Ù†Ù„',
       ],
       'carpenter': [
         'carpenter',
@@ -433,7 +429,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'door',
         'darwaza',
         'lakri',
-        'Ù„Ú©Ú‘ÛŒ',
       ],
       'ac_mechanic': [
         'ac',
@@ -444,11 +439,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         'refrigerator',
         'thanda',
       ],
-      'painter': ['paint', 'painter', 'rang', 'wall', 'Ø±Ù†Ú¯'],
-      'cleaner': ['clean', 'cleaner', 'safai', 'ØµÙØ§Ø¦ÛŒ'],
+      'painter': ['paint', 'painter', 'rang', 'wall'],
+      'cleaner': ['clean', 'cleaner', 'safai'],
       'tutor': ['teacher', 'tutor', 'study', 'parhai', 'math', 'english'],
-      'driver': ['driver', 'car', 'gaari', 'gari', 'Ú¯Ø§Ú‘ÛŒ'],
-      'chef': ['cook', 'chef', 'cooking', 'khana', 'Ú©Ú¾Ø§Ù†Ø§'],
+      'driver': ['driver', 'car', 'gaari', 'gari'],
+      'chef': ['cook', 'chef', 'cooking', 'khana'],
       'beautician': ['beauty', 'salon', 'makeup', 'mehndi', 'bridal'],
       'it_technician': [
         'computer',
@@ -2087,9 +2082,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                           ...orderedCategories.map((c) {
                             final key = c['key'] as String;
                             final score = _serviceScore(key);
+                            final name = EnglishText.sanitize(
+                              c['name']?.toString(),
+                              fallback: ServiceLabels.getName(key),
+                            );
                             return _CategoryChip(
-                              label:
-                                  '${c['icon']} ${c['name']}${score > 0 ? ' ($score)' : ''}',
+                              label: '$name${score > 0 ? ' ($score)' : ''}',
                               selected: _filterService == key,
                               onTap: () => setState(() {
                                 _filterService =
@@ -2103,7 +2101,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             );
                           }),
                           ...customServiceKeys.map((key) {
-                            final label = key.replaceAll('_', ' ');
+                            final label = EnglishText.sanitize(
+                              ServiceLabels.getName(key),
+                              fallback: 'Service',
+                            );
                             final score = _serviceScore(key);
                             return _CategoryChip(
                               label: '$label${score > 0 ? ' ($score)' : ''}',
@@ -2617,13 +2618,7 @@ class _ProfessionalCard extends StatelessWidget {
   });
 
   String _serviceLabel(String key) {
-    final cat = AppStrings.serviceCategories.firstWhere(
-      (c) => c['key'] == key,
-      orElse: () => {'name': key.replaceAll('_', ' '), 'icon': ''},
-    );
-    final icon = cat['icon']?.toString() ?? '';
-    final name = cat['name']?.toString() ?? key;
-    return icon.isEmpty ? name : '$icon $name';
+    return ServiceLabels.getName(key);
   }
 
   List<String> _passportBadges() {

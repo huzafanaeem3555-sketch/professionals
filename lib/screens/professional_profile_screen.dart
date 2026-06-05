@@ -262,7 +262,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                 children: pro.serviceTypes.map((s) {
                   final cat = ServiceLabels.labelFor(s);
                   return Chip(
-                    label: Text('${cat['icon']} ${cat['name']}'),
+                    label: Text(cat['name'].toString()),
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     labelStyle: const TextStyle(color: AppColors.primary),
                   );

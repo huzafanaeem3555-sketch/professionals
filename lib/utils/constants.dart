@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Google Maps / Geocoding â€” must match AndroidManifest meta-data API key.
+/// Google Maps / Geocoding - must match AndroidManifest meta-data API key.
 class MapConstants {
   static const String googleMapsApiKey =
       'AIzaSyA2jauIr0PY3aEEsAEJ0CFTGWi_yaTSMiw';
@@ -25,7 +25,7 @@ class ApiConstants {
   // IMPORTANT: Set this to FALSE for production server
   // Set this to TRUE for local testing
   // ============================================================
-  static const bool isDevelopment = false; // âœ… PRODUCTION MODE
+  static const bool isDevelopment = false; // PRODUCTION MODE
 
   static String get baseUrl {
     // For local development testing
@@ -175,22 +175,22 @@ class AppStrings {
   static const String appTagline = 'Your trusted professional network';
 
   static const List<Map<String, dynamic>> serviceCategories = [
-    {'name': 'Plumber', 'icon': 'ðŸ”§', 'key': 'plumber'},
-    {'name': 'Electrician', 'icon': 'âš¡', 'key': 'electrician'},
-    {'name': 'Carpenter', 'icon': 'ðŸªš', 'key': 'carpenter'},
-    {'name': 'AC Mechanic', 'icon': 'â„ï¸', 'key': 'ac_mechanic'},
-    {'name': 'Painter', 'icon': 'ðŸŽ¨', 'key': 'painter'},
-    {'name': 'Cleaner', 'icon': 'ðŸ§¹', 'key': 'cleaner'},
-    {'name': 'Tutor', 'icon': 'ðŸ“š', 'key': 'tutor'},
-    {'name': 'Driver', 'icon': 'ðŸš—', 'key': 'driver'},
-    {'name': 'Chef', 'icon': 'ðŸ‘¨â€ðŸ³', 'key': 'chef'},
-    {'name': 'Beautician', 'icon': 'ðŸ’„', 'key': 'beautician'},
-    {'name': 'IT Technician', 'icon': 'ðŸ’»', 'key': 'it_technician'},
-    {'name': 'Security Guard', 'icon': 'ðŸ‘®', 'key': 'security_guard'},
-    {'name': 'Gardener', 'icon': 'ðŸŒ±', 'key': 'gardener'},
-    {'name': 'Mechanic', 'icon': 'ðŸ”©', 'key': 'mechanic'},
-    {'name': 'Welder', 'icon': 'ðŸ”¥', 'key': 'welder'},
-    {'name': 'Mason', 'icon': 'ðŸ§±', 'key': 'mason'},
+    {'name': 'Plumber', 'icon': '', 'key': 'plumber'},
+    {'name': 'Electrician', 'icon': '', 'key': 'electrician'},
+    {'name': 'Carpenter', 'icon': '', 'key': 'carpenter'},
+    {'name': 'AC Mechanic', 'icon': '', 'key': 'ac_mechanic'},
+    {'name': 'Painter', 'icon': '', 'key': 'painter'},
+    {'name': 'Cleaner', 'icon': '', 'key': 'cleaner'},
+    {'name': 'Tutor', 'icon': '', 'key': 'tutor'},
+    {'name': 'Driver', 'icon': '', 'key': 'driver'},
+    {'name': 'Chef', 'icon': '', 'key': 'chef'},
+    {'name': 'Beautician', 'icon': '', 'key': 'beautician'},
+    {'name': 'IT Technician', 'icon': '', 'key': 'it_technician'},
+    {'name': 'Security Guard', 'icon': '', 'key': 'security_guard'},
+    {'name': 'Gardener', 'icon': '', 'key': 'gardener'},
+    {'name': 'Mechanic', 'icon': '', 'key': 'mechanic'},
+    {'name': 'Welder', 'icon': '', 'key': 'welder'},
+    {'name': 'Mason', 'icon': '', 'key': 'mason'},
   ];
 
   static const List<String> popularServices = [
@@ -204,10 +204,16 @@ class AppStrings {
 }
 
 class EnglishText {
+  static final RegExp _cjkText = RegExp(r'[\u4e00-\u9fff]+');
+  static final RegExp _nonAsciiText = RegExp(r'[^\x20-\x7E]+');
+
   static String sanitize(String? value, {String fallback = ''}) {
     final input = value ?? '';
-    final withoutCjk = input.replaceAll(RegExp(r'[\u4e00-\u9fff]+'), ' ');
-    final cleaned = withoutCjk.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final cleaned = input
+        .replaceAll(_cjkText, ' ')
+        .replaceAll(_nonAsciiText, ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     if (cleaned.isEmpty) return fallback;
     return cleaned;
   }
@@ -225,15 +231,18 @@ class ServiceLabels {
           (c['key']?.toString() ?? '') == normalizedKey ||
           (c['name']?.toString().toLowerCase() ?? '') == normalizedKey,
       orElse: () => {
-        'name': EnglishText.sanitize(key, fallback: 'Service'),
-        'icon': '📌',
+        'name': EnglishText.sanitize(
+          key.replaceAll('_', ' '),
+          fallback: 'Service',
+        ),
+        'icon': '',
         'key': normalizedKey.isNotEmpty ? normalizedKey : 'service'
       },
     );
     return {
       'name':
           EnglishText.sanitize(cat['name']?.toString(), fallback: 'Service'),
-      'icon': cat['icon'] ?? '📌',
+      'icon': EnglishText.sanitize(cat['icon']?.toString(), fallback: ''),
       'key': normalizedKey,
     };
   }

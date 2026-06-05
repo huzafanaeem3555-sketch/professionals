@@ -185,9 +185,14 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
   }
 
   void _addCustomService() {
-    final raw = _customServiceCtrl.text.trim();
+    final raw = EnglishText.sanitize(_customServiceCtrl.text, fallback: '');
     if (raw.isEmpty) return;
-    final key = raw.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+    final key = raw
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    if (key.isEmpty) return;
     setState(() {
       _customServices.add(key);
       _customServiceCtrl.clear();
@@ -195,11 +200,7 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
   }
 
   String _serviceLabel(String key) {
-    final cat = AppStrings.serviceCategories.firstWhere(
-      (c) => c['key'] == key,
-      orElse: () => {'name': key.replaceAll('_', ' '), 'icon': '✨'},
-    );
-    return '${cat['icon']} ${cat['name']}';
+    return ServiceLabels.getName(key);
   }
 
   Future<void> _save() async {
