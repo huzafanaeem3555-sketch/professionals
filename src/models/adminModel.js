@@ -300,27 +300,14 @@ const AdminModel = {
   async deleteUser(uid) {
     const user = await dbGet(`users/${uid}`);
     const professional = await dbGet(`professionals/${uid}`);
-    if (professional || String(user?.role || '').toLowerCase() === 'professional') {
-      const deactivatedAt = Date.now();
-      await dbUpdate(`users/${uid}`, {
-        isActive: false,
-        verificationStatus: 'deactivated',
-        femaleVerificationRequired: false,
-        _updatedAt: deactivatedAt,
-      });
-      await dbUpdate(`professionals/${uid}`, {
-        isActive: false,
-        verificationStatus: 'deactivated',
-        _updatedAt: deactivatedAt,
-      });
-      return {
-        protectedProfessional: true,
-        message: 'Professional preserved and deactivated.',
-      };
-    }
+    const isProfessional = Boolean(professional) || String(user?.role || '').toLowerCase() === 'professional';
     const bookings = await dbGetAll('bookings') || [];
     const payments = await dbGetAll('payments') || [];
     const transactions = await dbGetAll('transactions') || [];
+    const complaints = await dbGetAll('complaints') || [];
+    const featuredRequests = await dbGetAll('featuredRequests') || [];
+    const referrals = await dbGetAll('referrals') || [];
+    const jobPosts = await dbGetAll('jobPosts') || [];
     const bookingIds = bookings.filter((b) => b.customerId === uid || b.professionalId === uid).map((b) => b.bookingId);
 
     for (const bookingId of bookingIds) {
@@ -335,6 +322,54 @@ const AdminModel = {
 
     for (const transaction of transactions.filter((t) => t.customerId === uid || t.professionalId === uid)) {
       await dbDelete(`transactions/${transaction._key || transaction.transactionId}`);
+    }
+
+    for (const complaint of complaints.filter((c) => c.customerId === uid || c.professionalId === uid)) {
+      await dbDelete(`complaints/${complaint._key || complaint.complaintId}`);
+    }
+
+    for (const request of featuredRequests.filter((r) => r.professionalId === uid)) {
+      await dbDelete(`featuredRequests/${request._key || request.requestId}`);
+    }
+
+    for (const referral of referrals.filter((r) =>
+      r.customerId === uid || r.professionalId === uid || r.referrerId === uid || r.referredUserId === uid
+    )) {
+      await dbDelete(`referrals/${referral._key || referral.code || referral.referralCode}`);
+    }
+
+    for (const post of jobPosts) {
+      const postId = post._key || post.postId;
+      if (!postId) continue;
+      if (post.customerId === uid || post.selectedProfessionalId === uid) {
+        await dbDelete(`jobPosts/${postId}`);
+        await dbDelete(`jobPostOffers/${postId}`);
+        continue;
+      }
+      const offers = await dbGet(`jobPostOffers/${postId}`) || {};
+      let removedOffers = 0;
+      for (const [offerId, offer] of Object.entries(offers)) {
+        if (offer?.professionalId === uid) {
+          await dbDelete(`jobPostOffers/${postId}/${offerId}`);
+          removedOffers += 1;
+        }
+      }
+      if (removedOffers > 0) {
+        await dbUpdate(`jobPosts/${postId}`, {
+          offerCount: Math.max(0, Number(post.offerCount || 0) - removedOffers),
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    await dbDelete(`favorites/${uid}`);
+    const allFavorites = await dbGetAll('favorites') || [];
+    for (const favoriteGroup of allFavorites) {
+      const customerId = favoriteGroup._key || favoriteGroup.id;
+      if (!customerId) continue;
+      if (favoriteGroup[uid]) {
+        await dbDelete(`favorites/${customerId}/${uid}`);
+      }
     }
 
     await dbDelete(`professionalContactLeads/${uid}`);
@@ -352,6 +387,13 @@ const AdminModel = {
     await dbDelete(`users/${uid}`);
     await dbDelete(`professionalReviews/${uid}`);
     await dbDelete(`professionals/${uid}`);
+    await dbDelete(`professionalCertificates/${uid}`);
+    await dbDelete(`notifications/${uid}`);
+    return {
+      deleted: true,
+      deletedRole: isProfessional ? 'professional' : 'customer',
+      message: `${isProfessional ? 'Professional' : 'Customer'} deleted successfully.`,
+    };
   },
 
   async updateProfessional(uid, payload) {
