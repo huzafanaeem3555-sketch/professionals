@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/booking_model.dart';
@@ -83,7 +84,8 @@ class BookingCard extends StatelessWidget {
   }
 
   void _showCounterBidDialog(BuildContext context) {
-    final controller = TextEditingController(text: booking.agreedPrice.toStringAsFixed(0));
+    final controller =
+        TextEditingController(text: booking.agreedPrice.toStringAsFixed(0));
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -114,10 +116,14 @@ class BookingCard extends StatelessWidget {
               if (newPrice != null && newPrice > 0) {
                 Navigator.pop(ctx);
                 try {
-                  final provider = Provider.of<BookingProvider>(context, listen: false);
+                  final provider =
+                      Provider.of<BookingProvider>(context, listen: false);
                   provider.proposeCounterBid(booking.bookingId, newPrice);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Counter bid sent: Rs. ${newPrice.toStringAsFixed(0)}')),
+                  showTimedSnackBar(
+                    context,
+                    SnackBar(
+                        content: Text(
+                            'Counter bid sent: Rs. ${newPrice.toStringAsFixed(0)}')),
                   );
                 } catch (e) {
                   debugPrint('Error proposing counter-bid: $e');
@@ -177,7 +183,8 @@ class BookingCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: _getStatusColor().withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -197,13 +204,14 @@ class BookingCard extends StatelessWidget {
 
             if (booking.canShowContactPhone) ...[
               const SizedBox(height: 12),
-               Container(
-                 padding: const EdgeInsets.all(8),
-                 decoration: BoxDecoration(
-                   color: AppColors.primary.withValues(alpha: 0.05),
-                   borderRadius: BorderRadius.circular(8),
-                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                 ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
                 child: Row(
                   children: [
                     const Icon(Icons.phone, size: 16, color: AppColors.primary),
@@ -222,37 +230,16 @@ class BookingCard extends StatelessWidget {
 
             const Divider(height: 16),
 
-            if (booking.status != 'pending_acceptance' && booking.status != 'counter_offered')
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Price',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppHelpers.formatCurrency(booking.agreedPrice),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                if (booking.scheduledTime != null)
+            if (booking.status != 'pending_acceptance' &&
+                booking.status != 'counter_offered')
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Scheduled',
+                        'Price',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -260,16 +247,38 @@ class BookingCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _formatDate(booking.scheduledTime),
+                        AppHelpers.formatCurrency(booking.agreedPrice),
                         style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
                   ),
-              ],
-            ),
+                  if (booking.scheduledTime != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Scheduled',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatDate(booking.scheduledTime),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
 
             // Description if available
             if (booking.description.isNotEmpty) ...[
@@ -450,8 +459,8 @@ class BookingCard extends StatelessWidget {
     }
 
     // Track action (customer tracking professional location)
-    if (_isCustomer() && 
-        (booking.status == 'confirmed' || booking.status == 'in_progress') && 
+    if (_isCustomer() &&
+        (booking.status == 'confirmed' || booking.status == 'in_progress') &&
         onTrack != null) {
       buttons.add(
         Expanded(
@@ -468,7 +477,8 @@ class BookingCard extends StatelessWidget {
     }
 
     // Cancel action (customer, before job starts)
-    if ((booking.status == 'pending_acceptance' || booking.status == 'confirmed') &&
+    if ((booking.status == 'pending_acceptance' ||
+            booking.status == 'confirmed') &&
         _isCustomer() &&
         onCancel != null) {
       if (buttons.isNotEmpty) {
@@ -504,4 +514,3 @@ class BookingCard extends StatelessWidget {
     }
   }
 }
-

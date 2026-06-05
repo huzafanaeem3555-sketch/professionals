@@ -1,6 +1,7 @@
 // ignore_for_file: unnecessary_null_comparison, unnecessary_non_null_assertion, invalid_null_aware_operator, dead_null_aware_expression
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../providers/professional_provider.dart';
@@ -486,6 +487,16 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
   ) async {
     final customerId = await StorageService.getUid();
     if (customerId == null || customerId.isEmpty || !context.mounted) return;
+    if (customerId == pro.uid) {
+      showTimedSnackBar(
+        context,
+        const SnackBar(
+          content: Text('You cannot review your own professional profile.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     final userDetails = await StorageService.getUserDetails();
     final customerName = userDetails['name']?.trim().isNotEmpty == true
         ? userDetails['name']!.trim()
@@ -580,7 +591,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
     if (!context.mounted) return;
     await context.read<ProfessionalProvider>().loadProfile(pro.uid);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       const SnackBar(
         content: Text('Thanks, your feedback was added.'),
         backgroundColor: AppColors.success,
@@ -750,7 +762,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       if (fallback['success'] == true) {
         leadSaved = true;
       } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
             content: Text(
                 'Could not show your details to professional. Check backend/Firebase.'),
@@ -768,7 +781,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
     );
     final launched = await launchContactUri(uri);
     if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Could not open contact app')),
       );
       return;
@@ -875,7 +889,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
           .timeout(const Duration(seconds: 8));
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Could not check your phone number. Try again.')),
         );
@@ -920,7 +935,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
       }).timeout(const Duration(seconds: 8));
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Could not save phone number. Try again.')),
         );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
@@ -610,7 +611,8 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
                         GestureDetector(
                           onTap: () {
                             // Show snackbar on tap
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            showTimedSnackBar(
+                              context,
                               SnackBar(
                                 content: Text(
                                   'Phone: ${professionalLocation!.phoneNumber}',

@@ -34,7 +34,8 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _load() async {
-    final uid = await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
+    final uid =
+        await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
 
     _sub = _db.child('professionals/$uid').onValue.listen((event) async {
@@ -51,14 +52,13 @@ class _WalletScreenState extends State<WalletScreen> {
           await _db.child('professionals/$uid/earningsHistory').get();
       final histList = <Map<String, dynamic>>[];
       if (historySnap.exists && historySnap.value != null) {
-        final histMap =
-            Map<String, dynamic>.from(historySnap.value as Map);
+        final histMap = Map<String, dynamic>.from(historySnap.value as Map);
         histMap.forEach((key, value) {
           final entry = Map<String, dynamic>.from(value as Map);
           histList.add(entry);
         });
-        histList.sort((a, b) =>
-            (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
+        histList.sort(
+            (a, b) => (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
       }
 
       if (mounted) {
@@ -78,8 +78,18 @@ class _WalletScreenState extends State<WalletScreen> {
     final dt = DateTime.fromMillisecondsSinceEpoch(
         (timestamp is int) ? timestamp : timestamp.toInt());
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
   }
@@ -142,8 +152,8 @@ class _WalletScreenState extends State<WalletScreen> {
                           const SizedBox(height: 4),
                           const Text(
                             'After 10% platform commission',
-                            style: TextStyle(
-                                color: Colors.white60, fontSize: 12),
+                            style:
+                                TextStyle(color: Colors.white60, fontSize: 12),
                           ),
                         ],
                       ),
@@ -205,8 +215,7 @@ class _WalletScreenState extends State<WalletScreen> {
                               color: AppColors.primary.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                  color:
-                                      AppColors.primary.withOpacity(0.15)),
+                                  color: AppColors.primary.withOpacity(0.15)),
                             ),
                             child: Row(
                               children: [
@@ -245,8 +254,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                 child: Column(
                                   children: [
                                     Icon(Icons.receipt_long_outlined,
-                                        size: 56,
-                                        color: AppColors.textLight),
+                                        size: 56, color: AppColors.textLight),
                                     const SizedBox(height: 12),
                                     const Text('No earnings yet',
                                         style: TextStyle(
@@ -280,8 +288,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                   borderRadius: BorderRadius.circular(14),
                                   boxShadow: [
                                     BoxShadow(
-                                        color:
-                                            Colors.black.withOpacity(0.04),
+                                        color: Colors.black.withOpacity(0.04),
                                         blurRadius: 8)
                                   ],
                                 ),
@@ -291,14 +298,12 @@ class _WalletScreenState extends State<WalletScreen> {
                                       width: 42,
                                       height: 42,
                                       decoration: BoxDecoration(
-                                        color: AppColors.success
-                                            .withOpacity(0.1),
+                                        color:
+                                            AppColors.success.withOpacity(0.1),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
-                                          Icons.payments_outlined,
-                                          color: AppColors.success,
-                                          size: 20),
+                                      child: const Icon(Icons.payments_outlined,
+                                          color: AppColors.success, size: 20),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -310,7 +315,8 @@ class _WalletScreenState extends State<WalletScreen> {
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 14,
-                                                  color: AppColors.textPrimary)),
+                                                  color:
+                                                      AppColors.textPrimary)),
                                           Text(
                                             _formatDate(ts),
                                             style: const TextStyle(

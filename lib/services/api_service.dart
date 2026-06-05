@@ -113,6 +113,11 @@ class ApiService {
     String? customerAddress,
     Map<String, dynamic>? customerLocation,
     bool leadAlreadySaved = false,
+    String? referralCode,
+    String? referralDiscountPercent,
+    String? referralOwnerId,
+    String? referralOwnerName,
+    bool hasReferralDiscount = false,
   }) async {
     try {
       final response = await _withRetry(
@@ -128,6 +133,16 @@ class ApiService {
           if (customerAddress != null) 'customerAddress': customerAddress,
           if (customerLocation != null) 'customerLocation': customerLocation,
           if (leadAlreadySaved) 'leadAlreadySaved': true,
+          if (referralCode != null && referralCode.isNotEmpty)
+            'referralCode': referralCode,
+          if (referralDiscountPercent != null &&
+              referralDiscountPercent.isNotEmpty)
+            'referralDiscountPercent': referralDiscountPercent,
+          if (referralOwnerId != null && referralOwnerId.isNotEmpty)
+            'referralOwnerId': referralOwnerId,
+          if (referralOwnerName != null && referralOwnerName.isNotEmpty)
+            'referralOwnerName': referralOwnerName,
+          if (hasReferralDiscount) 'hasReferralDiscount': true,
         }),
       );
       return response.data;
@@ -148,6 +163,11 @@ class ApiService {
     required String contactMethod,
     Map<String, dynamic>? customerLocation,
     bool leadAlreadySaved = false,
+    String? referralCode,
+    String? referralDiscountPercent,
+    String? referralOwnerId,
+    String? referralOwnerName,
+    bool hasReferralDiscount = false,
   }) async {
     try {
       final uid = await StorageService.getUid();
@@ -178,6 +198,16 @@ class ApiService {
           'body': body,
           if (customerLocation != null) 'customerLocation': customerLocation,
           if (leadAlreadySaved) 'leadAlreadySaved': true,
+          if (referralCode != null && referralCode.isNotEmpty)
+            'referralCode': referralCode,
+          if (referralDiscountPercent != null &&
+              referralDiscountPercent.isNotEmpty)
+            'referralDiscountPercent': referralDiscountPercent,
+          if (referralOwnerId != null && referralOwnerId.isNotEmpty)
+            'referralOwnerId': referralOwnerId,
+          if (referralOwnerName != null && referralOwnerName.isNotEmpty)
+            'referralOwnerName': referralOwnerName,
+          if (hasReferralDiscount) 'hasReferralDiscount': true,
         }),
       );
       return response.data;

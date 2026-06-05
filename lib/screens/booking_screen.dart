@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/booking_provider.dart';
@@ -70,13 +71,15 @@ class _BookingScreenState extends State<BookingScreen> {
     final address = _addressController.text.trim();
 
     if (description.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Please enter issue description')),
       );
       return;
     }
     if (address.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Please enter service address')),
       );
       return;
@@ -99,19 +102,19 @@ class _BookingScreenState extends State<BookingScreen> {
       final pro = widget.professional;
       final proUid = pro?.uid ?? widget.professionalId ?? '';
       final success = await context.read<BookingProvider>().createBooking(
-            professionalId: proUid,
-            serviceType: pro?.services.isNotEmpty == true
-                ? pro!.services.first
-                : (widget.serviceType ?? 'general'),
-            proposedPrice: 0,
-            scheduledTime: scheduledTime?.toIso8601String(),
-            address: address,
-            description: description,
-            customerLocation: {
-              'lat': widget.customerLat ?? 0,
-              'lng': widget.customerLng ?? 0,
-            },
-          );
+        professionalId: proUid,
+        serviceType: pro?.services.isNotEmpty == true
+            ? pro!.services.first
+            : (widget.serviceType ?? 'general'),
+        proposedPrice: 0,
+        scheduledTime: scheduledTime?.toIso8601String(),
+        address: address,
+        description: description,
+        customerLocation: {
+          'lat': widget.customerLat ?? 0,
+          'lng': widget.customerLng ?? 0,
+        },
+      );
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
@@ -134,7 +137,8 @@ class _BookingScreenState extends State<BookingScreen> {
         );
         if (mounted) Navigator.pop(context, true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text(
               context.read<BookingProvider>().error ?? 'Request failed',
@@ -146,7 +150,8 @@ class _BookingScreenState extends State<BookingScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         SnackBar(content: Text('Error: $e')),
       );
     }
@@ -269,7 +274,8 @@ class _BookingScreenState extends State<BookingScreen> {
                       )
                     : const Text(
                         'Send Request',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
               ),
             ),

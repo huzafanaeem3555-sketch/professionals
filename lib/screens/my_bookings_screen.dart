@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
@@ -115,7 +116,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     if (confirm != true || !mounted) return;
     await _firebase.cancelBooking(bookingId);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Booking cancelled')),
       );
     }
@@ -143,7 +145,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         booking['contactInfo']?['phone']?.toString() ??
         '';
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Phone number not available')),
       );
       return;
@@ -254,7 +257,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       : reviewCtrl.text.trim(),
                 );
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  showTimedSnackBar(
+                    context,
                     const SnackBar(
                       content: Text('Thank you for your review! ⭐'),
                       backgroundColor: AppColors.success,

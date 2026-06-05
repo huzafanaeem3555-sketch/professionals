@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../services/storage_service.dart';
@@ -64,7 +65,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       final enteredPhone = _phoneCtrl.text.trim();
       if (gender == 'female' && role == 'customer' && enteredName.isEmpty) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Enter your full name for verification')),
         );
@@ -72,7 +74,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       }
       if (gender == 'female' && role == 'customer' && enteredPhone.isEmpty) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Enter your phone number for verification')),
         );
@@ -175,7 +178,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text('Failed to save role: ${e.toString()}'),
             backgroundColor: AppColors.error,

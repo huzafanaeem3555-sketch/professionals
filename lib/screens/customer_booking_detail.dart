@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
 import '../providers/booking_provider.dart';
 import '../utils/constants.dart';
@@ -12,8 +13,8 @@ class CustomerBookingDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = booking['status']?.toString() ?? '';
     final service = booking['serviceType']?.toString() ?? 'Service';
-    final price = (booking['agreedPrice'] ?? booking['proposedPrice'] ?? 0)
-        .toDouble();
+    final price =
+        (booking['agreedPrice'] ?? booking['proposedPrice'] ?? 0).toDouble();
     final phone = booking['professionalPhone']?.toString() ?? '';
     final canConfirmCompletion = status == 'in_progress';
 
@@ -48,7 +49,8 @@ class CustomerBookingDetailScreen extends StatelessWidget {
                         .read<BookingProvider>()
                         .customerConfirmCompletion(booking['bookingId']);
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    showTimedSnackBar(
+                      context,
                       SnackBar(
                         content: Text(ok
                             ? 'Service marked complete. Waiting for professional confirmation.'

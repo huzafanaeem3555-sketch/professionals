@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
@@ -41,8 +42,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
     _pulseCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1500))
       ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseAnim = Tween<double>(begin: 0.95, end: 1.05)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _slideCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 400));
@@ -54,7 +55,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
 
   Future<void> _init() async {
     final role = await StorageService.getRole();
-    _currentUid = await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    _currentUid = await StorageService.getUid() ??
+        FirebaseAuth.instance.currentUser?.uid ??
+        '';
     _isCustomer = role == 'customer';
 
     if (widget.bookingId.isNotEmpty) {
@@ -95,8 +98,7 @@ class _NegotiationScreenState extends State<NegotiationScreen>
     super.dispose();
   }
 
-  String _formatCurrency(double amount) =>
-      'Rs. ${amount.toStringAsFixed(0)}';
+  String _formatCurrency(double amount) => 'Rs. ${amount.toStringAsFixed(0)}';
 
   String _formatTimeAgo(dynamic timestamp) {
     if (timestamp == null) return 'Just now';
@@ -223,18 +225,21 @@ class _NegotiationScreenState extends State<NegotiationScreen>
   }
 
   void _showSnack(String msg, {required bool success}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(success ? Icons.check_circle : Icons.error_outline,
-            color: Colors.white, size: 18),
-        const SizedBox(width: 8),
-        Expanded(child: Text(msg)),
-      ]),
-      backgroundColor: success ? AppColors.success : AppColors.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: const EdgeInsets.all(16),
-    ));
+    showTimedSnackBar(
+        context,
+        SnackBar(
+          content: Row(children: [
+            Icon(success ? Icons.check_circle : Icons.error_outline,
+                color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(msg)),
+          ]),
+          backgroundColor: success ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ));
   }
 
   Future<bool?> _showConfirmDialog(String title, String content) {
@@ -285,8 +290,7 @@ class _NegotiationScreenState extends State<NegotiationScreen>
     final proposedPrice = (booking['proposedPrice'] ?? 0.0).toDouble();
     final agreedPrice = (booking['agreedPrice'] ?? 0.0).toDouble();
     final isConfirmed = status == 'confirmed';
-    final isCancelled =
-        status == 'cancelled' || status == 'rejected';
+    final isCancelled = status == 'cancelled' || status == 'rejected';
 
     // Determine whose turn it is
     final myTurn = !isConfirmed &&
@@ -310,9 +314,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
           history.add(entry);
         }
       });
-      history.sort((a, b) =>
-          ((a['timestamp'] ?? 0) as num)
-              .compareTo((b['timestamp'] ?? 0) as num));
+      history.sort((a, b) => ((a['timestamp'] ?? 0) as num)
+          .compareTo((b['timestamp'] ?? 0) as num));
     }
 
     return Scaffold(
@@ -345,8 +348,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                     const SizedBox(height: 8),
                     _buildSectionTitle('💬 Bid History'),
                     const SizedBox(height: 10),
-                    ...history.asMap().entries.map((e) =>
-                        _buildHistoryItem(e.value, e.key == history.length - 1)),
+                    ...history.asMap().entries.map((e) => _buildHistoryItem(
+                        e.value, e.key == history.length - 1)),
                   ] else if (!isConfirmed && !isCancelled) ...[
                     const SizedBox(height: 16),
                     _buildEmptyHistory(),
@@ -402,7 +405,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
       textColor = AppColors.success;
       icon = Icons.check_circle_rounded;
       title = '🎉 Deal Confirmed!';
-      subtitle = 'Agreed price: ${_formatCurrency(agreed)}. Contact the other party to start.';
+      subtitle =
+          'Agreed price: ${_formatCurrency(agreed)}. Contact the other party to start.';
     } else if (isCancelled) {
       bgColor = const Color(0xFFFFEBEE);
       textColor = AppColors.error;
@@ -413,7 +417,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
       bgColor = const Color(0xFFFFF3E0);
       textColor = const Color(0xFFE65100);
       icon = Icons.notifications_active_rounded;
-      title = _isCustomer ? '🔔 Your Turn — Review Offer' : '🔔 Your Turn — Propose Price';
+      title = _isCustomer
+          ? '🔔 Your Turn — Review Offer'
+          : '🔔 Your Turn — Propose Price';
       subtitle = proposed > 0
           ? 'Professional offered ${_formatCurrency(proposed)}. Accept or counter.'
           : 'Customer is waiting. Propose your initial price.';
@@ -421,7 +427,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
       bgColor = const Color(0xFFEEF2FF);
       textColor = AppColors.primary;
       icon = Icons.hourglass_top_rounded;
-      title = _isCustomer ? '⏳ Waiting for Professional...' : '⏳ Waiting for Customer...';
+      title = _isCustomer
+          ? '⏳ Waiting for Professional...'
+          : '⏳ Waiting for Customer...';
       subtitle = proposed > 0
           ? 'Your offer of ${_formatCurrency(proposed)} is being reviewed.'
           : 'The other party will respond shortly.';
@@ -527,7 +535,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                 color: const Color(0xFFE53935)),
           if (!_isCustomer && customerId.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _detailRow(Icons.person_rounded, 'Customer ID',
+            _detailRow(
+                Icons.person_rounded,
+                'Customer ID',
                 customerId.length > 10
                     ? '${customerId.substring(0, 10)}...'
                     : customerId,
@@ -536,9 +546,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
           if (!_isCustomer && customerPhone.isNotEmpty) ...[
             const SizedBox(height: 8),
             GestureDetector(
-              onTap: () => Clipboard.setData(ClipboardData(text: customerPhone)),
-              child: _detailRow(
-                  Icons.phone_rounded, 'Phone', customerPhone,
+              onTap: () =>
+                  Clipboard.setData(ClipboardData(text: customerPhone)),
+              child: _detailRow(Icons.phone_rounded, 'Phone', customerPhone,
                   color: AppColors.success),
             ),
           ],
@@ -594,8 +604,7 @@ class _NegotiationScreenState extends State<NegotiationScreen>
   }
 
   Widget _buildAgreedPriceCard(double price, Map<String, dynamic> booking) {
-    final professionalPhone =
-        booking['professionalPhone']?.toString() ?? '';
+    final professionalPhone = booking['professionalPhone']?.toString() ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -656,7 +665,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
   Widget _buildSectionTitle(String title) {
     return Text(title,
         style: const TextStyle(
-            fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary));
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary));
   }
 
   Widget _buildHistoryItem(Map<String, dynamic> item, bool isLatest) {
@@ -664,9 +675,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
     final price = (item['price'] ?? 0.0).toDouble();
     final ts = item['timestamp'];
     final action = item['action']?.toString() ?? '';
-    final isFromMe =
-        (from == 'customer' && _isCustomer) ||
-            (from == 'professional' && !_isCustomer);
+    final isFromMe = (from == 'customer' && _isCustomer) ||
+        (from == 'professional' && !_isCustomer);
     final isAccepted = action == 'accepted';
 
     return AnimatedContainer(
@@ -691,8 +701,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                   boxShadow: isLatest
                       ? [
                           BoxShadow(
-                              color: (isFromMe ? AppColors.primary : Colors.grey)
-                                  .withOpacity(0.35),
+                              color:
+                                  (isFromMe ? AppColors.primary : Colors.grey)
+                                      .withOpacity(0.35),
                               blurRadius: 8)
                         ]
                       : null,
@@ -737,12 +748,17 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                       children: [
                         Text(
                           isAccepted
-                              ? (isFromMe ? 'You accepted' : 'Other party accepted')
-                              : (isFromMe ? 'You offered' : (from == 'professional' ? 'Professional offered' : 'Customer offered')),
+                              ? (isFromMe
+                                  ? 'You accepted'
+                                  : 'Other party accepted')
+                              : (isFromMe
+                                  ? 'You offered'
+                                  : (from == 'professional'
+                                      ? 'Professional offered'
+                                      : 'Customer offered')),
                           style: TextStyle(
-                              fontWeight: isLatest
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
+                              fontWeight:
+                                  isLatest ? FontWeight.bold : FontWeight.w500,
                               fontSize: 13,
                               color: isLatest
                                   ? AppColors.textPrimary
@@ -764,7 +780,9 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: isLatest
-                              ? (isFromMe ? AppColors.primary : AppColors.textPrimary)
+                              ? (isFromMe
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary)
                               : AppColors.textSecondary),
                     ),
                 ],
@@ -796,8 +814,7 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                   fontSize: 14)),
           SizedBox(height: 4),
           Text('Propose your price below to start negotiating',
-              style:
-                  TextStyle(color: AppColors.textLight, fontSize: 12),
+              style: TextStyle(color: AppColors.textLight, fontSize: 12),
               textAlign: TextAlign.center),
         ],
       ),
@@ -967,7 +984,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                     decoration: InputDecoration(
-                      labelText: activePrice > 0 ? 'Counter Offer' : 'Your Price',
+                      labelText:
+                          activePrice > 0 ? 'Counter Offer' : 'Your Price',
                       prefixText: 'Rs. ',
                       prefixStyle: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -980,8 +998,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                           borderSide: BorderSide.none),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide:
-                            const BorderSide(color: AppColors.primary, width: 2),
+                        borderSide: const BorderSide(
+                            color: AppColors.primary, width: 2),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 14),
@@ -1007,7 +1025,8 @@ class _NegotiationScreenState extends State<NegotiationScreen>
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
                         : Text(activePrice > 0 ? 'Counter' : 'Bid',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/services.dart';
 import '../models/professional_model.dart';
@@ -10,7 +11,6 @@ import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
-import '../utils/helpers.dart';
 import '../utils/contact_actions.dart';
 import '../screens/my_bookings_screen.dart';
 import '../widgets/notification_bell.dart';
@@ -107,6 +107,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
     _userDetails = await userDetailsFuture;
     final customerId = await customerIdFuture ?? '';
+    await _loadReferralState(customerId);
     await _loadCustomerPrivacy();
     final bookingsFuture = _firebase.getBookingsForCustomer(customerId);
 
@@ -193,6 +194,28 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         await StorageService.setVerificationStatus(_customerVerificationStatus);
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadReferralState(String customerId) async {
+    if (customerId.isEmpty) return;
+    try {
+      final snap =
+          await FirebaseDatabase.instance.ref('users/$customerId').get();
+      if (!snap.exists || snap.value is! Map) return;
+      final data = Map<String, dynamic>.from(snap.value as Map);
+      void putString(String key) {
+        final value = data[key]?.toString() ?? '';
+        if (value.isNotEmpty) _userDetails[key] = value;
+      }
+
+      putString('activeReferralCode');
+      putString('referredProfessionalId');
+      putString('referralDiscountPercent');
+      putString('referralOwnerId');
+      putString('referralOwnerName');
+    } catch (_) {
+      // Referral data is optional; normal browsing should still work.
+    }
   }
 
   bool _canShowProfessional(ProfessionalModel pro) {
@@ -862,7 +885,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           _favoriteIds.remove(pro.uid);
         }
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         SnackBar(
             content: Text(res['message']?.toString() ?? 'Favorite failed')),
       );
@@ -905,7 +929,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       'reason': reason,
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
             ? 'Complaint sent to admin.'
@@ -926,14 +951,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       final data = Map<String, dynamic>.from(res['data'] as Map);
       final code = data['code']?.toString() ?? '';
       await Clipboard.setData(ClipboardData(text: code));
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         SnackBar(
           content: Text('Referral code copied: $code'),
           backgroundColor: AppColors.success,
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         SnackBar(
             content: Text(res['message']?.toString() ?? 'Referral failed')),
       );
@@ -950,15 +977,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (mounted) _load();
   }
 
-  Future<void> _openFeatureGuide() async {
-    await Navigator.pushNamed(context, '/feature-guide');
-  }
-
   void _showSavedProfessionals() {
     setState(() {
       _filtered = _all.where((p) => _favoriteIds.contains(p.uid)).toList();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(
           _favoriteIds.isEmpty
@@ -967,48 +991,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         ),
       ),
     );
-  }
-
-  Future<void> _openFeedbackFor(ProfessionalModel pro) async {
-    final action = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Feedback: ${pro.name}'),
-        content: const Text(
-          'Rate completed work from My Bookings, or send an issue directly to admin.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'profile'),
-            child: const Text('View Profile'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'complaint'),
-            child: const Text('Complaint'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, 'bookings'),
-            child: const Text('Rate Job'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted) return;
-    if (action == 'complaint') {
-      await _submitComplaint(pro);
-    } else if (action == 'bookings') {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-      );
-      if (mounted) _load();
-    } else if (action == 'profile') {
-      Navigator.pushNamed(
-        context,
-        '/professional-profile',
-        arguments: {'uid': pro.uid},
-      );
-    }
   }
 
   Future<void> _applyReferralDialog() async {
@@ -1046,19 +1028,29 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       final data = Map<String, dynamic>.from(res['data'] as Map);
       final proId = data['professionalId']?.toString() ?? '';
       final discount = data['discountPercent']?.toString() ?? '10';
+      final referralCode = data['code']?.toString() ?? code.toUpperCase();
+      final ownerId = data['ownerId']?.toString() ?? '';
+      final ownerName = data['ownerName']?.toString() ?? 'Customer';
       setState(() {
+        _userDetails['activeReferralCode'] = referralCode;
+        _userDetails['referredProfessionalId'] = proId;
+        _userDetails['referralDiscountPercent'] = discount;
+        _userDetails['referralOwnerId'] = ownerId;
+        _userDetails['referralOwnerName'] = ownerName;
         if (proId.isNotEmpty) {
           _filtered = _all.where((p) => p.uid == proId).toList();
         }
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         SnackBar(
           content: Text('Referral applied. Discount: $discount%'),
           backgroundColor: AppColors.success,
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         SnackBar(content: Text(res['message']?.toString() ?? 'Invalid code')),
       );
     }
@@ -1182,7 +1174,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
             : 'Your job is live. Professionals will receive a phone alert.',
       );
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
             ? 'Job posted. Nearby professionals can send offers.'
@@ -1202,14 +1195,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   void _autoMatchBest() {
     if (_filtered.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Select a service or search first.')),
       );
       return;
     }
     _sortProfessionals(_filtered);
     final best = _filtered.first;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content:
             Text('Best match: ${best.name} (${best.trustScore}% reliable)'),
@@ -1289,7 +1284,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final customerLocation =
         Map<String, dynamic>.from(contactLocation['location'] as Map);
     if (pro.phone.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(
             content: Text('Professional phone number not available')),
       );
@@ -1303,6 +1299,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       final customerName = _userDetails['name']?.trim().isNotEmpty == true
           ? _userDetails['name']!.trim()
           : 'Customer';
+      final referralCode = _userDetails['activeReferralCode'] ?? '';
+      final referredProfessionalId =
+          _userDetails['referredProfessionalId'] ?? '';
+      final hasReferralDiscount =
+          referralCode.isNotEmpty && referredProfessionalId == pro.uid;
+      final referralDiscountPercent =
+          _userDetails['referralDiscountPercent'] ?? '';
+      final referralOwnerId = _userDetails['referralOwnerId'] ?? '';
+      final referralOwnerName = _userDetails['referralOwnerName'] ?? '';
       var leadSaved = await _firebase.saveContactLead(
         professionalId: pro.uid,
         customerId: customerId,
@@ -1312,6 +1317,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         serviceType: serviceType,
         contactMethod: method.name,
         customerLocation: customerLocation,
+        referralCode: hasReferralDiscount ? referralCode : null,
+        referralDiscountPercent:
+            hasReferralDiscount ? referralDiscountPercent : null,
+        referralOwnerId: hasReferralDiscount ? referralOwnerId : null,
+        referralOwnerName: hasReferralDiscount ? referralOwnerName : null,
+        hasReferralDiscount: hasReferralDiscount,
       );
       if (!leadSaved) {
         final fallback = await _api.saveContactLeadPublic(
@@ -1323,11 +1334,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           serviceType: serviceType,
           contactMethod: method.name,
           customerLocation: customerLocation,
+          referralCode: hasReferralDiscount ? referralCode : null,
+          referralDiscountPercent:
+              hasReferralDiscount ? referralDiscountPercent : null,
+          referralOwnerId: hasReferralDiscount ? referralOwnerId : null,
+          referralOwnerName: hasReferralDiscount ? referralOwnerName : null,
+          hasReferralDiscount: hasReferralDiscount,
         );
         if (fallback['success'] == true) {
           leadSaved = true;
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          showTimedSnackBar(
+            context,
             const SnackBar(
               content: Text(
                   'Could not show your details to professional. Check backend/Firebase.'),
@@ -1364,6 +1382,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         customerAddress: customerAddress,
         customerLocation: customerLocation,
         leadAlreadySaved: leadSaved,
+        referralCode: hasReferralDiscount ? referralCode : null,
+        referralDiscountPercent:
+            hasReferralDiscount ? referralDiscountPercent : null,
+        referralOwnerId: hasReferralDiscount ? referralOwnerId : null,
+        referralOwnerName: hasReferralDiscount ? referralOwnerName : null,
+        hasReferralDiscount: hasReferralDiscount,
       );
       if (notifyResult['success'] != true) {
         unawaited(_api.saveContactLeadPublic(
@@ -1376,6 +1400,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           contactMethod: method.name,
           customerLocation: customerLocation,
           leadAlreadySaved: leadSaved,
+          referralCode: hasReferralDiscount ? referralCode : null,
+          referralDiscountPercent:
+              hasReferralDiscount ? referralDiscountPercent : null,
+          referralOwnerId: hasReferralDiscount ? referralOwnerId : null,
+          referralOwnerName: hasReferralDiscount ? referralOwnerName : null,
+          hasReferralDiscount: hasReferralDiscount,
         ));
       }
 
@@ -1387,7 +1417,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                 '${pro.name} ko message ready hai. Professional ko aapki details mil gayi hain.',
           ));
         }
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text(
               method == ContactMethod.call
@@ -1493,7 +1524,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           .timeout(const Duration(seconds: 8));
     } catch (_) {
       if (requiredForContact && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Could not check your phone number. Try again.')),
         );
@@ -1535,7 +1567,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final value = result?.trim() ?? '';
     if (value.isEmpty) {
       if (requiredForContact && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content:
                   Text('Phone number is required to contact professionals')),
@@ -1550,7 +1583,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       }).timeout(const Duration(seconds: 8));
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Could not save phone number. Try again.')),
         );
@@ -1560,14 +1594,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     return value;
   }
 
-  String _greetingText() {
-    return AppHelpers.getGreeting();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final name = _userDetails['name'] ?? '';
-    final firstName = name.isNotEmpty ? name.split(' ').first : 'Customer';
     final baseServiceKeys =
         AppStrings.serviceCategories.map((c) => c['key'] as String).toSet();
     final customServiceKeys = _all
@@ -1607,7 +1635,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
               onJobs: _openCustomerJobs,
               onSaved: _showSavedProfessionals,
               onReferral: _applyReferralDialog,
-              onGuide: _openFeatureGuide,
             ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -1617,7 +1644,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                 slivers: [
                   // â”€â”€ App bar / Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverAppBar(
-                    expandedHeight: 220,
+                    expandedHeight: 230,
                     floating: false,
                     pinned: true,
                     backgroundColor: AppColors.primary,
@@ -1634,43 +1661,31 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             end: Alignment.bottomRight,
                           ),
                         ),
-                        padding: const EdgeInsets.fromLTRB(20, 70, 20, 16),
+                        padding: const EdgeInsets.fromLTRB(20, 72, 20, 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text(
-                              '${_greetingText()}, $firstName',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 14),
-                            ),
-                            const SizedBox(height: 4),
                             const Text(
-                              'Find Trusted Professionals',
+                              'Find nearby professionals',
                               style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold),
+                                  fontSize: 28,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w900),
                             ),
                             const SizedBox(height: 10),
                             const Text(
-                              'Search and book nearby professionals quickly.',
+                              'How to use it:',
                               style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                height: 1.35,
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: const [
-                                _HeroBadge(label: 'Nearby First'),
-                                _HeroBadge(label: 'Direct Contact'),
-                                _HeroBadge(label: 'Fast Booking'),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
+                            const _HowToUseStrip(),
+                            const SizedBox(height: 10),
                             // Location row
                             Row(
                               children: [
@@ -2177,42 +2192,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     ),
                   ),
 
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                      child: Row(
-                        children: const [
-                          Expanded(
-                            child: _TrustCard(
-                              title: 'Nearby Match',
-                              subtitle:
-                                  'Closest available professionals appear first',
-                              icon: Icons.near_me_outlined,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: _TrustCard(
-                              title: 'Secure Deal',
-                              subtitle:
-                                  'Phone and location unlock after agreement',
-                              icon: Icons.verified_user_outlined,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: _TrustCard(
-                              title: 'Live Updates',
-                              subtitle:
-                                  'Track active professionals during work',
-                              icon: Icons.location_searching_outlined,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
                   // â”€â”€ Section header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverToBoxAdapter(
                     child: Padding(
@@ -2291,7 +2270,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                 arguments: {'uid': pro.uid},
                               ),
                               onFavorite: () => _toggleFavorite(pro),
-                              onFeedback: () => _openFeedbackFor(pro),
                               onComplaint: () => _submitComplaint(pro),
                               onReferral: () => _createReferral(pro),
                               onCall: _booking
@@ -2384,78 +2362,98 @@ class _SearchSuggestion {
   });
 }
 
-class _HeroBadge extends StatelessWidget {
-  final String label;
-
-  const _HeroBadge({required this.label});
+class _HowToUseStrip extends StatelessWidget {
+  const _HowToUseStrip();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+    const steps = [
+      _HowToStepData(
+        number: '1',
+        title: 'Search services',
+        icon: Icons.search_rounded,
+        color: Color(0xFFFFC857),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
+      _HowToStepData(
+        number: '2',
+        title: 'Select professional',
+        icon: Icons.engineering_rounded,
+        color: Color(0xFF4FD1C5),
+      ),
+      _HowToStepData(
+        number: '3',
+        title: 'Contact',
+        icon: Icons.chat_rounded,
+        color: Color(0xFF7C9DFF),
+      ),
+    ];
+
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: steps.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => _HowToStep(data: steps[index]),
       ),
     );
   }
 }
 
-class _TrustCard extends StatelessWidget {
+class _HowToStepData {
+  final String number;
   final String title;
-  final String subtitle;
   final IconData icon;
+  final Color color;
 
-  const _TrustCard({
+  const _HowToStepData({
+    required this.number,
     required this.title,
-    required this.subtitle,
     required this.icon,
+    required this.color,
   });
+}
+
+class _HowToStep extends StatelessWidget {
+  final _HowToStepData data;
+
+  const _HowToStep({required this.data});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      constraints: const BoxConstraints(minWidth: 176),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.primary, size: 20),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: data.color,
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: Icon(data.icon, color: AppColors.primaryDark, size: 17),
           ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              height: 1.35,
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 126,
+            child: Text(
+              '${data.number}:${data.title}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -2472,7 +2470,6 @@ class _CustomerActionBar extends StatelessWidget {
   final VoidCallback onJobs;
   final VoidCallback onSaved;
   final VoidCallback onReferral;
-  final VoidCallback onGuide;
 
   const _CustomerActionBar({
     required this.favoriteCount,
@@ -2482,7 +2479,6 @@ class _CustomerActionBar extends StatelessWidget {
     required this.onJobs,
     required this.onSaved,
     required this.onReferral,
-    required this.onGuide,
   });
 
   @override
@@ -2518,7 +2514,7 @@ class _CustomerActionBar extends StatelessWidget {
                 onTap: onEstimator,
               ),
               _BottomAction(
-                label: 'Post',
+                label: 'Post Job',
                 icon: Icons.post_add_rounded,
                 onTap: onPostJob,
               ),
@@ -2536,11 +2532,6 @@ class _CustomerActionBar extends StatelessWidget {
                 label: 'Referral',
                 icon: Icons.card_giftcard_rounded,
                 onTap: onReferral,
-              ),
-              _BottomAction(
-                label: 'Guide',
-                icon: Icons.menu_book_rounded,
-                onTap: onGuide,
               ),
             ],
           ),
@@ -2611,7 +2602,6 @@ class _ProfessionalCard extends StatelessWidget {
   final VoidCallback? onWhatsApp;
   final VoidCallback? onViewProfile;
   final VoidCallback? onFavorite;
-  final VoidCallback? onFeedback;
   final VoidCallback? onComplaint;
   final VoidCallback? onReferral;
   final bool isFavorite;
@@ -2622,7 +2612,6 @@ class _ProfessionalCard extends StatelessWidget {
     this.onWhatsApp,
     this.onViewProfile,
     this.onFavorite,
-    this.onFeedback,
     this.onComplaint,
     this.onReferral,
     this.isFavorite = false,
@@ -2947,13 +2936,6 @@ class _ProfessionalCard extends StatelessWidget {
                     outlined: true,
                   ),
                   _CardActionButton(
-                    label: 'Feedback',
-                    icon: Icons.rate_review_outlined,
-                    onPressed: onFeedback,
-                    foreground: AppColors.primary,
-                    outlined: true,
-                  ),
-                  _CardActionButton(
                     label: 'Call',
                     icon: Icons.call,
                     onPressed: isAvailable ? onCall : null,
@@ -2983,12 +2965,6 @@ class _ProfessionalCard extends StatelessWidget {
                         children: [
                           Expanded(child: buttons[2]),
                           const SizedBox(width: 8),
-                          Expanded(child: buttons[3]),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
                           Expanded(
                             child: _CardActionButton(
                               label: 'Refer',
@@ -2998,7 +2974,11 @@ class _ProfessionalCard extends StatelessWidget {
                               outlined: true,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
                           Expanded(
                             child: _CardActionButton(
                               label: 'Complaint',
@@ -3022,8 +3002,6 @@ class _ProfessionalCard extends StatelessWidget {
                         Expanded(child: buttons[1]),
                         const SizedBox(width: 8),
                         Expanded(child: buttons[2]),
-                        const SizedBox(width: 8),
-                        Expanded(child: buttons[3]),
                       ],
                     ),
                     const SizedBox(height: 8),

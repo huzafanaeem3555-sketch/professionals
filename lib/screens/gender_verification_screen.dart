@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -32,7 +33,8 @@ class GenderVerificationScreen extends StatelessWidget {
     final uri = Uri.parse('https://wa.me/$whatsappNumber?text=$message');
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Could not open WhatsApp.')),
       );
     }

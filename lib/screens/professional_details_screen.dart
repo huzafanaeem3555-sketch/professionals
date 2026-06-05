@@ -6,7 +6,9 @@ class ProfessionalDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
+            {};
     final name = args['name'] ?? args['displayName'] ?? 'Professional';
     final phone = args['phone'] ?? args['phoneNumber'] ?? '';
     final lat = (args['lat'] ?? 0).toDouble();
@@ -24,8 +26,12 @@ class ProfessionalDetailsScreen extends StatelessWidget {
             SizedBox(
               height: 240,
               child: GoogleMap(
-                initialCameraPosition: CameraPosition(target: LatLng(lat, lng), zoom: 14),
-                markers: {Marker(markerId: const MarkerId('p'), position: LatLng(lat, lng))},
+                initialCameraPosition:
+                    CameraPosition(target: LatLng(lat, lng), zoom: 14),
+                markers: {
+                  Marker(
+                      markerId: const MarkerId('p'), position: LatLng(lat, lng))
+                },
               ),
             ),
             const SizedBox(height: 12),
@@ -42,4 +48,3 @@ class ProfessionalDetailsScreen extends StatelessWidget {
     );
   }
 }
-

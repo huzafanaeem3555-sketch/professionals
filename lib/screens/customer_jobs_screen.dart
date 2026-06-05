@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
@@ -245,7 +246,8 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
       });
       await _loadOffers();
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
             ? 'Professional selected.'
@@ -262,10 +264,13 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
     final res = await _api.updateJobStatus(postId: postId, status: status);
     if (!mounted) return;
     if (res['success'] == true) setState(() => _job['status'] = status);
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
-            ? 'Job status updated.'
+            ? (status == 'open'
+                ? 'Job reopened for professionals.'
+                : 'Job status updated.')
             : res['message']?.toString() ?? 'Status update failed'),
         backgroundColor:
             res['success'] == true ? AppColors.success : AppColors.error,
@@ -331,7 +336,8 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
     );
     if (res['success'] == true) await _loadOffers();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
             ? 'Counter price sent.'
@@ -408,24 +414,16 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
+                      if (status == 'assigned')
+                        FilledButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.assignment_turned_in_rounded),
+                          label: const Text('Job Assigned'),
+                        ),
                       OutlinedButton.icon(
-                        onPressed: status == 'assigned'
-                            ? () => _updateStatus('in_progress')
-                            : null,
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: const Text('Start'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: ['assigned', 'in_progress'].contains(status)
-                            ? () => _updateStatus('completed')
-                            : null,
-                        icon: const Icon(Icons.done_all_rounded),
-                        label: const Text('Complete'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: status == 'completed'
+                        onPressed: status == 'open'
                             ? null
-                            : () => _updateStatus('cancelled'),
+                            : () => _updateStatus('open'),
                         icon: const Icon(Icons.cancel_outlined),
                         label: const Text('Cancel'),
                       ),
@@ -612,10 +610,17 @@ class _OfferCard extends StatelessWidget {
                   icon: const Icon(Icons.price_change_rounded),
                   label: const Text('Counter'),
                 ),
-                OutlinedButton.icon(
+                ElevatedButton.icon(
                   onPressed: selectedOfferId.isEmpty ? onSelect : null,
-                  icon: const Icon(Icons.check_circle_outline_rounded),
-                  label: const Text('Select'),
+                  icon: Icon(selected
+                      ? Icons.assignment_turned_in_rounded
+                      : Icons.check_circle_outline_rounded),
+                  label: Text(selected ? 'Job Assigned' : 'Assign Job'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        selected ? AppColors.success : AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ];
               if (compact) {

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/storage_service.dart';
-import '../services/firebase_service.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../utils/constants.dart';
@@ -19,7 +19,6 @@ class ProfessionalDashboard extends StatefulWidget {
 }
 
 class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
-  final _firebase = FirebaseService();
   final _api = ApiService();
   final _db = FirebaseDatabase.instance.ref();
 
@@ -35,6 +34,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   List<Map<String, dynamic>> _jobPosts = [];
   List<Map<String, dynamic>> _certificates = [];
   List<Map<String, dynamic>> _servicePackages = [];
+  final Set<String> _respondedJobIds = {};
 
   @override
   void initState() {
@@ -157,14 +157,6 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     return 0;
   }
 
-  Future<void> _toggleAvailability(bool value) async {
-    final uid =
-        await StorageService.getUid() ?? FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || uid.isEmpty) return;
-    setState(() => _isAvailable = value);
-    await _firebase.updateAvailability(uid, value);
-  }
-
   Future<void> _signOut() async {
     await AuthService().signOut();
     if (!mounted) return;
@@ -210,9 +202,11 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                 tabs: [
                   Tab(icon: Icon(Icons.dashboard_rounded), text: 'Home'),
                   Tab(icon: Icon(Icons.people_alt_rounded), text: 'Customers'),
-                  Tab(icon: Icon(Icons.work_outline_rounded), text: 'Jobs'),
+                  Tab(
+                      icon: Icon(Icons.work_outline_rounded),
+                      text: 'Customer Jobs'),
                   Tab(icon: Icon(Icons.person_rounded), text: 'Profile'),
-                  Tab(icon: Icon(Icons.campaign_rounded), text: 'Growth'),
+                  Tab(icon: Icon(Icons.campaign_rounded), text: 'Upgrade'),
                 ],
               ),
             ),
@@ -309,14 +303,6 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                         Text(_isAvailable ? 'Online' : 'Offline',
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 13)),
-                        const Spacer(),
-                        Transform.scale(
-                          scale: 0.8,
-                          child: Switch(
-                              value: _isAvailable,
-                              onChanged: _toggleAvailability,
-                              activeColor: const Color(0xFF4ADE80)),
-                        ),
                       ],
                     ),
                   ],
@@ -536,15 +522,19 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           final status = (job['status'] ?? 'open').toString();
           final isUrgent = job['isUrgent'] == true ||
               job['priority']?.toString() == 'urgent';
-          final selectedForMe =
-              (job['selectedProfessionalId'] ?? '').toString().isNotEmpty;
+          final responded = _respondedJobIds.contains(postId);
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: responded
+                  ? AppColors.success.withValues(alpha: 0.05)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.divider),
+              border: Border.all(
+                color: responded ? AppColors.success : AppColors.divider,
+                width: responded ? 1.5 : 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,32 +593,36 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                       icon: const Icon(Icons.chat_rounded),
                       label: const Text('WhatsApp Customer'),
                     ),
-                    if (selectedForMe && status == 'assigned')
-                      OutlinedButton.icon(
-                        onPressed: () =>
-                            _updateJobStatus(postId, 'in_progress'),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: const Text('Start'),
-                      ),
-                    if (selectedForMe && status == 'in_progress')
-                      OutlinedButton.icon(
-                        onPressed: () => _updateJobStatus(postId, 'completed'),
-                        icon: const Icon(Icons.done_all_rounded),
-                        label: const Text('Complete'),
-                      ),
                     OutlinedButton.icon(
-                      onPressed: postId.isEmpty || status != 'open'
+                      onPressed: postId.isEmpty || status != 'open' || responded
                           ? null
                           : () => _sendOffer(postId, quick: true),
-                      icon: const Icon(Icons.done_rounded),
-                      label: const Text('I can do it'),
+                      icon: Icon(responded
+                          ? Icons.check_circle_rounded
+                          : Icons.done_rounded),
+                      label: Text(responded ? 'Selected' : 'I can do it'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            responded ? AppColors.success : AppColors.primary,
+                        side: BorderSide(
+                          color:
+                              responded ? AppColors.success : AppColors.primary,
+                        ),
+                      ),
                     ),
                     ElevatedButton.icon(
-                      onPressed: postId.isEmpty || status != 'open'
+                      onPressed: postId.isEmpty || status != 'open' || responded
                           ? null
                           : () => _sendOffer(postId),
-                      icon: const Icon(Icons.local_offer_rounded),
-                      label: const Text('Send Offer'),
+                      icon: Icon(responded
+                          ? Icons.check_circle_rounded
+                          : Icons.local_offer_rounded),
+                      label: Text(responded ? 'Offer Sent' : 'Send Offer'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            responded ? AppColors.success : AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -636,22 +630,6 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Future<void> _updateJobStatus(String postId, String status) async {
-    if (postId.isEmpty) return;
-    final res = await _api.updateJobStatus(postId: postId, status: status);
-    if (res['success'] == true) await _loadMarketplaceTools();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(res['success'] == true
-            ? 'Job status updated.'
-            : res['message']?.toString() ?? 'Status update failed'),
-        backgroundColor:
-            res['success'] == true ? AppColors.success : AppColors.error,
       ),
     );
   }
@@ -712,7 +690,8 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
       'message': message.isEmpty ? 'I can do this work.' : message,
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
             ? 'Offer sent to customer.'
@@ -896,7 +875,8 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
       'createdAt': DateTime.now().millisecondsSinceEpoch,
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       const SnackBar(
         content: Text('Service package saved. Customers can see it.'),
         backgroundColor: AppColors.success,
@@ -907,7 +887,8 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   Future<void> _requestFeatured() async {
     final res = await _api.requestFeaturedListing();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(res['success'] == true
             ? 'Request sent. Contact 03195682936 on WhatsApp for paid plan.'
@@ -1063,7 +1044,8 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     });
     if (res['success'] == true) await _loadMarketplaceTools();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content:
             Text(res['success'] == true ? 'Certificate saved.' : 'Save failed'),
@@ -1098,6 +1080,11 @@ class _LeadCard extends StatelessWidget {
     final name = lead['customerName']?.toString() ?? 'Customer';
     final desc =
         lead['body']?.toString() ?? lead['description']?.toString() ?? '';
+    final referralCode = lead['referralCode']?.toString() ?? '';
+    final referralDiscount = lead['referralDiscountPercent']?.toString() ?? '';
+    final referralOwnerName = lead['referralOwnerName']?.toString() ?? '';
+    final hasReferralDiscount =
+        lead['hasReferralDiscount'] == true || referralCode.isNotEmpty;
     final location = lead['customerLocation'];
     double? lat;
     double? lng;
@@ -1236,6 +1223,42 @@ class _LeadCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (hasReferralDiscount) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.card_giftcard_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Referral discount customer. Code: ${referralCode.isEmpty ? 'Applied' : referralCode}${referralDiscount.isEmpty ? '' : ' - $referralDiscount% discount'}${referralOwnerName.isEmpty ? '' : '. Referred by $referralOwnerName.'}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -1442,7 +1465,7 @@ class _GrowthOverview extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Growth Center',
+            'Upgrade Center',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,

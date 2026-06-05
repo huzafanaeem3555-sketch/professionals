@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import '../utils/constants.dart';
@@ -35,7 +36,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text(adminProvider.error ?? 'Invalid admin credentials'),
             backgroundColor: Colors.redAccent,

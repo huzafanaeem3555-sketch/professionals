@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
 import '../utils/constants.dart';
@@ -72,7 +73,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       final success = await Provider.of<AdminProvider>(context, listen: false)
           .deleteUser(uid);
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('User deleted successfully'),
               backgroundColor: AppColors.success),
@@ -90,7 +92,8 @@ class _AdminDashboardState extends State<AdminDashboard>
     final success = await Provider.of<AdminProvider>(context, listen: false)
         .verifyUser(uid, verified: verified, isActive: isActive);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(success
             ? (verified
@@ -202,7 +205,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       final success = await Provider.of<AdminProvider>(context, listen: false)
           .deleteBooking(id);
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
               content: Text('Booking deleted successfully'),
               backgroundColor: AppColors.success),
@@ -226,7 +230,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       'sponsoredStatus': !currentlyFeatured ? 'active' : 'inactive',
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showTimedSnackBar(
+      context,
       SnackBar(
         content: Text(success
             ? (currentlyFeatured
@@ -270,7 +275,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       final success = await Provider.of<AdminProvider>(context, listen: false)
           .clearAllData();
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(
             content: Text('All app data cleared successfully'),
             backgroundColor: AppColors.success,
@@ -363,7 +369,8 @@ class _AdminDashboardState extends State<AdminDashboard>
         },
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text(success
                 ? '${role == 'professional' ? 'Professional' : 'Customer'} added'
@@ -458,7 +465,8 @@ class _AdminDashboardState extends State<AdminDashboard>
         'gender': genderCtrl.text.trim(),
       });
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           const SnackBar(content: Text('Professional updated')),
         );
       }

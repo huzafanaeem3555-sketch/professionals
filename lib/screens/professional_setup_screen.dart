@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -122,7 +123,8 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     final remaining = 6 - (_brochureUrls.length + _brochureBase64.length);
     if (remaining <= 0) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Maximum 6 brochure images allowed')),
       );
       return;
@@ -152,7 +154,8 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loadingLocation = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text('$e'),
             backgroundColor: AppColors.warning,
@@ -209,19 +212,22 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     final experienceYears = int.tryParse(_experienceCtrl.text.trim()) ?? 0;
 
     if (name.isEmpty || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Enter your name and phone number')),
       );
       return;
     }
     if (_services.isEmpty && _customServices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(content: Text('Add at least one service')),
       );
       return;
     }
     if (_lat == 0 && _lng == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(
           content: Text('Set your location — enable GPS or tap the map'),
         ),
@@ -242,7 +248,8 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
       if (uploadedUrl.isNotEmpty) {
         uploadedBrochureUrls.add(uploadedUrl);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
             content: Text(
               upload['message']?.toString() ?? 'Brochure upload failed',
@@ -300,7 +307,8 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
           'isAvailable': true,
         });
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showTimedSnackBar(
+          context,
           SnackBar(
               content:
                   Text(upload['message']?.toString() ?? 'Photo upload failed')),
@@ -326,7 +334,8 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
           (await StorageService.getVerificationStatus() ?? 'verified')
               .toLowerCase();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(
           content: Text('Profile saved!'),
           backgroundColor: AppColors.success,
@@ -344,7 +353,8 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
     } else {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(
           content: Text(
             'Save failed. Start backend (npm start) or open Firebase rules for write access.',

@@ -89,6 +89,11 @@ class FirebaseService {
     required String serviceType,
     required String contactMethod,
     Map<String, dynamic>? customerLocation,
+    String? referralCode,
+    String? referralDiscountPercent,
+    String? referralOwnerId,
+    String? referralOwnerName,
+    bool hasReferralDiscount = false,
   }) async {
     try {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -115,6 +120,16 @@ class FirebaseService {
             : 'Customer called you',
         'body':
             '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone',
+        if (referralCode != null && referralCode.isNotEmpty)
+          'referralCode': referralCode,
+        if (referralDiscountPercent != null &&
+            referralDiscountPercent.isNotEmpty)
+          'referralDiscountPercent': referralDiscountPercent,
+        if (referralOwnerId != null && referralOwnerId.isNotEmpty)
+          'referralOwnerId': referralOwnerId,
+        if (referralOwnerName != null && referralOwnerName.isNotEmpty)
+          'referralOwnerName': referralOwnerName,
+        if (hasReferralDiscount) 'hasReferralDiscount': true,
         'createdAt': now,
         'expiresAt': now + 5 * 60 * 60 * 1000,
         '_createdAt': now,

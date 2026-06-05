@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/snackbar_helper.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -157,7 +158,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       bookingId: widget.bookingId,
     );
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showTimedSnackBar(
+        context,
         const SnackBar(
             content: Text('Failed to send message'),
             backgroundColor: AppColors.error),
