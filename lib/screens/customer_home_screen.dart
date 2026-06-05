@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/services.dart';
 import '../models/professional_model.dart';
@@ -54,6 +53,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   String? _voiceStatus;
   bool _voiceAvailable = false;
   bool _voiceListening = false;
+  bool _showServiceMenu = false;
 
   late AnimationController _animCtrl;
   static const MethodChannel _voiceChannel =
@@ -267,6 +267,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   void _onSearchChanged(String value) {
     setState(() {
       _filterService = null;
+      _showServiceMenu = false;
       _buildSuggestions(value);
       _applyFilter();
     });
@@ -1770,6 +1771,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          const Text(
+                            'Search your required Services here',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           TextField(
                             controller: _searchCtrl,
                             onChanged: _onSearchChanged,
@@ -1821,6 +1832,108 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                   color: AppColors.textSecondary, fontSize: 14),
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 52,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _showServiceMenu = !_showServiceMenu;
+                                });
+                              },
+                              icon: Icon(
+                                _showServiceMenu
+                                    ? Icons.keyboard_arrow_up_rounded
+                                    : Icons.search_rounded,
+                                size: 24,
+                              ),
+                              label: Text(
+                                _filterService == null
+                                    ? 'Search Services'
+                                    : ServiceLabels.getName(_filterService!),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (_showServiceMenu) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.12),
+                                ),
+                              ),
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _CategoryChip(
+                                    label: 'All Services',
+                                    selected: _filterService == null,
+                                    onTap: () => setState(() {
+                                      _filterService = null;
+                                      _showServiceMenu = false;
+                                      _applyFilter();
+                                    }),
+                                  ),
+                                  ...orderedCategories.map((c) {
+                                    final key = c['key'] as String;
+                                    final score = _serviceScore(key);
+                                    final name = EnglishText.sanitize(
+                                      c['name']?.toString(),
+                                      fallback: ServiceLabels.getName(key),
+                                    );
+                                    return _CategoryChip(
+                                      label:
+                                          '$name${score > 0 ? ' ($score)' : ''}',
+                                      selected: _filterService == key,
+                                      onTap: () => setState(() {
+                                        _filterService = key;
+                                        _showServiceMenu = false;
+                                        unawaited(_trackServiceSearch(
+                                            serviceType: key));
+                                        _applyFilter();
+                                      }),
+                                    );
+                                  }),
+                                  ...customServiceKeys.map((key) {
+                                    final label = EnglishText.sanitize(
+                                      ServiceLabels.getName(key),
+                                      fallback: 'Service',
+                                    );
+                                    final score = _serviceScore(key);
+                                    return _CategoryChip(
+                                      label:
+                                          '$label${score > 0 ? ' ($score)' : ''}',
+                                      selected: _filterService == key,
+                                      onTap: () => setState(() {
+                                        _filterService = key;
+                                        _showServiceMenu = false;
+                                        unawaited(_trackServiceSearch(
+                                            serviceType: key));
+                                        _applyFilter();
+                                      }),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (_voiceStatus != null || _voiceListening)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -2065,67 +2178,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                   ),
 
                   SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 48,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        children: [
-                          _CategoryChip(
-                            label: 'All Services',
-                            selected: _filterService == null,
-                            onTap: () => setState(() {
-                              _filterService = null;
-                              _applyFilter();
-                            }),
-                          ),
-                          ...orderedCategories.map((c) {
-                            final key = c['key'] as String;
-                            final score = _serviceScore(key);
-                            final name = EnglishText.sanitize(
-                              c['name']?.toString(),
-                              fallback: ServiceLabels.getName(key),
-                            );
-                            return _CategoryChip(
-                              label: '$name${score > 0 ? ' ($score)' : ''}',
-                              selected: _filterService == key,
-                              onTap: () => setState(() {
-                                _filterService =
-                                    _filterService == key ? null : key;
-                                if (_filterService != null) {
-                                  unawaited(_trackServiceSearch(
-                                      serviceType: _filterService));
-                                }
-                                _applyFilter();
-                              }),
-                            );
-                          }),
-                          ...customServiceKeys.map((key) {
-                            final label = EnglishText.sanitize(
-                              ServiceLabels.getName(key),
-                              fallback: 'Service',
-                            );
-                            final score = _serviceScore(key);
-                            return _CategoryChip(
-                              label: '$label${score > 0 ? ' ($score)' : ''}',
-                              selected: _filterService == key,
-                              onTap: () => setState(() {
-                                _filterService =
-                                    _filterService == key ? null : key;
-                                if (_filterService != null) {
-                                  unawaited(_trackServiceSearch(
-                                      serviceType: _filterService));
-                                }
-                                _applyFilter();
-                              }),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
                       child: Row(
@@ -2160,47 +2212,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       ),
                     ),
                   ),
-
-                  if (_lat != 0 && _filtered.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            height: 200,
-                            child: GoogleMap(
-                              initialCameraPosition: CameraPosition(
-                                target: LatLng(_lat, _lng),
-                                zoom: 12,
-                              ),
-                              markers: {
-                                Marker(
-                                  markerId: const MarkerId('me'),
-                                  position: LatLng(_lat, _lng),
-                                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                                    BitmapDescriptor.hueAzure,
-                                  ),
-                                  infoWindow: const InfoWindow(title: 'You'),
-                                ),
-                                ..._filtered.take(12).map((p) {
-                                  return Marker(
-                                    markerId: MarkerId(p.uid),
-                                    position: LatLng(p.lat, p.lng),
-                                    infoWindow: InfoWindow(
-                                      title: p.name,
-                                      snippet: p.distanceText,
-                                    ),
-                                  );
-                                }),
-                              },
-                              myLocationEnabled: true,
-                              zoomControlsEnabled: false,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
 
                   // â”€â”€ Section header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   SliverToBoxAdapter(
