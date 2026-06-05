@@ -143,9 +143,11 @@ const MarketplaceModel = {
     if (!professionalId) throw new Error('professionalId is required.');
     const discountPercent = Math.max(0, Math.min(80, toNumber(payload.discountPercent, 10)));
     const code = clean(payload.code, `HP${ownerId.slice(0, 4)}${professionalId.slice(0, 4)}${Math.floor(Math.random() * 900 + 100)}`).toUpperCase();
+    const owner = await profileFor(ownerId);
     const referral = {
       code,
       ownerId,
+      ownerName: owner.name || 'Customer',
       professionalId,
       discountPercent,
       usedCount: 0,
@@ -161,13 +163,22 @@ const MarketplaceModel = {
     const normalized = clean(code).toUpperCase();
     const referral = await dbGet(`referrals/${normalized}`);
     if (!referral || referral.isActive === false) throw new Error('Invalid referral code.');
+    const owner = referral.ownerName
+      ? { name: referral.ownerName }
+      : await profileFor(referral.ownerId);
     await dbUpdate(`users/${customerId}`, {
       activeReferralCode: normalized,
       referredProfessionalId: referral.professionalId,
       referralDiscountPercent: toNumber(referral.discountPercent, 0),
+      referralOwnerId: referral.ownerId || '',
+      referralOwnerName: owner.name || 'Customer',
       _updatedAt: Date.now(),
     });
-    return { code: normalized, ...referral };
+    return {
+      code: normalized,
+      ...referral,
+      ownerName: owner.name || referral.ownerName || 'Customer',
+    };
   },
 
   async listMyReferrals(uid) {
@@ -256,8 +267,7 @@ const MarketplaceModel = {
         if (role === 'customer') return post.customerId === uid;
         if (post.status === 'closed') return false;
         if (!pro) return true;
-        if (!['open', 'assigned', 'in_progress'].includes(clean(post.status, 'open'))) return false;
-        if (post.selectedProfessionalId && post.selectedProfessionalId !== uid) return false;
+        if (clean(post.status, 'open') !== 'open') return false;
         return true;
       })
       .map(post => {
@@ -392,6 +402,20 @@ const MarketplaceModel = {
       throw new Error('You cannot update this job.');
     }
     const updates = { status: safeStatus, updatedAt: Date.now() };
+    if (safeStatus === 'open') {
+      updates.selectedOfferId = '';
+      updates.selectedProfessionalId = '';
+      updates.selectedProfessionalName = '';
+      updates.selectedPrice = 0;
+      const allOffers = await dbGet(`jobPostOffers/${postId}`) || {};
+      await Promise.all(Object.entries(allOffers).map(([offerId, offer]) => {
+        if (!offer || offer.status !== 'selected') return Promise.resolve();
+        return dbUpdate(`jobPostOffers/${postId}/${offerId}`, {
+          status: 'pending',
+          updatedAt: Date.now(),
+        });
+      }));
+    }
     await dbUpdate(`jobPosts/${postId}`, updates);
     const notifyIds = [post.customerId, post.selectedProfessionalId].filter(Boolean);
     await Promise.all([...new Set(notifyIds)].map(uid =>

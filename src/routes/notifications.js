@@ -38,6 +38,11 @@ async function saveProfessionalLead({
   type,
   title,
   body,
+  referralCode,
+  referralDiscountPercent,
+  referralOwnerId,
+  referralOwnerName,
+  hasReferralDiscount,
 }) {
   const now = Date.now();
   const isFemaleCustomer = String(customerGender || '').toLowerCase() === 'female';
@@ -54,6 +59,11 @@ async function saveProfessionalLead({
     type: type || (contactMethod === 'whatsapp' ? 'direct_whatsapp' : 'direct_call'),
     title: title || 'Customer contacted you',
     body: body || `${customerName || 'A customer'} contacted you. Phone: ${visiblePhone}`,
+    referralCode: referralCode || '',
+    referralDiscountPercent: Number(referralDiscountPercent || 0),
+    referralOwnerId: referralOwnerId || '',
+    referralOwnerName: referralOwnerName || '',
+    hasReferralDiscount: hasReferralDiscount === true || Boolean(referralCode),
     createdAt: now,
     expiresAt: now + 5 * 60 * 60 * 1000,
   });
@@ -97,6 +107,11 @@ router.post('/contact', verifyToken, async (req, res) => {
       customerAddress,
       customerLocation,
       leadAlreadySaved,
+      referralCode,
+      referralDiscountPercent,
+      referralOwnerId,
+      referralOwnerName,
+      hasReferralDiscount,
     } = req.body;
 
     if (!targetUserId || !title || !body) {
@@ -131,6 +146,11 @@ router.post('/contact', verifyToken, async (req, res) => {
         type,
         title,
         body,
+        referralCode,
+        referralDiscountPercent,
+        referralOwnerId,
+        referralOwnerName,
+        hasReferralDiscount,
       }) || '';
     }
     await ServiceAnalyticsModel.incrementService(serviceType, 'contactCount').catch(() => null);
@@ -144,6 +164,11 @@ router.post('/contact', verifyToken, async (req, res) => {
       customerPhone: customerPhone ? String(customerPhone) : '',
       customerAddress: customerAddress ? String(customerAddress) : '',
       customerLocation: customerLocation ? JSON.stringify(customerLocation) : '',
+      referralCode: referralCode || '',
+      referralDiscountPercent: referralDiscountPercent ? String(referralDiscountPercent) : '',
+      referralOwnerId: referralOwnerId || '',
+      referralOwnerName: referralOwnerName || '',
+      hasReferralDiscount: hasReferralDiscount ? 'true' : '',
       senderId,
       senderName: sender?.displayName || req.user.displayName || 'User',
       timestamp: Date.now().toString(),
@@ -175,6 +200,11 @@ router.post('/contact-public', async (req, res) => {
       title,
       body,
       leadAlreadySaved,
+      referralCode,
+      referralDiscountPercent,
+      referralOwnerId,
+      referralOwnerName,
+      hasReferralDiscount,
     } = req.body;
 
     if (!targetUserId || !customerPhone || !customerAddress) {
@@ -199,6 +229,11 @@ router.post('/contact-public', async (req, res) => {
         type,
         title,
         body,
+        referralCode,
+        referralDiscountPercent,
+        referralOwnerId,
+        referralOwnerName,
+        hasReferralDiscount,
       });
     await ServiceAnalyticsModel.incrementService(serviceType, 'contactCount').catch(() => null);
 
@@ -214,6 +249,11 @@ router.post('/contact-public', async (req, res) => {
         customerPhone: customerPhone || '',
         customerAddress: customerAddress || '',
         customerLocation: customerLocation ? JSON.stringify(customerLocation) : '',
+        referralCode: referralCode || '',
+        referralDiscountPercent: referralDiscountPercent ? String(referralDiscountPercent) : '',
+        referralOwnerId: referralOwnerId || '',
+        referralOwnerName: referralOwnerName || '',
+        hasReferralDiscount: hasReferralDiscount ? 'true' : '',
         senderId: customerId || '',
         senderName: customerName || 'Customer',
         timestamp: Date.now().toString(),
