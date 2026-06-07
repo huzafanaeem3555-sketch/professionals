@@ -9,6 +9,7 @@ import '../services/firebase_service.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
+import '../utils/location_prompt.dart';
 import '../widgets/location_map_picker.dart';
 
 class ProfessionalSetupScreen extends StatefulWidget {
@@ -146,6 +147,14 @@ class _ProfessionalSetupScreenState extends State<ProfessionalSetupScreen> {
   Future<void> _fetchGps() async {
     setState(() => _loadingLocation = true);
     try {
+      final locationReady = await ensureLocationEnabled(
+        context,
+        message:
+            'Please turn on location so customers can find your profile on the map and nearby search.',
+      );
+      if (!locationReady) {
+        throw Exception('Location is turned off.');
+      }
       final pos = await LocationService().getCurrentPosition();
       _lat = pos.latitude;
       _lng = pos.longitude;

@@ -90,6 +90,14 @@ class LocationService {
     return Geolocator.isLocationServiceEnabled();
   }
 
+  Future<bool> openLocationSettings() async {
+    return Geolocator.openLocationSettings();
+  }
+
+  Future<bool> openAppSettings() async {
+    return Geolocator.openAppSettings();
+  }
+
   Position? get lastPosition => _lastPosition;
 
   Future<Position> positionFromLatLng(double lat, double lng) async {
@@ -113,7 +121,8 @@ class LocationService {
     return haversineKm(lat1, lon1, lat2, lon2);
   }
 
-  static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+  static double haversineKm(
+      double lat1, double lon1, double lat2, double lon2) {
     const earthRadiusKm = 6371.0;
     final dLat = _toRad(lat2 - lat1);
     final dLon = _toRad(lon2 - lon1);

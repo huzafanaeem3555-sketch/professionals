@@ -8,6 +8,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../utils/constants.dart';
 import '../utils/contact_actions.dart';
+import '../utils/location_prompt.dart';
+import '../services/location_service.dart';
 import '../widgets/map_card.dart';
 import '../widgets/notification_bell.dart';
 
@@ -28,6 +30,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   String _photoURL = '';
   bool _isAvailable = true;
   bool _loadingProfile = true;
+  bool _locationPrompted = false;
   StreamSubscription<DatabaseEvent>? _bookingsSub;
   StreamSubscription<DatabaseEvent>? _profileSub;
   List<Map<String, dynamic>> _leads = [];
@@ -74,8 +77,31 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           _gender = data['gender']?.toString().toLowerCase() == 'female'
               ? 'female'
               : 'male';
+          final verificationStatus =
+              data['verificationStatus']?.toString().toLowerCase() ??
+                  'verified';
+          final isActive = data['isActive'] != false;
+          if (_gender == 'female' &&
+              (verificationStatus != 'verified' || !isActive)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.pushReplacementNamed(
+                  context,
+                  '/gender-verification',
+                  arguments: 'professional',
+                );
+              }
+            });
+          }
           _photoURL = data['photoURL']?.toString() ?? '';
           _isAvailable = data['isAvailable'] ?? true;
+          final location = data['location'];
+          if (!_locationPrompted && _isMissingLocation(location)) {
+            _locationPrompted = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              unawaited(_promptAndUpdateProfessionalLocation(uid));
+            });
+          }
           final packages = data['servicePackages'];
           _servicePackages = packages is Map
               ? packages.values
@@ -155,6 +181,62 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
     if (value is double) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
+  }
+
+  bool _isMissingLocation(dynamic location) {
+    if (location is! Map) return true;
+    final lat = location['lat'];
+    final lng = location['lng'];
+    final latNum = lat is num ? lat.toDouble() : double.tryParse('$lat') ?? 0;
+    final lngNum = lng is num ? lng.toDouble() : double.tryParse('$lng') ?? 0;
+    return latNum == 0 && lngNum == 0;
+  }
+
+  Future<void> _promptAndUpdateProfessionalLocation(String uid) async {
+    if (!mounted) return;
+    final ready = await ensureLocationEnabled(
+      context,
+      message:
+          'Please turn on location so customers can find and track your professional profile accurately.',
+    );
+    if (!ready || !mounted) return;
+    try {
+      final position =
+          await LocationService().getCurrentPosition(maxAttempts: 1);
+      final address = await LocationService().getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      await _db.child('professionals/$uid/location').update({
+        'lat': position.latitude,
+        'lng': position.longitude,
+        'address': address,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
+      await _db.child('users/$uid/location').update({
+        'lat': position.latitude,
+        'lng': position.longitude,
+        'address': address,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
+      if (!mounted) return;
+      showTimedSnackBar(
+        context,
+        const SnackBar(
+          content: Text('Location updated successfully.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showTimedSnackBar(
+        context,
+        SnackBar(
+          content: Text('Could not update location: $e'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    }
   }
 
   Future<void> _signOut() async {
@@ -1073,10 +1155,21 @@ class _LeadCard extends StatelessWidget {
     final service = lead['serviceType']?.toString().isNotEmpty == true
         ? lead['serviceType'].toString()
         : 'Direct Contact';
+    final type = lead['type']?.toString() ?? '';
+    final contactMethod = lead['contactMethod']?.toString() ?? '';
+    final actionLabel =
+        type == 'profile_view' || contactMethod == 'profile_view'
+            ? 'Profile viewed'
+            : type == 'direct_whatsapp' || contactMethod == 'whatsapp'
+                ? 'WhatsApp clicked'
+                : type == 'direct_call' || contactMethod == 'call'
+                    ? 'Call clicked'
+                    : 'Customer lead';
     final address = lead['customerAddress']?.toString().isNotEmpty == true
         ? lead['customerAddress'].toString()
         : lead['address']?.toString() ?? '';
     final phone = lead['customerPhone']?.toString() ?? '';
+    final canContact = RegExp(r'\d{8,}').hasMatch(phone);
     final name = lead['customerName']?.toString() ?? 'Customer';
     final desc =
         lead['body']?.toString() ?? lead['description']?.toString() ?? '';
@@ -1129,7 +1222,12 @@ class _LeadCard extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
                       shape: BoxShape.circle),
-                  child: const Icon(Icons.person, color: AppColors.primary),
+                  child: Icon(
+                    type == 'profile_view'
+                        ? Icons.visibility_rounded
+                        : Icons.person,
+                    color: AppColors.primary,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1147,7 +1245,7 @@ class _LeadCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        service.replaceAll('_', ' '),
+                        '$actionLabel | ${service.replaceAll('_', ' ')}',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
@@ -1279,7 +1377,7 @@ class _LeadCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: phone.isNotEmpty
+                        onPressed: canContact
                             ? () async {
                                 final uri = contactUriFor(
                                     method: ContactMethod.call,
@@ -1309,7 +1407,7 @@ class _LeadCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: phone.isNotEmpty
+                        onPressed: canContact
                             ? () async {
                                 final uri = contactUriFor(
                                     method: ContactMethod.whatsapp,
@@ -1697,7 +1795,7 @@ class _EmptyContacts extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'Customers who tap WhatsApp or Call will appear here.',
+            'Customers who view your profile, tap WhatsApp, or Call will appear here.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),

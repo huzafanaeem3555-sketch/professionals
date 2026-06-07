@@ -12,6 +12,7 @@ import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../utils/contact_actions.dart';
+import '../utils/location_prompt.dart';
 import '../screens/my_bookings_screen.dart';
 import '../widgets/notification_bell.dart';
 
@@ -92,6 +93,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final favoritesFuture = _api.getFavorites();
 
     try {
+      final locationReady = await ensureLocationEnabled(
+        context,
+        message:
+            'Please turn on location so HirePro can sort nearby professionals and enable live map tracking.',
+      );
+      if (!locationReady) {
+        throw Exception('Location is turned off.');
+      }
       final pos = await LocationService()
           .getCurrentPosition(maxAttempts: 1)
           .timeout(const Duration(seconds: 8));
@@ -194,6 +203,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         await StorageService.setVerificationStatus(_customerVerificationStatus);
       }
     } catch (_) {}
+    if (_customerGender == 'female' &&
+        _customerVerificationStatus.toLowerCase() != 'verified' &&
+        mounted) {
+      Navigator.pushReplacementNamed(
+        context,
+        '/gender-verification',
+        arguments: 'customer',
+      );
+    }
   }
 
   Future<void> _loadReferralState(String customerId) async {
@@ -396,6 +414,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       });
     }
 
+    final backendApplied =
+        await _applyBackendAiSearchResults(query, autoApply: autoApply);
+    if (backendApplied) return;
+
     if (query.trim().length < 4) return;
     final res = await _api.recommendService(query);
     if (!mounted) return;
@@ -419,6 +441,68 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         _applyFilter();
       });
     }
+  }
+
+  Future<bool> _applyBackendAiSearchResults(
+    String query, {
+    bool autoApply = false,
+  }) async {
+    if (query.trim().length < 2) return false;
+    final res = await _api.searchProfessionals(query);
+    if (!mounted || res['success'] != true || res['data'] is! Map) {
+      return false;
+    }
+
+    final data = Map<String, dynamic>.from(res['data'] as Map);
+    final results = data['results'];
+    if (results is! List || results.isEmpty) return false;
+
+    final models = <ProfessionalModel>[];
+    for (final item in results) {
+      if (item is! Map) continue;
+      final raw = Map<String, dynamic>.from(item);
+      final uid = raw['uid']?.toString() ?? '';
+      ProfessionalModel? existing;
+      for (final pro in _all) {
+        if (pro.uid == uid) {
+          existing = pro;
+          break;
+        }
+      }
+      final model = existing ?? ProfessionalModel.fromJson(raw);
+      if (!_canShowProfessional(model)) continue;
+      if (_lat != 0 &&
+          _lng != 0 &&
+          _distanceFilterKm > 0 &&
+          (model.distance ?? 999) > _distanceFilterKm) {
+        continue;
+      }
+      if (_areaFilter.trim().isNotEmpty) {
+        final area = _normalizeSearchText(_areaFilter);
+        if (!_normalizeSearchText(model.address).contains(area) &&
+            !_normalizeSearchText(model.serviceText).contains(area)) {
+          continue;
+        }
+      }
+      models.add(model);
+    }
+    if (models.isEmpty) return false;
+
+    final matchedServices = data['matchedServices'];
+    final suggested = matchedServices is List && matchedServices.isNotEmpty
+        ? matchedServices.first.toString()
+        : null;
+    setState(() {
+      if (suggested != null && suggested.isNotEmpty) {
+        _aiSuggestedService = suggested;
+      }
+      _filtered = models;
+      if (autoApply && suggested != null && suggested.isNotEmpty) {
+        _voiceStatus =
+            'Showing ${_displayServiceName(suggested)} professionals.';
+      }
+    });
+    return true;
   }
 
   String? _inferServiceFromSpeech(String value) {
@@ -972,6 +1056,82 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     if (mounted) _load();
   }
 
+  Future<void> _showMyProfile() async {
+    final details = await StorageService.getUserDetails();
+    final name = details['name']?.trim() ?? '';
+    final email = details['email']?.trim() ?? '';
+    final phone = details['phone']?.trim() ?? '';
+    final photo = details['photo']?.trim() ?? '';
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('My Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 48,
+              backgroundColor: AppColors.surfaceLight,
+              backgroundImage: photo.isNotEmpty ? NetworkImage(photo) : null,
+              child: photo.isEmpty
+                  ? Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'C',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              name.isNotEmpty ? name : 'Customer',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            if (email.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                email,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+            if (phone.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                phone,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Text(
+              '${_customerGender == 'female' ? 'Female' : 'Male'} customer | $_customerVerificationStatus',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openAiEstimator() async {
     await Navigator.pushNamed(context, '/ai-estimator');
     if (mounted) _load();
@@ -1443,6 +1603,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     var address = _myArea.trim();
 
     try {
+      final locationReady = await ensureLocationEnabled(
+        context,
+        message:
+            'Please turn on location so the professional can see your area and reach you accurately.',
+      );
+      if (!locationReady) {
+        throw Exception('Location is turned off.');
+      }
       final position =
           await LocationService().getCurrentPosition(maxAttempts: 1);
       lat = position.latitude;
@@ -1716,6 +1884,34 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       ),
                     ),
                     actions: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: IconButton(
+                          tooltip: 'My Profile',
+                          onPressed: _showMyProfile,
+                          icon: CircleAvatar(
+                            radius: 15,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.22),
+                            backgroundImage:
+                                (_userDetails['photo'] ?? '').isNotEmpty
+                                    ? NetworkImage(_userDetails['photo']!)
+                                    : null,
+                            child: (_userDetails['photo'] ?? '').isEmpty
+                                ? Text(
+                                    (_userDetails['name'] ?? '').isNotEmpty
+                                        ? _userDetails['name']![0].toUpperCase()
+                                        : 'C',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
                       const NotificationBell(),
                       IconButton(
                         icon: const Icon(Icons.work_history_rounded,
@@ -2389,13 +2585,14 @@ class _HowToUseStrip extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: steps.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) => _HowToStep(data: steps[index]),
+      height: 54,
+      child: Row(
+        children: [
+          for (var i = 0; i < steps.length; i++) ...[
+            Expanded(child: _HowToStep(data: steps[i])),
+            if (i != steps.length - 1) const SizedBox(width: 6),
+          ],
+        ],
       ),
     );
   }
@@ -2423,35 +2620,33 @@ class _HowToStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 176),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
               color: data.color,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(data.icon, color: AppColors.primaryDark, size: 17),
+            child: Icon(data.icon, color: AppColors.primaryDark, size: 14),
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 126,
+          const SizedBox(width: 5),
+          Expanded(
             child: Text(
               '${data.number}:${data.title}',
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 12,
+                fontSize: 9.5,
+                height: 1.05,
                 fontWeight: FontWeight.w900,
               ),
             ),

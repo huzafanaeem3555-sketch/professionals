@@ -148,6 +148,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       if (role == 'customer') {
         await StorageService.getCustomerId();
         if (!mounted) return;
+        if (isFemale && !isActive) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/gender-verification',
+            arguments: role,
+          );
+          return;
+        }
         Navigator.pushReplacementNamed(context, '/customer-home');
       } else {
         // Professional flow
@@ -167,6 +175,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           }
           if (!mounted) return;
           if (_isProfessionalProfileComplete(proMap)) {
+            if (isFemale && !isActive) {
+              Navigator.pushReplacementNamed(
+                context,
+                '/gender-verification',
+                arguments: role,
+              );
+              return;
+            }
             Navigator.pushReplacementNamed(context, '/professional-home');
           } else {
             Navigator.pushReplacementNamed(context, '/professional-setup');

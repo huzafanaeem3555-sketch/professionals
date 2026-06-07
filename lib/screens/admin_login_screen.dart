@@ -18,6 +18,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   bool _showSecret = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final restored = await Provider.of<AdminProvider>(context, listen: false)
+          .restoreSession();
+      if (restored && mounted) {
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     super.dispose();

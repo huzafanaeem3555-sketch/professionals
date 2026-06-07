@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../services/firebase_service.dart';
 import '../services/location_service.dart';
+import '../utils/location_prompt.dart';
 
 class ProfessionalProfileScreen extends StatefulWidget {
   final String uid;
@@ -24,12 +25,105 @@ class ProfessionalProfileScreen extends StatefulWidget {
 }
 
 class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
+  bool _profileViewLogged = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfessionalProvider>().loadProfile(widget.uid);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final pro =
+          await context.read<ProfessionalProvider>().loadProfile(widget.uid);
+      if (pro != null) {
+        unawaited(_logProfileView(pro));
+      }
     });
+  }
+
+  Future<void> _logProfileView(ProfessionalModel pro) async {
+    if (_profileViewLogged) return;
+    _profileViewLogged = true;
+
+    final role = (await StorageService.getRole() ?? '').toLowerCase();
+    if (role != 'customer') return;
+    final customerId = await StorageService.getUid() ?? '';
+    if (customerId.isEmpty || customerId == pro.uid) return;
+
+    final details = await StorageService.getUserDetails();
+    var customerName = details['name']?.trim() ?? '';
+    var customerPhone = details['phone']?.trim() ?? '';
+    var customerAddress = 'Profile viewed in HirePro app';
+    Map<String, dynamic>? customerLocation;
+
+    try {
+      final snap = await FirebaseDatabase.instance
+          .ref('users/$customerId')
+          .get()
+          .timeout(const Duration(seconds: 5));
+      if (snap.value is Map) {
+        final data = Map<String, dynamic>.from(snap.value as Map);
+        customerName = customerName.isNotEmpty
+            ? customerName
+            : (data['displayName'] ?? data['name'] ?? 'Customer').toString();
+        customerPhone = customerPhone.isNotEmpty
+            ? customerPhone
+            : (data['phoneNumber'] ?? data['phone'] ?? '').toString();
+        final address = (data['address'] ?? '').toString().trim();
+        if (address.isNotEmpty) customerAddress = address;
+        if (data['location'] is Map) {
+          customerLocation = Map<String, dynamic>.from(data['location'] as Map);
+          final locationAddress =
+              (customerLocation['address'] ?? '').toString().trim();
+          if (locationAddress.isNotEmpty) customerAddress = locationAddress;
+        }
+      }
+    } catch (_) {}
+
+    if (customerName.isEmpty) customerName = 'Customer';
+    if (customerPhone.isEmpty) customerPhone = 'Not shared';
+    final serviceType =
+        pro.serviceTypes.isNotEmpty ? pro.serviceTypes.first : 'general';
+
+    var leadSaved = await FirebaseService().saveContactLead(
+      professionalId: pro.uid,
+      customerId: customerId,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      customerAddress: customerAddress,
+      serviceType: serviceType,
+      contactMethod: 'profile_view',
+      customerLocation: customerLocation,
+    );
+
+    final notifyResult = await ApiService().sendContactNotification(
+      targetUserId: pro.uid,
+      title: 'Customer viewed your profile',
+      body: '$customerName viewed your HirePro profile.',
+      contactMethod: 'profile_view',
+      type: 'profile_view',
+      serviceType: serviceType,
+      customerPhone: customerPhone,
+      customerAddress: customerAddress,
+      customerLocation: customerLocation,
+      leadAlreadySaved: leadSaved,
+    );
+
+    if (notifyResult['success'] != true && !leadSaved) {
+      final fallback = await ApiService().saveContactLeadPublic(
+        targetUserId: pro.uid,
+        customerId: customerId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerAddress: customerAddress,
+        serviceType: serviceType,
+        contactMethod: 'profile_view',
+        customerLocation: customerLocation,
+      );
+      leadSaved = fallback['success'] == true;
+    }
+
+    if (!leadSaved) {
+      debugPrint('Profile view lead could not be saved for ${pro.uid}');
+    }
   }
 
   @override
@@ -827,6 +921,14 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
     var address = '';
 
     try {
+      final locationReady = await ensureLocationEnabled(
+        context,
+        message:
+            'Please turn on location so the professional can see your area and reach you accurately.',
+      );
+      if (!locationReady) {
+        throw Exception('Location is turned off.');
+      }
       final position =
           await LocationService().getCurrentPosition(maxAttempts: 1);
       lat = position.latitude;

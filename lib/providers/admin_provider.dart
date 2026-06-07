@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 
 class AdminProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -37,6 +38,19 @@ class AdminProvider extends ChangeNotifier {
       _complaints.isNotEmpty ||
       _marketplace.isNotEmpty;
 
+  Future<bool> restoreSession() async {
+    final adminActive = await StorageService.isAdminSessionActive();
+    final token = await StorageService.getToken();
+    if (!adminActive || token == null || token.isEmpty) return false;
+
+    await _api.initializeToken();
+    _isAdminLoggedIn = true;
+    notifyListeners();
+    unawaited(fetchAll(showLoading: false));
+    startRealtimePolling();
+    return true;
+  }
+
   void _setLoading(bool val) {
     _isLoading = val;
     notifyListeners();
@@ -53,6 +67,7 @@ class AdminProvider extends ChangeNotifier {
     try {
       final res = await _api.adminLogin(username);
       if (res['success'] == true) {
+        await StorageService.setAdminSessionActive(true);
         _isAdminLoggedIn = true;
         unawaited(fetchAll(showLoading: false));
         startRealtimePolling();
@@ -346,7 +361,8 @@ class AdminProvider extends ChangeNotifier {
   Future<void> logout() async {
     _pollTimer?.cancel();
     _pollTimer = null;
-    await _api.clearToken();
+    await StorageService.clearAdminSession();
+    await _api.clearBackendTokenOnly();
     _isAdminLoggedIn = false;
     _stats = null;
     _professionals = [];

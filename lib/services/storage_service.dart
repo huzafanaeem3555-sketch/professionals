@@ -14,6 +14,7 @@ class StorageService {
   static const String _keyUserPhoto = 'user_photo';
   static const String _keyGender = 'user_gender';
   static const String _keyVerificationStatus = 'verification_status';
+  static const String _keyAdminSession = 'admin_session_active';
 
   static Future<void> setUid(String uid) async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,6 +64,26 @@ class StorageService {
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyToken);
+  }
+
+  static Future<void> clearToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyToken);
+  }
+
+  static Future<void> setAdminSessionActive(bool active) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAdminSession, active);
+  }
+
+  static Future<bool> isAdminSessionActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAdminSession) == true;
+  }
+
+  static Future<void> clearAdminSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyAdminSession);
   }
 
   static Future<void> setIdToken(String idToken) async {

@@ -73,6 +73,11 @@ class ApiService {
     await StorageService.clearAll();
   }
 
+  Future<void> clearBackendTokenOnly() async {
+    _dio.options.headers.remove('Authorization');
+    await StorageService.clearToken();
+  }
+
   Future<String?> getCurrentToken() async {
     return await StorageService.getToken();
   }
@@ -176,12 +181,16 @@ class ApiService {
         // Keep payload stable even if local gender is unavailable.
         gender = gender.toLowerCase() == 'female' ? 'female' : 'male';
       }
-      final title = contactMethod == 'whatsapp'
-          ? 'Customer sent WhatsApp message'
-          : 'Customer called you';
+      final isProfileView = contactMethod == 'profile_view';
+      final title = isProfileView
+          ? 'Customer viewed your profile'
+          : contactMethod == 'whatsapp'
+              ? 'Customer sent WhatsApp message'
+              : 'Customer called you';
       final visiblePhone = gender == 'female' ? 'Hidden' : customerPhone;
-      final body =
-          '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone';
+      final body = isProfileView
+          ? '$customerName viewed your HirePro profile.'
+          : '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone';
       final response = await _withRetry(
         () => _dio.post('/notifications/contact-public', data: {
           'targetUserId': targetUserId,
@@ -192,8 +201,11 @@ class ApiService {
           'customerAddress': customerAddress,
           'serviceType': serviceType,
           'contactMethod': contactMethod,
-          'type':
-              contactMethod == 'whatsapp' ? 'direct_whatsapp' : 'direct_call',
+          'type': isProfileView
+              ? 'profile_view'
+              : contactMethod == 'whatsapp'
+                  ? 'direct_whatsapp'
+                  : 'direct_call',
           'title': title,
           'body': body,
           if (customerLocation != null) 'customerLocation': customerLocation,
@@ -778,13 +790,16 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> sendAIMessage(
-    String prompt,
-    List<Map<String, String>> history,
-  ) async {
+      String prompt, List<Map<String, String>> history,
+      {Map<String, dynamic>? location}) async {
     try {
       final response = await _dio.post(
         ApiConstants.aiMessage,
-        data: {'message': prompt, 'history': history},
+        data: {
+          'message': prompt,
+          'history': history,
+          if (location != null) 'location': location,
+        },
       );
       return response.data;
     } catch (e) {
@@ -794,6 +809,7 @@ class ApiService {
         'data': {
           'reply':
               'Sorry, AI assistant is currently unavailable. Try again later.',
+          'professionals': [],
         },
       };
     }
@@ -845,6 +861,20 @@ class ApiService {
       return response.data;
     } catch (_) {
       return {'success': false};
+    }
+  }
+
+  Future<Map<String, dynamic>> searchProfessionals(String query) async {
+    try {
+      final response = await _withRetry(
+        () => _dio.get(
+          ApiConstants.search,
+          queryParameters: {'q': query.trim()},
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      return _handleError(e);
     }
   }
 

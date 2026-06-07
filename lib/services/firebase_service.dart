@@ -105,6 +105,20 @@ class FirebaseService {
         isFemaleCustomer = user['gender']?.toString().toLowerCase() == 'female';
       }
       final visiblePhone = isFemaleCustomer ? 'Hidden' : customerPhone;
+      final isProfileView = contactMethod == 'profile_view';
+      final type = isProfileView
+          ? 'profile_view'
+          : contactMethod == 'whatsapp'
+              ? 'direct_whatsapp'
+              : 'direct_call';
+      final title = isProfileView
+          ? 'Customer viewed your profile'
+          : contactMethod == 'whatsapp'
+              ? 'Customer sent WhatsApp message'
+              : 'Customer called you';
+      final body = isProfileView
+          ? '$customerName viewed your HirePro profile.'
+          : '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone';
       await _db.child('professionalContactLeads/$professionalId').push().set({
         'customerId': customerId,
         'customerName': customerName,
@@ -114,12 +128,9 @@ class FirebaseService {
         'customerLocation': customerLocation,
         'serviceType': serviceType,
         'contactMethod': contactMethod,
-        'type': contactMethod == 'whatsapp' ? 'direct_whatsapp' : 'direct_call',
-        'title': contactMethod == 'whatsapp'
-            ? 'Customer sent WhatsApp message'
-            : 'Customer called you',
-        'body':
-            '$customerName contacted you for ${serviceType.replaceAll('_', ' ')}. Phone: $visiblePhone',
+        'type': type,
+        'title': title,
+        'body': body,
         if (referralCode != null && referralCode.isNotEmpty)
           'referralCode': referralCode,
         if (referralDiscountPercent != null &&
