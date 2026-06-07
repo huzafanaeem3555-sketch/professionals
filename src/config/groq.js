@@ -1,6 +1,6 @@
 const Groq = require('groq-sdk');
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_KEY = String(process.env.GROQ_API_KEY || process.env.GROK_API_KEY || '').trim();
 let groq;
 if (!GROQ_API_KEY) {
   console.warn('⚠️ GROQ_API_KEY is missing. AI features will be disabled.');
@@ -107,8 +107,30 @@ EasyPaisa number: 03455876761. Commission is 10% of agreed price.${matchText}`;
     return await groqChat(messages, systemPrompt);
   } catch (err) {
     console.error('Groq assistant error:', err.message);
-    return 'Sorry, the AI assistant is currently unavailable. Please try again later.';
+    return fallbackAssistantReply(userMessage, matchContext);
   }
+}
+
+function fallbackAssistantReply(userMessage, matchContext = null) {
+  const service = String(matchContext?.serviceType || 'service').replace(/_/g, ' ');
+  const count = Array.isArray(matchContext?.professionals)
+    ? matchContext.professionals.length
+    : 0;
+  const text = String(userMessage || '').toLowerCase();
+  const romanUrdu = [
+    'pani', 'bijli', 'masla', 'kharab', 'chahiye', 'nal', 'darwaza',
+    'thanda', 'safai', 'kaam', 'kr', 'kar', 'hai', 'ho raha',
+  ].some(word => text.includes(word));
+
+  if (romanUrdu) {
+    return count > 0
+      ? `Aap ka masla ${service} se related lag raha hai. Neechay matching professionals show ho rahe hain. WhatsApp button se un se price aur timing confirm kar lain.`
+      : `Aap ka masla ${service} se related lag raha hai. Is waqt exact matching professional nahi mila, search ya post job try kar lain.`;
+  }
+
+  return count > 0
+    ? `This looks like a ${service} issue. Matching professionals are shown below. Use WhatsApp to confirm price, timing, and availability.`
+    : `This looks like a ${service} issue. No exact professional is available right now, so try search or post a job.`;
 }
 
 module.exports = { groq, groqChat, getServiceRecommendation, getAIAssistantReply };
