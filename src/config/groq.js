@@ -82,11 +82,21 @@ Return strict JSON only: {"serviceType": "...", "priceMin": 500, "priceMax": 200
 /**
  * AI-powered chat assistant for in-app support.
  */
-async function getAIAssistantReply(userMessage, conversationHistory = []) {
-  const systemPrompt = `You are a friendly customer support assistant for Service Connect Pakistan.
-You help users with: booking services, finding professionals, understanding payment steps, and general support.
-EasyPaisa number: 03455876761. Commission is 10% of agreed price.
-Keep replies concise (under 100 words). Be helpful and professional. Always respond in English only.`;
+async function getAIAssistantReply(userMessage, conversationHistory = [], matchContext = null) {
+  const matchText = matchContext
+    ? `\nMatched service: ${matchContext.serviceType || 'unknown'}.
+Available professionals: ${Array.isArray(matchContext.professionals) && matchContext.professionals.length
+      ? matchContext.professionals.map((pro, index) => `${index + 1}. ${pro.name} (${pro.uid}) - ${pro.services.join(', ')}`).join('; ')
+      : 'none found yet'}.
+If professionals are available, mention that matching professionals are shown below the chat response and ask the customer to use WhatsApp for final price and timing.`
+    : '';
+
+  const systemPrompt = `You are HirePro's AI service assistant for Pakistan.
+Help customers understand their issue, choose the right service, and contact a suitable professional.
+Reply in the same language or writing style used by the customer. If the customer writes Roman Urdu, reply in Roman Urdu. If they write English, reply in English.
+Keep replies concise, practical, and under 120 words.
+Do not invent professional phone numbers or IDs. Use only the matched context if available.
+EasyPaisa number: 03455876761. Commission is 10% of agreed price.${matchText}`;
 
   const messages = [
     ...conversationHistory.slice(-6), // Last 6 messages for context

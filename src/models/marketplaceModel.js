@@ -24,6 +24,10 @@ function normalizeService(value) {
   return clean(value, 'general').toLowerCase().replace(/\s+/g, '_');
 }
 
+function normalizeGender(value) {
+  return clean(value, 'male').toLowerCase() === 'female' ? 'female' : 'male';
+}
+
 function distanceKm(a, b) {
   const lat1 = toNumber(a?.lat);
   const lon1 = toNumber(a?.lng);
@@ -205,6 +209,7 @@ const MarketplaceModel = {
       customerName: clean(customer.displayName || customer.name, 'Customer'),
       customerPhone: clean(customer.phoneNumber || customer.phone),
       customerPhotoURL: clean(customer.photoURL),
+      customerGender: normalizeGender(customer.gender),
       serviceType,
       description: clean(payload.description || payload.customerProblem, 'Service needed'),
       budget: toNumber(payload.budget),
@@ -220,6 +225,7 @@ const MarketplaceModel = {
     await dbSet(`jobPosts/${postId}`, post);
     const professionals = (await ProfessionalModel.getAll()).filter(pro => {
       if (pro.isActive === false || pro.isAvailable === false) return false;
+      if (normalizeGender(pro.gender) !== post.customerGender) return false;
       const services = [
         ...(Array.isArray(pro.services) ? pro.services : []),
         ...(Array.isArray(pro.customServices) ? pro.customServices : []),
@@ -268,6 +274,7 @@ const MarketplaceModel = {
         if (post.status === 'closed') return false;
         if (!pro) return true;
         if (clean(post.status, 'open') !== 'open') return false;
+        if (normalizeGender(post.customerGender) !== normalizeGender(pro.gender)) return false;
         return true;
       })
       .map(post => {

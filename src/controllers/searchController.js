@@ -39,6 +39,22 @@ function allServicesFor(pro) {
   ].filter(Boolean);
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function serviceMatches(a, b) {
+  const left = normalizeText(a);
+  const right = normalizeText(b);
+  if (!left || !right) return false;
+  return left.includes(right) || right.includes(left);
+}
+
 function isVisibleToViewer(viewer, professional) {
   return canViewFemaleProfessional(viewer, professional);
 }
@@ -208,10 +224,10 @@ const SearchController = {
         if (!pro.isAvailable) return false;
         
         const proServices = allServicesFor(pro);
-        return matchedServices.some(service => 
-          proServices.some(s => s.toLowerCase().includes(service) || service.includes(s.toLowerCase()))
+        return matchedServices.some(service =>
+          proServices.some(s => serviceMatches(s, service))
         ) || proServices.some(s => {
-          const normalized = s.toLowerCase().replace(/_/g, ' ');
+          const normalized = normalizeText(s);
           return normalized.includes(query) || query.includes(normalized);
         });
       });
@@ -220,7 +236,7 @@ const SearchController = {
       if (filtered.length === 0) {
         filtered = allProfessionals.filter(pro => {
           if (!pro.isAvailable) return false;
-          const name = (pro.name || '').toLowerCase();
+          const name = normalizeText(pro.name);
           return name.includes(query) || query.includes(name);
         });
       }
@@ -228,7 +244,7 @@ const SearchController = {
       // Add relevance score and sort
       const results = filtered.map(pro => ({
         uid: pro.uid,
-        phone: pro.phone,
+        phone: pro.phoneNumber || pro.phone || '',
         name: pro.name,
         services: pro.services || [],
         customServices: pro.customServices || [],
@@ -302,7 +318,7 @@ If no service matches, return empty array for services.`;
             content: prompt
           }
         ],
-        model: 'llama3-8b-8192',
+        model: 'llama-3.3-70b-versatile',
         temperature: 0.3,
         max_tokens: 500
       });
@@ -367,15 +383,15 @@ If no service matches, return empty array for services.`;
     let score = 0;
     
     // Service match (higher weight)
-    const proServices = allServicesFor(professional).map(s => s.toLowerCase());
+    const proServices = allServicesFor(professional).map(normalizeText);
     for (const service of matchedServices) {
-      if (proServices.some(s => s.includes(service) || service.includes(s))) {
+      if (proServices.some(s => serviceMatches(s, service))) {
         score += 10;
       }
     }
     
     // Name match
-    const name = (professional.name || '').toLowerCase();
+    const name = normalizeText(professional.name);
     if (name.includes(query)) {
       score += 5;
     }
@@ -432,7 +448,7 @@ If no service matches, return empty array for services.`;
         });
       }
       
-      const query = q.trim().toLowerCase();
+      const query = normalizeText(q.trim());
       const suggestions = new Set();
       const viewer = await resolveViewerContext(req);
       const popularServices = await ServiceAnalyticsModel.getPopularServices(100);

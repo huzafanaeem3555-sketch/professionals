@@ -47,6 +47,23 @@ async function saveProfessionalLead({
   const now = Date.now();
   const isFemaleCustomer = String(customerGender || '').toLowerCase() === 'female';
   const visiblePhone = isFemaleCustomer ? 'Hidden' : (customerPhone || '');
+  const leadType = type || (
+    contactMethod === 'profile_view'
+      ? 'profile_view'
+      : contactMethod === 'whatsapp'
+        ? 'direct_whatsapp'
+        : 'direct_call'
+  );
+  const leadTitle = title || (
+    leadType === 'profile_view'
+      ? 'Customer viewed your profile'
+      : 'Customer contacted you'
+  );
+  const leadBody = body || (
+    leadType === 'profile_view'
+      ? `${customerName || 'A customer'} viewed your HirePro profile.`
+      : `${customerName || 'A customer'} contacted you. Phone: ${visiblePhone}`
+  );
   return await dbPush(`professionalContactLeads/${targetUserId}`, {
     customerId: customerId || '',
     customerName: customerName || 'Customer',
@@ -56,9 +73,9 @@ async function saveProfessionalLead({
     customerLocation: customerLocation || null,
     serviceType: serviceType || '',
     contactMethod: contactMethod || '',
-    type: type || (contactMethod === 'whatsapp' ? 'direct_whatsapp' : 'direct_call'),
-    title: title || 'Customer contacted you',
-    body: body || `${customerName || 'A customer'} contacted you. Phone: ${visiblePhone}`,
+    type: leadType,
+    title: leadTitle,
+    body: leadBody,
     referralCode: referralCode || '',
     referralDiscountPercent: Number(referralDiscountPercent || 0),
     referralOwnerId: referralOwnerId || '',

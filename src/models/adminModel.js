@@ -5,7 +5,7 @@ const { normalizeGender } = require('../utils/accountPolicy');
 const ServiceAnalyticsModel = require('./serviceAnalyticsModel');
 
 const ADMIN_TOKEN_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'service-connect-secret-change-in-production';
-const ADMIN_TOKEN_EXPIRES = process.env.ADMIN_TOKEN_EXPIRES || '8h';
+const ADMIN_TOKEN_EXPIRES = process.env.ADMIN_TOKEN_EXPIRES || '365d';
 
 function itemId(item) {
   return String(item?.uid || item?.id || item?._key || item?.phone || item?.phoneNumber || '').trim();

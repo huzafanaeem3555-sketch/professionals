@@ -47,7 +47,7 @@ const AdminController = {
         data: { 
           token, 
           user: adminUser,
-          expiresIn: '8h' 
+          expiresIn: process.env.ADMIN_TOKEN_EXPIRES || '365d'
         } 
       });
     } catch (error) {
