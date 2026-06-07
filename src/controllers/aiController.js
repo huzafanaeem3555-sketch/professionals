@@ -1,4 +1,4 @@
-const { GROQ_MODEL, getServiceRecommendation, getAIAssistantReply } = require('../config/groq');
+const { AI_MODEL, getServiceRecommendation, getAIAssistantReply } = require('../config/groq');
 const ProfessionalModel = require('../models/professionalModel');
 const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
@@ -158,7 +158,7 @@ const AIController = {
 
   /**
    * POST /api/ai/chat
-   * In-app AI support assistant (powered by Groq llama3).
+   * In-app AI support assistant.
    */
   async aiChat(req, res) {
     try {
@@ -184,7 +184,7 @@ const AIController = {
           reply,
           matchedService,
           professionals,
-          model: GROQ_MODEL,
+          model: AI_MODEL,
         },
       });
     } catch (error) {

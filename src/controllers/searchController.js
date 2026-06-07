@@ -1,28 +1,7 @@
 const ProfessionalModel = require('../models/professionalModel');
 const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
-
-const GROQ_MODEL = 'llama-3.1-8b-instant';
-
-// Initialize Groq client ONLY if API key exists (Prevents Railway crash)
-let Groq;
-let groq;
-
-if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here') {
-  try {
-    Groq = require('groq-sdk');
-    groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY
-    });
-    console.log('✅ Groq AI initialized successfully');
-  } catch (err) {
-    console.log('⚠️ Failed to initialize Groq:', err.message);
-    groq = null;
-  }
-} else {
-  console.log('⚠️ GROQ_API_KEY not set - AI search disabled, using keyword search only');
-  groq = null;
-}
+const { AI_MODEL, AI_PROVIDER, aiChatCompletion } = require('../config/groq');
 
 // Service type mappings for fuzzy matching
 const SERVICE_TYPES = [
@@ -176,7 +155,7 @@ const keywordToService = {
 const SearchController = {
   /**
    * GET /api/search?q=
-   * Search professionals using Groq AI
+   * Search professionals using the configured AI provider.
    */
   async search(req, res) {
     try {
@@ -191,7 +170,7 @@ const SearchController = {
       
       const query = q.trim().toLowerCase();
       
-      // Step 1: Try Groq AI for smart search (only if groq is available)
+      // Step 1: Try AI for smart search when a provider is configured.
       let matchedServices = [];
       let aiUsed = false;
       
@@ -203,7 +182,7 @@ const SearchController = {
             aiUsed = true;
           }
         } catch (aiError) {
-          console.error('Groq AI error:', aiError.message);
+          console.error('AI search error:', aiError.message);
           // Fallback to keyword matching
         }
       }
@@ -287,12 +266,11 @@ const SearchController = {
   },
   
   /**
-   * AI-based search using Groq
+   * AI-based service search using the configured AI provider.
    */
   async _aiSearch(query) {
-    // Check if groq is available
-    if (!groq) {
-      return { services: [], confidence: 'low', explanation: 'Groq not configured' };
+    if (AI_PROVIDER === 'fallback') {
+      return { services: [], confidence: 'low', explanation: 'AI provider not configured' };
     }
     
     try {
@@ -309,7 +287,7 @@ Return a JSON object with this exact format:
 
 If no service matches, return empty array for services.`;
       
-      const completion = await groq.chat.completions.create({
+      const completion = await aiChatCompletion({
         messages: [
           {
             role: 'system',
@@ -320,9 +298,8 @@ If no service matches, return empty array for services.`;
             content: prompt
           }
         ],
-        model: GROQ_MODEL,
         temperature: 0.3,
-        max_tokens: 500
+        maxTokens: 500
       });
       
       const response = completion.choices[0]?.message?.content || '';
@@ -340,7 +317,7 @@ If no service matches, return empty array for services.`;
       
       return { services: [], confidence: 'low', explanation: '' };
     } catch (error) {
-      console.error('Groq AI error:', error);
+      console.error(`${AI_PROVIDER} AI search error (${AI_MODEL}):`, error.message || error);
       return { services: [], confidence: 'low', explanation: '' };
     }
   },

@@ -22,6 +22,7 @@ const utilityRoutes = require('./routes/utils');
 const searchRoutes = require('./routes/search');  // ✅ ADDED
 const notificationRoutes = require('./routes/notifications');
 const marketplaceRoutes = require('./routes/marketplace');
+const { AI_MODEL, AI_PROVIDER } = require('./config/groq');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -70,7 +71,7 @@ app.get('/health', (req, res) => {
     ],
     database: 'Firebase Realtime Database',
     imageStorage: 'ImgBB (free)',
-    ai: 'Groq llama-3.1-8b-instant',
+    ai: `${AI_PROVIDER} ${AI_MODEL}`,
     timestamp: new Date().toISOString(),
   });
 });

@@ -1,26 +1,63 @@
+const axios = require('axios');
 const Groq = require('groq-sdk');
 
+const OPENROUTER_API_KEY = String(process.env.OPENROUTER_API_KEY || '').trim();
+const OPENROUTER_MODEL = String(process.env.OPENROUTER_MODEL || 'openrouter/free').trim();
 const GROQ_API_KEY = String(process.env.GROQ_API_KEY || process.env.GROK_API_KEY || '').trim();
-let groq;
-if (!GROQ_API_KEY) {
-  console.warn('⚠️ GROQ_API_KEY is missing. AI features will be disabled.');
-  groq = {
-    chat: {
-      completions: {
-        create: async () => {
-          throw new Error('GROQ_API_KEY missing');
-        },
-      },
-    },
-  };
-} else {
+const GROQ_MODEL = 'llama-3.1-8b-instant';
+const AI_PROVIDER = OPENROUTER_API_KEY ? 'openrouter' : (GROQ_API_KEY ? 'groq' : 'fallback');
+const AI_MODEL = OPENROUTER_API_KEY ? OPENROUTER_MODEL : GROQ_MODEL;
+
+let groq = null;
+if (!OPENROUTER_API_KEY && GROQ_API_KEY) {
   groq = new Groq({ apiKey: GROQ_API_KEY });
 }
 
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+if (OPENROUTER_API_KEY) {
+  console.log(`✅ OpenRouter AI initialized with ${OPENROUTER_MODEL}`);
+} else if (groq) {
+  console.log(`✅ Groq AI initialized with ${GROQ_MODEL}`);
+} else {
+  console.warn('⚠️ AI API key is missing. AI features will use local fallback responses.');
+}
+
+async function aiChatCompletion({ messages, maxTokens = 512, temperature = 0.7 }) {
+  if (OPENROUTER_API_KEY) {
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: OPENROUTER_MODEL,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.APP_PUBLIC_URL || 'https://hirepro.pk',
+          'X-Title': 'HirePro',
+        },
+        timeout: Number(process.env.AI_REQUEST_TIMEOUT_MS || 20000),
+      },
+    );
+    return response.data;
+  }
+
+  if (groq) {
+    return groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages,
+      max_tokens: maxTokens,
+      temperature,
+    });
+  }
+
+  throw new Error('AI provider API key missing');
+}
 
 /**
- * Send a chat message to Groq AI and get a response.
+ * Send a chat message to the configured AI provider and get a response.
  * Used for: AI assistant, smart recommendations, professional matching.
  */
 async function groqChat(messages, systemPrompt = null) {
@@ -32,10 +69,9 @@ async function groqChat(messages, systemPrompt = null) {
 
   allMessages.push(...messages);
 
-  const response = await groq.chat.completions.create({
-    model: GROQ_MODEL,
+  const response = await aiChatCompletion({
     messages: allMessages,
-    max_tokens: 512,
+    maxTokens: 512,
     temperature: 0.7,
   });
 
@@ -74,7 +110,7 @@ Return strict JSON only: {"serviceType": "...", "priceMin": 500, "priceMax": 200
     }
     return { serviceType: null, advice: response };
   } catch (err) {
-    console.error('Groq recommendation error:', err.message);
+    console.error(`${AI_PROVIDER} recommendation error:`, err.message);
     return { serviceType: null, advice: 'Please describe your issue and we will help you find the right professional.' };
   }
 }
@@ -106,7 +142,7 @@ EasyPaisa number: 03455876761. Commission is 10% of agreed price.${matchText}`;
   try {
     return await groqChat(messages, systemPrompt);
   } catch (err) {
-    console.error('Groq assistant error:', err.message);
+    console.error(`${AI_PROVIDER} assistant error:`, err.message);
     return fallbackAssistantReply(userMessage, matchContext);
   }
 }
@@ -133,4 +169,13 @@ function fallbackAssistantReply(userMessage, matchContext = null) {
     : `This looks like a ${service} issue. No exact professional is available right now, so try search or post a job.`;
 }
 
-module.exports = { GROQ_MODEL, groq, groqChat, getServiceRecommendation, getAIAssistantReply };
+module.exports = {
+  AI_MODEL,
+  AI_PROVIDER,
+  GROQ_MODEL: AI_MODEL,
+  aiChatCompletion,
+  groq,
+  groqChat,
+  getServiceRecommendation,
+  getAIAssistantReply,
+};
