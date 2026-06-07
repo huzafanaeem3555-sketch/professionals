@@ -601,6 +601,11 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
           final desc = (job['description'] ?? '').toString();
           final budget = (job['budget'] ?? 0).toString();
           final customerPhone = (job['customerPhone'] ?? '').toString();
+          final customerName = (job['customerName'] ?? 'Customer').toString();
+          final customerPhotoURL =
+              (job['customerPhotoURL'] ?? job['customerPhoto'] ?? '')
+                  .toString()
+                  .trim();
           final status = (job['status'] ?? 'open').toString();
           final isUrgent = job['isUrgent'] == true ||
               job['priority']?.toString() == 'urgent';
@@ -623,13 +628,46 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
               children: [
                 Row(
                   children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      backgroundImage: customerPhotoURL.isNotEmpty
+                          ? NetworkImage(customerPhotoURL)
+                          : null,
+                      child: customerPhotoURL.isEmpty
+                          ? Text(
+                              customerName.isNotEmpty
+                                  ? customerName[0].toUpperCase()
+                                  : 'C',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        service.replaceAll('_', ' '),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            service.replaceAll('_', ' '),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            customerName,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                     if (isUrgent)
@@ -1171,6 +1209,13 @@ class _LeadCard extends StatelessWidget {
     final phone = lead['customerPhone']?.toString() ?? '';
     final canContact = RegExp(r'\d{8,}').hasMatch(phone);
     final name = lead['customerName']?.toString() ?? 'Customer';
+    final photoURL = (lead['customerPhotoURL'] ??
+            lead['customerPhoto'] ??
+            lead['photoURL'] ??
+            lead['senderPhotoURL'] ??
+            '')
+        .toString()
+        .trim();
     final desc =
         lead['body']?.toString() ?? lead['description']?.toString() ?? '';
     final referralCode = lead['referralCode']?.toString() ?? '';
@@ -1216,18 +1261,20 @@ class _LeadCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle),
-                  child: Icon(
-                    type == 'profile_view'
-                        ? Icons.visibility_rounded
-                        : Icons.person,
-                    color: AppColors.primary,
-                  ),
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundImage:
+                      photoURL.isNotEmpty ? NetworkImage(photoURL) : null,
+                  child: photoURL.isEmpty
+                      ? Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'C',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -176,6 +176,8 @@ class ApiService {
   }) async {
     try {
       final uid = await StorageService.getUid();
+      final details = await StorageService.getUserDetails();
+      final customerPhotoURL = details['photo']?.toString().trim() ?? '';
       var gender = await StorageService.getGender() ?? 'male';
       if (uid != null && uid.isNotEmpty) {
         // Keep payload stable even if local gender is unavailable.
@@ -196,6 +198,7 @@ class ApiService {
           'targetUserId': targetUserId,
           'customerId': customerId,
           'customerName': customerName,
+          'customerPhotoURL': customerPhotoURL,
           'customerPhone': visiblePhone,
           'customerGender': gender,
           'customerAddress': customerAddress,

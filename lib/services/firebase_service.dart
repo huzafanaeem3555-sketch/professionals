@@ -99,10 +99,16 @@ class FirebaseService {
       final now = DateTime.now().millisecondsSinceEpoch;
       final currentUid = FirebaseAuth.instance.currentUser?.uid ?? customerId;
       final userSnap = await _db.child('users/$currentUid').get();
+      var customerPhotoURL =
+          FirebaseAuth.instance.currentUser?.photoURL?.trim() ?? '';
       var isFemaleCustomer = false;
       if (userSnap.exists && userSnap.value != null) {
         final user = _asMap(userSnap.value);
         isFemaleCustomer = user['gender']?.toString().toLowerCase() == 'female';
+        customerPhotoURL =
+            (user['photoURL']?.toString().trim().isNotEmpty == true)
+                ? user['photoURL'].toString().trim()
+                : customerPhotoURL;
       }
       final visiblePhone = isFemaleCustomer ? 'Hidden' : customerPhone;
       final isProfileView = contactMethod == 'profile_view';
@@ -122,6 +128,7 @@ class FirebaseService {
       await _db.child('professionalContactLeads/$professionalId').push().set({
         'customerId': customerId,
         'customerName': customerName,
+        'customerPhotoURL': customerPhotoURL,
         'customerPhone': visiblePhone,
         'customerGender': isFemaleCustomer ? 'female' : 'male',
         'customerAddress': customerAddress,
