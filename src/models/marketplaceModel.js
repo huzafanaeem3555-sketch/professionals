@@ -4,7 +4,7 @@ const ProfessionalModel = require('./professionalModel');
 const UserModel = require('./userModel');
 const { sendNotificationToUser } = require('../utils/notifications');
 
-const ADMIN_WHATSAPP = '03195682936';
+const ADMIN_WHATSAPP = '03345555362';
 
 function clean(value, fallback = '') {
   const text = value === undefined || value === null ? '' : String(value).trim();
