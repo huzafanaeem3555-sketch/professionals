@@ -17,7 +17,7 @@ if (!GROQ_API_KEY) {
   groq = new Groq({ apiKey: GROQ_API_KEY });
 }
 
-const GROQ_MODEL = 'llama-3.3-70b-versatile'; // Updated — llama3-8b-8192 was decommissioned
+const GROQ_MODEL = 'llama-3.1-8b-instant';
 
 /**
  * Send a chat message to Groq AI and get a response.
@@ -133,4 +133,4 @@ function fallbackAssistantReply(userMessage, matchContext = null) {
     : `This looks like a ${service} issue. No exact professional is available right now, so try search or post a job.`;
 }
 
-module.exports = { groq, groqChat, getServiceRecommendation, getAIAssistantReply };
+module.exports = { GROQ_MODEL, groq, groqChat, getServiceRecommendation, getAIAssistantReply };

@@ -2,6 +2,8 @@ const ProfessionalModel = require('../models/professionalModel');
 const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
 
+const GROQ_MODEL = 'llama-3.1-8b-instant';
+
 // Initialize Groq client ONLY if API key exists (Prevents Railway crash)
 let Groq;
 let groq;
@@ -318,7 +320,7 @@ If no service matches, return empty array for services.`;
             content: prompt
           }
         ],
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         temperature: 0.3,
         max_tokens: 500
       });

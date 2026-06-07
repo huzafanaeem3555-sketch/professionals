@@ -70,7 +70,7 @@ app.get('/health', (req, res) => {
     ],
     database: 'Firebase Realtime Database',
     imageStorage: 'ImgBB (free)',
-    ai: 'Groq llama3-8b-8192',
+    ai: 'Groq llama-3.1-8b-instant',
     timestamp: new Date().toISOString(),
   });
 });

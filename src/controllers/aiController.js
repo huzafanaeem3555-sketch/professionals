@@ -1,4 +1,4 @@
-const { getServiceRecommendation, getAIAssistantReply } = require('../config/groq');
+const { GROQ_MODEL, getServiceRecommendation, getAIAssistantReply } = require('../config/groq');
 const ProfessionalModel = require('../models/professionalModel');
 const ServiceAnalyticsModel = require('../models/serviceAnalyticsModel');
 const { resolveViewerContext, canViewFemaleProfessional } = require('../utils/accountPolicy');
@@ -184,7 +184,7 @@ const AIController = {
           reply,
           matchedService,
           professionals,
-          model: 'llama-3.3-70b-versatile',
+          model: GROQ_MODEL,
         },
       });
     } catch (error) {
