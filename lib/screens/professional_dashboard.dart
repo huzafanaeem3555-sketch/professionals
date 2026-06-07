@@ -799,7 +799,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
         _ToolCard(
           title: 'Featured Professional Plans',
           subtitle:
-              'Monthly plans: Basic, Featured, and Premium. Contact admin on WhatsApp 03195682936 to activate top placement.',
+              'Monthly plans: Basic, Featured, and Premium. Contact admin on WhatsApp 03345555362 to activate top placement.',
           icon: Icons.workspace_premium_rounded,
           button: 'View Plans',
           onPressed: _showFeaturedPlans,
@@ -826,7 +826,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
         _ToolCard(
           title: 'Featured Listing',
           subtitle:
-              'Send a featured request, then contact admin on WhatsApp 03195682936 for monthly payment.',
+              'Send a featured request, then contact admin on WhatsApp 03345555362 for monthly payment.',
           icon: Icons.campaign_rounded,
           button: 'Request Featured',
           onPressed: _requestFeatured,
@@ -973,7 +973,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
       context,
       SnackBar(
         content: Text(res['success'] == true
-            ? 'Request sent. Contact 03195682936 on WhatsApp for paid plan.'
+            ? 'Request sent. Contact 03345555362 on WhatsApp for paid plan.'
             : res['message']?.toString() ?? 'Request failed'),
         backgroundColor:
             res['success'] == true ? AppColors.success : AppColors.error,
@@ -984,7 +984,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
   Future<void> _requestSponsoredAd() async {
     await launchContactUri(contactUriFor(
       method: ContactMethod.whatsapp,
-      phoneNumber: '03195682936',
+      phoneNumber: '03345555362',
       message:
           'Hello HirePro admin, I want to activate a sponsored service ad for my professional profile. My name: $_name',
     ));
@@ -1016,7 +1016,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
             ),
             SizedBox(height: 8),
             Text(
-              'Monthly payment is handled by admin. Contact 03195682936 on WhatsApp.',
+              'Monthly payment is handled by admin. Contact 03345555362 on WhatsApp.',
               style: TextStyle(color: AppColors.textSecondary, height: 1.35),
             ),
           ],

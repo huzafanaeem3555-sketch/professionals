@@ -14,7 +14,7 @@ class GenderVerificationScreen extends StatelessWidget {
   });
 
   final String role;
-  static const String whatsappNumber = '923195682936';
+  static const String whatsappNumber = '923345555362';
 
   Future<void> _openWhatsApp(BuildContext context) async {
     final details = await StorageService.getUserDetails();
@@ -87,7 +87,7 @@ class GenderVerificationScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: const Text(
-                  'WhatsApp: 03195682936',
+                  'WhatsApp: 03345555362',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.primary,

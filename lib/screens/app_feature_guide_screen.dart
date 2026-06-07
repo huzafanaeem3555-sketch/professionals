@@ -43,7 +43,7 @@ class AppFeatureGuideScreen extends StatelessWidget {
               '🥉 Basic Plan: profile boost and paid verification support.',
               '🥈 Featured Plan: featured badge and higher category placement.',
               '🥇 Premium Plan: top listing, sponsored category visibility, and advanced analytics.',
-              '📱 To activate a monthly plan, contact admin on WhatsApp: 03195682936.',
+              '📱 To activate a monthly plan, contact admin on WhatsApp: 03345555362.',
             ],
           ),
           _GuideSection(
