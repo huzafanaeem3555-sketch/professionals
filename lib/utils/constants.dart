@@ -12,14 +12,14 @@ class ApiConstants {
   // PRODUCTION SERVER URL
   // ============================================================
   static const String productionBaseUrl =
-      'https://simultaneously-eye-watched-motivated.trycloudflare.com/api';
+      'https://043172f6d61fb3.lhr.life/api';
 
   // ============================================================
   // LOCAL DEVELOPMENT URLs (For testing only)
   // ============================================================
-  static const String localBaseUrl = 'http://192.168.1.10:5000/api';
-  static const String emulatorBaseUrl = 'http://10.0.2.2:5000/api';
-  static const String localhostUrl = 'http://localhost:5000/api';
+  static const String localBaseUrl = 'http://192.168.1.10:8080/api';
+  static const String emulatorBaseUrl = 'http://10.0.2.2:8080/api';
+  static const String localhostUrl = 'http://localhost:8080/api';
 
   // ============================================================
   // IMPORTANT: Set this to FALSE for production server
