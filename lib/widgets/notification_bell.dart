@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/notification_inbox_screen.dart';
 import '../services/storage_service.dart';
+import '../utils/constants.dart';
 
 class NotificationBell extends StatelessWidget {
   const NotificationBell({super.key, this.iconColor = Colors.white});
@@ -22,24 +23,40 @@ class NotificationBell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String?>(
-      future: StorageService.getUid().then((uid) => uid ?? FirebaseAuth.instance.currentUser?.uid),
+      future: StorageService.getUid()
+          .then((uid) => uid ?? FirebaseAuth.instance.currentUser?.uid),
       builder: (context, uidSnapshot) {
         final uid = uidSnapshot.data;
-        final button = IconButton(
-          icon: Icon(Icons.notifications_rounded, color: iconColor),
-          tooltip: 'Notifications',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationInboxScreen()),
-            );
-          },
+        final button = Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationInboxScreen(),
+                ),
+              );
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              ),
+              child: Icon(Icons.notifications_rounded, color: iconColor),
+            ),
+          ),
         );
 
         if (uid == null || uid.isEmpty) return button;
 
         return StreamBuilder<DatabaseEvent>(
-          stream: FirebaseDatabase.instance.ref('userNotifications/$uid').onValue,
+          stream:
+              FirebaseDatabase.instance.ref('userNotifications/$uid').onValue,
           builder: (context, snapshot) {
             final count = snapshot.hasData ? _unreadCount(snapshot.data!) : 0;
             return Stack(
@@ -49,21 +66,30 @@ class NotificationBell extends StatelessWidget {
                 if (count > 0)
                   Positioned(
                     top: 8,
-                    right: 8,
+                    right: 4,
                     child: Container(
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF6B6B),
-                        shape: BoxShape.circle,
+                      constraints:
+                          const BoxConstraints(minWidth: 19, minHeight: 19),
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.14),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: Center(
                         child: Text(
-                          count > 9 ? '9+' : '$count',
+                          count > 99 ? '99+' : '$count',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),

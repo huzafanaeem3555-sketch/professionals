@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -13,6 +16,7 @@ class AiEstimatorScreen extends StatefulWidget {
 }
 
 class _AiEstimatorScreenState extends State<AiEstimatorScreen> {
+  static const _chatStorageKey = 'hirepro_ai_chat_history_v1';
   final _api = ApiService();
   final _messageCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
@@ -23,11 +27,7 @@ class _AiEstimatorScreenState extends State<AiEstimatorScreen> {
   @override
   void initState() {
     super.initState();
-    _messages.add(
-      _AiMessage.assistant(
-        'Hello! Tell me your problem in any language. I will guide you and show matching HirePro professionals with WhatsApp contact.',
-      ),
-    );
+    _loadSavedChat();
   }
 
   @override
@@ -46,6 +46,7 @@ class _AiEstimatorScreenState extends State<AiEstimatorScreen> {
       _messages.add(_AiMessage.customer(text));
       _loading = true;
     });
+    await _saveChat();
     _scrollToBottom();
 
     try {
@@ -81,18 +82,139 @@ class _AiEstimatorScreenState extends State<AiEstimatorScreen> {
         );
         _loading = false;
       });
+      await _saveChat();
       _scrollToBottom();
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _messages.add(
           _AiMessage.assistant(
-            'AI assistant is unavailable right now. Please check your internet connection and try again.',
+            'I could not reach the AI service right now. Please try again, or use search/post job to find a professional.',
           ),
         );
         _loading = false;
       });
+      await _saveChat();
     }
+  }
+
+  Future<void> _loadSavedChat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_chatStorageKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          final savedMessages = (decoded['messages'] is List)
+              ? (decoded['messages'] as List)
+                  .whereType<Map>()
+                  .map((item) => _AiMessage.fromJson(
+                        Map<String, dynamic>.from(item),
+                      ))
+                  .where((item) => item.text.trim().isNotEmpty)
+                  .toList()
+              : <_AiMessage>[];
+          final savedHistory = (decoded['history'] is List)
+              ? (decoded['history'] as List)
+                  .whereType<Map>()
+                  .map((item) => {
+                        'role': item['role']?.toString() ?? '',
+                        'content': item['content']?.toString() ?? '',
+                      })
+                  .where((item) =>
+                      item['role']!.isNotEmpty && item['content']!.isNotEmpty)
+                  .toList()
+              : <Map<String, String>>[];
+          if (savedMessages.isNotEmpty) {
+            if (!mounted) return;
+            setState(() {
+              _messages
+                ..clear()
+                ..addAll(savedMessages);
+              _history
+                ..clear()
+                ..addAll(savedHistory.take(10));
+            });
+            _scrollToBottom();
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _messages
+        ..clear()
+        ..add(
+          _AiMessage.assistant(
+            'Hello! Tell me your problem in any language. I will guide you and show matching HirePro professionals with WhatsApp contact.',
+          ),
+        );
+    });
+  }
+
+  Future<void> _saveChat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _chatStorageKey,
+        jsonEncode({
+          'messages': _messages.map((item) => item.toJson()).toList(),
+          'history': _history,
+          'updatedAt': DateTime.now().toIso8601String(),
+        }),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _clearChat() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Clear AI Chat?',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        content: const Text(
+          'This will delete your AI chat history from this device.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_rounded),
+            label: const Text('Clear'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_chatStorageKey);
+    if (!mounted) return;
+    setState(() {
+      _history.clear();
+      _messages
+        ..clear()
+        ..add(
+          _AiMessage.assistant(
+            'Chat cleared. Ask me about any home, office, or business service problem.',
+          ),
+        );
+    });
+    await _saveChat();
   }
 
   Future<void> _openWhatsApp(_SuggestedProfessional pro) async {
@@ -158,69 +280,28 @@ class _AiEstimatorScreenState extends State<AiEstimatorScreen> {
         actions: [
           IconButton(
             tooltip: 'Clear chat',
-            onPressed: () {
-              setState(() {
-                _history.clear();
-                _messages
-                  ..clear()
-                  ..add(
-                    _AiMessage.assistant(
-                      'Chat cleared. Ask me about any home, office, or business service problem.',
-                    ),
-                  );
-              });
-            },
-            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _clearChat,
+            icon: const Icon(Icons.delete_outline_rounded),
           ),
         ],
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.divider)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ask your service problem',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'AI replies in your language and suggests matching professionals below the answer.',
-                  style:
-                      TextStyle(color: AppColors.textSecondary, height: 1.35),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _QuickChip('Pani leak ho raha hai', _sendMessage),
-                    _QuickChip('AC cooling problem', _sendMessage),
-                    _QuickChip('Office wiring issue', _sendMessage),
-                  ],
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: ListView.builder(
               controller: _scrollCtrl,
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
-              itemCount: _messages.length + (_loading ? 1 : 0),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              itemCount: _messages.length + 1 + (_loading ? 1 : 0),
               itemBuilder: (context, index) {
-                if (index == _messages.length) return const _TypingBubble();
-                final message = _messages[index];
+                if (index == 0) {
+                  return _AiIntroCard(onQuickSend: _sendMessage);
+                }
+                final messageIndex = index - 1;
+                if (messageIndex == _messages.length) {
+                  return const _TypingBubble();
+                }
+                final message = _messages[messageIndex];
                 return _MessageBubble(
                   message: message,
                   onWhatsApp: _openWhatsApp,
@@ -255,7 +336,7 @@ class _AiEstimatorScreenState extends State<AiEstimatorScreen> {
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: 'Type your issue...',
+                        hintText: 'Ask HirePro AI...',
                         filled: true,
                         fillColor: AppColors.surfaceLight,
                         border: OutlineInputBorder(
@@ -332,6 +413,31 @@ class _AiMessage {
         matchedService: matchedService,
         professionals: professionals,
       );
+
+  factory _AiMessage.fromJson(Map<String, dynamic> json) {
+    return _AiMessage(
+      text: (json['text'] ?? '').toString(),
+      fromCustomer: json['fromCustomer'] == true,
+      matchedService: json['matchedService']?.toString(),
+      professionals: (json['professionals'] is List)
+          ? (json['professionals'] as List)
+              .whereType<Map>()
+              .map((item) => _SuggestedProfessional.fromJson(
+                  Map<String, dynamic>.from(item)))
+              .where((item) => item.uid.isNotEmpty)
+              .toList()
+          : const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'fromCustomer': fromCustomer,
+        if (matchedService != null && matchedService!.isNotEmpty)
+          'matchedService': matchedService,
+        if (professionals.isNotEmpty)
+          'professionals': professionals.map((item) => item.toJson()).toList(),
+      };
 }
 
 class _SuggestedProfessional {
@@ -379,6 +485,102 @@ class _SuggestedProfessional {
       reliabilityScore: _toInt(json['reliabilityScore']),
       distance: json['distance'] == null ? null : _toDouble(json['distance']),
       isFeatured: json['isFeatured'] == true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'uid': uid,
+        'name': name,
+        'phone': phone,
+        'photoURL': photoURL,
+        'services': services,
+        'rating': rating,
+        'totalRatings': totalRatings,
+        'completedJobs': completedJobs,
+        'reliabilityScore': reliabilityScore,
+        if (distance != null) 'distance': distance,
+        'isFeatured': isFeatured,
+      };
+}
+
+class _AiIntroCard extends StatelessWidget {
+  final Future<void> Function(String text) onQuickSend;
+
+  const _AiIntroCard({required this.onQuickSend});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, Color(0xFF0E5A8A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'HirePro AI Assistant',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Describe your issue. AI will suggest the right service and nearby professionals.',
+                      style: TextStyle(color: Colors.white70, height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _QuickChip('Water leakage issue', onQuickSend),
+              _QuickChip('AC cooling problem', onQuickSend),
+              _QuickChip('Office wiring issue', onQuickSend),
+              _QuickChip('Need urgent cleaner', onQuickSend),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
