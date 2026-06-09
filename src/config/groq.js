@@ -7,51 +7,67 @@ const GROQ_API_KEY = String(process.env.GROQ_API_KEY || process.env.GROK_API_KEY
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 const AI_PROVIDER = OPENROUTER_API_KEY ? 'openrouter' : (GROQ_API_KEY ? 'groq' : 'fallback');
 const AI_MODEL = OPENROUTER_API_KEY ? OPENROUTER_MODEL : GROQ_MODEL;
+const GROQ_FALLBACK_ENABLED = String(process.env.DISABLE_GROQ || '').toLowerCase() !== 'true';
 
 let groq = null;
-if (!OPENROUTER_API_KEY && GROQ_API_KEY) {
+if (GROQ_FALLBACK_ENABLED && GROQ_API_KEY) {
   groq = new Groq({ apiKey: GROQ_API_KEY });
 }
 
 if (OPENROUTER_API_KEY) {
   console.log(`✅ OpenRouter AI initialized with ${OPENROUTER_MODEL}`);
+  if (groq) console.log(`✅ Groq fallback initialized with ${GROQ_MODEL}`);
 } else if (groq) {
   console.log(`✅ Groq AI initialized with ${GROQ_MODEL}`);
 } else {
   console.warn('⚠️ AI API key is missing. AI features will use local fallback responses.');
 }
 
+function hasUsableChoice(response) {
+  return Boolean(response?.choices?.[0]?.message?.content);
+}
+
+async function groqCompletion({ messages, maxTokens, temperature }) {
+  if (!groq) throw new Error('Groq fallback is not configured');
+  return groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  });
+}
+
 async function aiChatCompletion({ messages, maxTokens = 512, temperature = 0.7 }) {
   if (OPENROUTER_API_KEY) {
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: OPENROUTER_MODEL,
-        messages,
-        max_tokens: maxTokens,
-        temperature,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.APP_PUBLIC_URL || 'https://hirepro.pk',
-          'X-Title': 'HirePro',
+    try {
+      const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: OPENROUTER_MODEL,
+          messages,
+          max_tokens: maxTokens,
+          temperature,
         },
-        timeout: Number(process.env.AI_REQUEST_TIMEOUT_MS || 20000),
-      },
-    );
-    return response.data;
+        {
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.APP_PUBLIC_URL || 'https://hirepro.pk',
+            'X-Title': 'HirePro',
+          },
+          timeout: Number(process.env.AI_REQUEST_TIMEOUT_MS || 20000),
+        },
+      );
+      if (hasUsableChoice(response.data)) return response.data;
+      throw new Error('OpenRouter returned an empty AI response');
+    } catch (error) {
+      if (!groq) throw error;
+      console.warn('OpenRouter failed. Falling back to Groq:', error.message);
+      return groqCompletion({ messages, maxTokens, temperature });
+    }
   }
 
-  if (groq) {
-    return groq.chat.completions.create({
-      model: GROQ_MODEL,
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-    });
-  }
+  if (groq) return groqCompletion({ messages, maxTokens, temperature });
 
   throw new Error('AI provider API key missing');
 }
