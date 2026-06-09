@@ -229,6 +229,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                   ),
                                 ),
                         ),
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                              context, '/login', (route) => false),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          label: const Text('Back to Google Sign In'),
+                        ),
                       ],
                     ),
                   ),

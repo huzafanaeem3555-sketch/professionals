@@ -108,6 +108,195 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  String _userPhone(Map<String, dynamic> user) {
+    return (user['phoneNumber'] ?? user['phone'] ?? user['mobile'] ?? '')
+        .toString()
+        .trim();
+  }
+
+  String _userPhoto(Map<String, dynamic> user) {
+    return (user['photoURL'] ??
+            user['photoUrl'] ??
+            user['profileImage'] ??
+            user['imageUrl'] ??
+            user['avatar'] ??
+            '')
+        .toString()
+        .trim();
+  }
+
+  String _officialAdminMessage({
+    required String name,
+    required String role,
+    required String template,
+  }) {
+    final safeName = name.trim().isEmpty ? 'User' : name.trim();
+    final roleLabel = role == 'professional' ? 'professional' : 'customer';
+    final body = switch (template) {
+      'deposit' =>
+        'Please deposit your required HirePro fee and share payment confirmation with admin.',
+      'query' =>
+        'Please check your customer query in the HirePro app and respond as soon as possible.',
+      'verification' =>
+        'Please complete your HirePro account verification so your account can stay active.',
+      _ =>
+        'Please update your HirePro $roleLabel profile with accurate name, phone, services, location, and profile picture.',
+    };
+    return 'Official HirePro Admin Message\n\nHello $safeName,\n$body\n\nRegards,\nHirePro Admin';
+  }
+
+  Future<void> _openOfficialWhatsApp(
+    Map<String, dynamic> user, {
+    required String type,
+  }) async {
+    final phone = _userPhone(user);
+    final canMessage = RegExp(r'\d{8,}').hasMatch(phone);
+    if (!canMessage) {
+      showTimedSnackBar(
+        context,
+        const SnackBar(
+          content: Text('No valid phone number found for this user.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final name = _shortText(
+      user['displayName'] ?? user['name'],
+      fallback: type == 'professional' ? 'Professional' : 'Customer',
+    );
+    final messageCtrl = TextEditingController(
+      text: _officialAdminMessage(
+        name: name,
+        role: type,
+        template: 'profile',
+      ),
+    );
+
+    final message = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        void applyTemplate(String template) {
+          messageCtrl.text = _officialAdminMessage(
+            name: name,
+            role: type,
+            template: template,
+          );
+        }
+
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Official WhatsApp Message',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$name | $phone',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _templateChip(
+                          'Update Profile', () => applyTemplate('profile')),
+                      _templateChip(
+                          'Deposit Fee', () => applyTemplate('deposit')),
+                      _templateChip(
+                          'Customer Query', () => applyTemplate('query')),
+                      _templateChip(
+                          'Verification', () => applyTemplate('verification')),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: messageCtrl,
+                    minLines: 5,
+                    maxLines: 9,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Message',
+                      alignLabelWithHint: true,
+                      filled: true,
+                      fillColor: AppColors.surfaceLight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.divider),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, messageCtrl.text.trim()),
+              icon: const Icon(Icons.chat_rounded),
+              label: const Text('Open WhatsApp'),
+            ),
+          ],
+        );
+      },
+    );
+
+    messageCtrl.dispose();
+    if (message == null || message.trim().isEmpty) return;
+
+    final opened = await launchContactUri(contactUriFor(
+      method: ContactMethod.whatsapp,
+      phoneNumber: phone,
+      message: message,
+    ));
+    if (!mounted) return;
+    if (!opened) {
+      showTimedSnackBar(
+        context,
+        const SnackBar(
+          content: Text('Could not open WhatsApp.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Widget _templateChip(String label, VoidCallback onPressed) {
+    return ActionChip(
+      onPressed: onPressed,
+      label: Text(label),
+      avatar: const Icon(Icons.message_rounded, size: 16),
+      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+      labelStyle: const TextStyle(
+        color: AppColors.primary,
+        fontWeight: FontWeight.w700,
+      ),
+      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.18)),
+    );
+  }
+
   Widget _adminUserActions(Map<String, dynamic> user) {
     final uid = user['uid']?.toString() ?? '';
     final status = user['verificationStatus']?.toString().toLowerCase() ?? '';
@@ -854,6 +1043,14 @@ class _AdminDashboardState extends State<AdminDashboard>
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Back to app sign in',
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/login', (route) => false);
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.add_circle_outline, color: Colors.white),
             tooltip: 'Add User',
@@ -1522,6 +1719,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     required String type,
   }) async {
     final isProfessional = type == 'professional';
+    final photo = _userPhoto(user);
     await showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
@@ -1542,14 +1740,18 @@ class _AdminDashboardState extends State<AdminDashboard>
                   children: [
                     CircleAvatar(
                       backgroundColor: Colors.white24,
-                      child: Text(
-                        _initial(
-                            user['displayName'], isProfessional ? 'P' : 'C'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      backgroundImage:
+                          photo.isNotEmpty ? NetworkImage(photo) : null,
+                      child: photo.isEmpty
+                          ? Text(
+                              _initial(user['displayName'],
+                                  isProfessional ? 'P' : 'C'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1649,6 +1851,12 @@ class _AdminDashboardState extends State<AdminDashboard>
                   runSpacing: 8,
                   children: [
                     _adminUserActions(user),
+                    _adminTextAction(
+                      icon: Icons.chat_rounded,
+                      label: 'Official WhatsApp',
+                      color: AppColors.primary,
+                      onPressed: () => _openOfficialWhatsApp(user, type: type),
+                    ),
                     if (isProfessional)
                       Tooltip(
                         message: 'Edit professional profile fields',
@@ -1687,6 +1895,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         fallback: isProfessional ? 'Professional' : 'Customer');
     final phone =
         _shortText(user['phoneNumber'] ?? user['phone'], fallback: '');
+    final photo = _userPhoto(user);
     final status = _shortText(user['verificationStatus'], fallback: 'verified');
     final active = user['isActive'] != false;
 
@@ -1717,13 +1926,17 @@ class _AdminDashboardState extends State<AdminDashboard>
                   CircleAvatar(
                     radius: 22,
                     backgroundColor: accent.withValues(alpha: 0.14),
-                    child: Text(
-                      _initial(name, isProfessional ? 'P' : 'C'),
-                      style: TextStyle(
-                        color: accent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    backgroundImage:
+                        photo.isNotEmpty ? NetworkImage(photo) : null,
+                    child: photo.isEmpty
+                        ? Text(
+                            _initial(name, isProfessional ? 'P' : 'C'),
+                            style: TextStyle(
+                              color: accent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1879,6 +2092,12 @@ class _AdminDashboardState extends State<AdminDashboard>
               onPressed: () => _showUserDetails(p, type: 'professional'),
             ),
             _adminTextAction(
+              icon: Icons.chat_rounded,
+              label: 'Official WhatsApp',
+              color: AppColors.primary,
+              onPressed: () => _openOfficialWhatsApp(p, type: 'professional'),
+            ),
+            _adminTextAction(
               icon: Icons.delete_outline_rounded,
               label: 'Delete',
               color: Colors.redAccent,
@@ -1928,6 +2147,12 @@ class _AdminDashboardState extends State<AdminDashboard>
               label: 'Details',
               color: AppColors.primary,
               onPressed: () => _showUserDetails(c, type: 'customer'),
+            ),
+            _adminTextAction(
+              icon: Icons.chat_rounded,
+              label: 'Official WhatsApp',
+              color: AppColors.primary,
+              onPressed: () => _openOfficialWhatsApp(c, type: 'customer'),
             ),
             _adminTextAction(
               icon: Icons.delete_outline_rounded,
