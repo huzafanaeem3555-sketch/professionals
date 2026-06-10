@@ -12,7 +12,7 @@ class ApiConstants {
   // PRODUCTION SERVER URL
   // ============================================================
   static const String productionBaseUrl =
-      'https://748b03bee07a09ae-182-180-96-214.serveousercontent.com/api';
+      'https://hirepro.uzair.win/api';
 
   // ============================================================
   // LOCAL DEVELOPMENT URLs (For testing only)
