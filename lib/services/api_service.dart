@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../utils/constants.dart';
 import '../utils/error_handler.dart';
@@ -80,6 +81,37 @@ class ApiService {
 
   Future<String?> getCurrentToken() async {
     return await StorageService.getToken();
+  }
+
+  Map<String, dynamic> _asMapResponse(
+    dynamic data, {
+    String fallbackMessage = 'Invalid server response.',
+  }) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+
+    if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.isEmpty) {
+        return {'success': false, 'message': fallbackMessage};
+      }
+
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        // Fall through to a user-facing message below.
+      }
+
+      return {
+        'success': false,
+        'message': trimmed.length > 180
+            ? '$fallbackMessage Server returned a non-JSON response.'
+            : trimmed,
+      };
+    }
+
+    return {'success': false, 'message': fallbackMessage};
   }
 
   // ─── FCM NOTIFICATION TOKEN ────────────────────────────────────────────────
@@ -236,7 +268,10 @@ class ApiService {
       final response = await _withRetry(
         () => _dio.post('/auth/google', data: {'idToken': idToken}),
       );
-      return response.data;
+      return _asMapResponse(
+        response.data,
+        fallbackMessage: 'Google login failed. Please try again.',
+      );
     } catch (e) {
       return _handleError(e);
     }
@@ -247,14 +282,15 @@ class ApiService {
       final response = await _withRetry(
         () => _dio.post('/auth/signin', data: {'idToken': idToken}),
       );
-      if (response.data is Map<String, dynamic>) {
-        final map = response.data as Map<String, dynamic>;
-        final token = map['data']?['token']?.toString();
-        if (token != null && token.isNotEmpty) {
-          await setBackendToken(token);
-        }
+      final map = _asMapResponse(
+        response.data,
+        fallbackMessage: 'Sign in failed. Please try again.',
+      );
+      final token = map['data']?['token']?.toString();
+      if (token != null && token.isNotEmpty) {
+        await setBackendToken(token);
       }
-      return response.data;
+      return map;
     } catch (e) {
       return _handleError(e);
     }
@@ -286,7 +322,10 @@ class ApiService {
   Future<Map<String, dynamic>> getMe() async {
     try {
       final response = await _dio.get('/auth/me');
-      return response.data;
+      return _asMapResponse(
+        response.data,
+        fallbackMessage: 'Could not load account details.',
+      );
     } catch (e) {
       return _handleError(e);
     }
