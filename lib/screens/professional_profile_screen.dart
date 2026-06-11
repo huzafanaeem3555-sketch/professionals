@@ -263,14 +263,24 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    AppColors.primary.withOpacity(0.06),
+                    AppColors.accent.withOpacity(0.08),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.primary.withOpacity(0.08)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    blurRadius: 16,
+                    offset: const Offset(0, 7),
                   ),
                 ],
               ),
@@ -356,10 +366,29 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                 runSpacing: 8,
                 children: pro.serviceTypes.map((s) {
                   final cat = ServiceLabels.labelFor(s);
-                  return Chip(
-                    label: Text(cat['name'].toString()),
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    labelStyle: const TextStyle(color: AppColors.primary),
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.13),
+                          AppColors.accent.withOpacity(0.11),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.18),
+                      ),
+                    ),
+                    child: Text(
+                      cat['name'].toString(),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -533,6 +562,7 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 56),
+                    backgroundColor: AppColors.primary.withOpacity(0.06),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                     side: BorderSide(
@@ -559,6 +589,8 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                   ),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 56),
+                    elevation: pro.isAvailableNow ? 7 : 0,
+                    shadowColor: AppColors.primary.withOpacity(0.30),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                     backgroundColor: pro.isAvailableNow
@@ -1105,12 +1137,22 @@ class _SectionCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            AppColors.surfaceLight,
+            AppColors.primary.withOpacity(0.035),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -1119,8 +1161,21 @@ class _SectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.16),
+                      AppColors.accent.withOpacity(0.14),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
               Text(
                 title,
                 style: const TextStyle(

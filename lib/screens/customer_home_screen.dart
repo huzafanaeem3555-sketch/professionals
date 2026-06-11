@@ -2845,8 +2845,6 @@ class _ProfessionalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final services =
-        professional.serviceTypes.take(3).map(_serviceLabel).join(' | ');
     final isAvailable = professional.isAvailable;
     final badges = _passportBadges();
     final package = professional.servicePackages.isNotEmpty
@@ -2855,311 +2853,389 @@ class _ProfessionalCard extends StatelessWidget {
     final packageTitle = package?['title']?.toString() ?? '';
     final packagePrice = package?['price']?.toString() ?? '';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 4))
-        ],
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.96, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) => Transform.scale(
+        scale: value,
+        child: child,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Avatar
-                GestureDetector(
-                  onTap: onViewProfile,
-                  child: Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      image: professional.photoURL.isNotEmpty
-                          ? DecorationImage(
-                              image: NetworkImage(professional.photoURL),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: professional.photoURL.isEmpty
-                          ? Text(
-                              professional.name.isNotEmpty
-                                  ? professional.name[0].toUpperCase()
-                                  : 'P',
-                              style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20),
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              professional.isFeatured
-                                  ? '${professional.name}  Featured'
-                                  : professional.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isAvailable
-                                  ? AppColors.success.withOpacity(0.1)
-                                  : Colors.grey.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: isAvailable
-                                        ? AppColors.success
-                                        : Colors.grey,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  isAvailable ? 'Online' : 'Offline',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: isAvailable
-                                          ? AppColors.success
-                                          : Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: isFavorite ? 'Remove saved' : 'Save',
-                            onPressed: onFavorite,
-                            icon: Icon(
-                              isFavorite
-                                  ? Icons.bookmark_rounded
-                                  : Icons.bookmark_border_rounded,
-                              color: AppColors.primary,
-                            ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              AppColors.primary.withOpacity(0.035),
+              AppColors.accent.withOpacity(0.055),
+            ],
+          ),
+          border: Border.all(color: AppColors.primary.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.10),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar
+                  GestureDetector(
+                    onTap: onViewProfile,
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.accent,
+                            AppColors.star.withOpacity(0.9),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.24),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        services.isNotEmpty ? services : 'Professional',
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          image: professional.photoURL.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(professional.photoURL),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: professional.photoURL.isEmpty
+                              ? Text(
+                                  professional.name.isNotEmpty
+                                      ? professional.name[0].toUpperCase()
+                                      : 'P',
+                                  style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20),
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                professional.isFeatured
+                                    ? '${professional.name}  Featured'
+                                    : professional.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isAvailable
+                                      ? [
+                                          AppColors.success.withOpacity(0.18),
+                                          AppColors.success.withOpacity(0.08),
+                                        ]
+                                      : [
+                                          Colors.grey.withOpacity(0.16),
+                                          Colors.grey.withOpacity(0.08),
+                                        ],
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: isAvailable
+                                      ? AppColors.success.withOpacity(0.35)
+                                      : Colors.grey.withOpacity(0.25),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: isAvailable
+                                          ? AppColors.success
+                                          : Colors.grey,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isAvailable ? 'Online' : 'Offline',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: isAvailable
+                                            ? AppColors.success
+                                            : Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: isFavorite ? 'Remove saved' : 'Save',
+                              onPressed: onFavorite,
+                              icon: Icon(
+                                isFavorite
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_border_rounded,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: professional.serviceTypes.take(3).map((s) {
+                            final label = EnglishText.sanitize(
+                              _serviceLabel(s),
+                              fallback: 'Service',
+                            );
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 9, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: AppColors.accent.withOpacity(0.22),
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: badges
+                              .map(
+                                (badge) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.primary.withOpacity(0.12),
+                                        AppColors.accent.withOpacity(0.10),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.18),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    badge,
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniMetric(
+                      icon: Icons.star_rounded,
+                      value: professional.ratingText,
+                      label: 'Rating',
+                      color: AppColors.star,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MiniMetric(
+                      icon: Icons.near_me,
+                      value: professional.distanceText,
+                      label: 'Distance',
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MiniMetric(
+                      icon: Icons.verified_user_outlined,
+                      value: '${professional.trustScore}%',
+                      label: 'Trust',
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+              if (professional.address.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.place,
+                        size: 14, color: AppColors.textLight),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        professional.address,
                         style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 13),
+                            fontSize: 12, color: AppColors.textLight),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: badges
-                            .map(
-                              (badge) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.primary.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.18),
-                                  ),
-                                ),
-                                child: Text(
-                                  badge,
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ],
+              if (packageTitle.isNotEmpty || packagePrice.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${packageTitle.isEmpty ? 'Service Package' : packageTitle}'
+                    '${packagePrice.isEmpty ? '' : ' - PKR $packagePrice'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                // Rating
-                Row(
-                  children: [
-                    const Icon(Icons.star_rounded,
-                        color: AppColors.star, size: 17),
-                    const SizedBox(width: 3),
-                    Text(
-                      professional.ratingText,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: AppColors.textPrimary),
+              const SizedBox(height: 14),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 355;
+                  final buttons = [
+                    _CardActionButton(
+                      label: 'Profile',
+                      icon: Icons.person,
+                      onPressed: onViewProfile,
+                      foreground: AppColors.accent,
+                      outlined: true,
                     ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                // Distance
-                Row(
-                  children: [
-                    const Icon(Icons.near_me,
-                        color: AppColors.primary, size: 15),
-                    const SizedBox(width: 4),
-                    Text(
-                      professional.distanceText,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary),
+                    _CardActionButton(
+                      label: 'Call',
+                      icon: Icons.call,
+                      onPressed: isAvailable ? onCall : null,
+                      foreground: isAvailable ? AppColors.primary : Colors.grey,
+                      outlined: true,
                     ),
-                  ],
-                ),
-                if (professional.completedJobs > 0) ...[
-                  const SizedBox(width: 16),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.workspace_premium_outlined,
-                        color: AppColors.accent,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${professional.completedJobs} jobs',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                    _CardActionButton(
+                      label: 'WhatsApp',
+                      icon: Icons.chat,
+                      onPressed: isAvailable ? onWhatsApp : null,
+                      foreground: Colors.white,
+                      background: isAvailable ? AppColors.primary : Colors.grey,
+                    ),
+                  ];
+                  if (compact) {
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: buttons[0]),
+                            const SizedBox(width: 8),
+                            Expanded(child: buttons[1]),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(width: 16),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.verified_user_outlined,
-                      color: AppColors.success,
-                      size: 15,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${professional.trustScore}%',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-              ],
-            ),
-            if (professional.address.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.place, size: 14, color: AppColors.textLight),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      professional.address,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textLight),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (packageTitle.isNotEmpty || packagePrice.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${packageTitle.isEmpty ? 'Service Package' : packageTitle}'
-                  '${packagePrice.isEmpty ? '' : ' - PKR $packagePrice'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 355;
-                final buttons = [
-                  _CardActionButton(
-                    label: 'Profile',
-                    icon: Icons.person,
-                    onPressed: onViewProfile,
-                    foreground: AppColors.accent,
-                    outlined: true,
-                  ),
-                  _CardActionButton(
-                    label: 'Call',
-                    icon: Icons.call,
-                    onPressed: isAvailable ? onCall : null,
-                    foreground: isAvailable ? AppColors.primary : Colors.grey,
-                    outlined: true,
-                  ),
-                  _CardActionButton(
-                    label: 'WhatsApp',
-                    icon: Icons.chat,
-                    onPressed: isAvailable ? onWhatsApp : null,
-                    foreground: Colors.white,
-                    background: isAvailable ? AppColors.primary : Colors.grey,
-                  ),
-                ];
-                if (compact) {
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(child: buttons[2]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _CardActionButton(
+                                label: 'Refer',
+                                icon: Icons.card_giftcard_rounded,
+                                onPressed: onReferral,
+                                foreground: AppColors.primary,
+                                outlined: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CardActionButton(
+                                label: 'Complaint',
+                                icon: Icons.report_problem_outlined,
+                                onPressed: onComplaint,
+                                foreground: AppColors.error,
+                                outlined: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
                   return Column(
                     children: [
                       Row(
@@ -3167,13 +3243,13 @@ class _ProfessionalCard extends StatelessWidget {
                           Expanded(child: buttons[0]),
                           const SizedBox(width: 8),
                           Expanded(child: buttons[1]),
+                          const SizedBox(width: 8),
+                          Expanded(child: buttons[2]),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: buttons[2]),
-                          const SizedBox(width: 8),
                           Expanded(
                             child: _CardActionButton(
                               label: 'Refer',
@@ -3183,11 +3259,7 @@ class _ProfessionalCard extends StatelessWidget {
                               outlined: true,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
+                          const SizedBox(width: 8),
                           Expanded(
                             child: _CardActionButton(
                               label: 'Complaint',
@@ -3201,48 +3273,71 @@ class _ProfessionalCard extends StatelessWidget {
                       ),
                     ],
                   );
-                }
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: buttons[0]),
-                        const SizedBox(width: 8),
-                        Expanded(child: buttons[1]),
-                        const SizedBox(width: 8),
-                        Expanded(child: buttons[2]),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CardActionButton(
-                            label: 'Refer',
-                            icon: Icons.card_giftcard_rounded,
-                            onPressed: onReferral,
-                            foreground: AppColors.primary,
-                            outlined: true,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _CardActionButton(
-                            label: 'Complaint',
-                            icon: Icons.report_problem_outlined,
-                            onPressed: onComplaint,
-                            foreground: AppColors.error,
-                            outlined: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _MiniMetric extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _MiniMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
