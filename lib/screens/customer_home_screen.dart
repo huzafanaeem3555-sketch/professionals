@@ -2864,22 +2864,14 @@ class _ProfessionalCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              AppColors.primary.withOpacity(0.035),
-              AppColors.accent.withOpacity(0.055),
-            ],
-          ),
-          border: Border.all(color: AppColors.primary.withOpacity(0.08)),
+          border: Border.all(color: AppColors.primary.withOpacity(0.22)),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.10),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+              color: AppColors.primary.withOpacity(0.09),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
@@ -2966,22 +2958,14 @@ class _ProfessionalCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: isAvailable
-                                      ? [
-                                          AppColors.success.withOpacity(0.18),
-                                          AppColors.success.withOpacity(0.08),
-                                        ]
-                                      : [
-                                          Colors.grey.withOpacity(0.16),
-                                          Colors.grey.withOpacity(0.08),
-                                        ],
-                                ),
+                                color: isAvailable
+                                    ? const Color(0xFFE6F6EF)
+                                    : const Color(0xFFF0F2F5),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
                                   color: isAvailable
-                                      ? AppColors.success.withOpacity(0.35)
-                                      : Colors.grey.withOpacity(0.25),
+                                      ? AppColors.success
+                                      : AppColors.divider,
                                 ),
                               ),
                               child: Row(
@@ -3035,11 +3019,9 @@ class _ProfessionalCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 9, vertical: 5),
                               decoration: BoxDecoration(
-                                color: AppColors.accent.withOpacity(0.12),
+                                color: const Color(0xFFFFF3C4),
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: AppColors.accent.withOpacity(0.22),
-                                ),
+                                border: Border.all(color: AppColors.accent),
                               ),
                               child: Text(
                                 label,
@@ -3064,17 +3046,10 @@ class _ProfessionalCard extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        AppColors.primary.withOpacity(0.12),
-                                        AppColors.accent.withOpacity(0.10),
-                                      ],
-                                    ),
+                                    color: const Color(0xFFEAF2FA),
                                     borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.18),
-                                    ),
+                                    border:
+                                        Border.all(color: AppColors.divider),
                                   ),
                                   child: Text(
                                     badge,
@@ -3150,8 +3125,9 @@ class _ProfessionalCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.14),
+                    color: const Color(0xFFFFF3C4),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.accent),
                   ),
                   child: Text(
                     '${packageTitle.isEmpty ? 'Service Package' : packageTitle}'
@@ -3301,9 +3277,9 @@ class _MiniMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: const Color(0xFFF8FBFF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.18)),
+        border: Border.all(color: AppColors.divider),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

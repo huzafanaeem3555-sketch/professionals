@@ -265,22 +265,14 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white,
-                    AppColors.primary.withOpacity(0.06),
-                    AppColors.accent.withOpacity(0.08),
-                  ],
-                ),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.primary.withOpacity(0.08)),
+                border: Border.all(color: AppColors.primary.withOpacity(0.20)),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.10),
-                    blurRadius: 16,
-                    offset: const Offset(0, 7),
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
@@ -370,16 +362,9 @@ class _ProfessionalProfileScreenState extends State<ProfessionalProfileScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withOpacity(0.13),
-                          AppColors.accent.withOpacity(0.11),
-                        ],
-                      ),
+                      color: const Color(0xFFEAF2FA),
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: AppColors.primary.withOpacity(0.18),
-                      ),
+                      border: Border.all(color: AppColors.primary),
                     ),
                     child: Text(
                       cat['name'].toString(),
@@ -1096,26 +1081,40 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.textSecondary,
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1137,22 +1136,14 @@ class _SectionCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppColors.surfaceLight,
-            AppColors.primary.withOpacity(0.035),
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.18)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            color: AppColors.primary.withValues(alpha: 0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -1165,13 +1156,9 @@ class _SectionCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withOpacity(0.16),
-                      AppColors.accent.withOpacity(0.14),
-                    ],
-                  ),
+                  color: const Color(0xFFEAF2FA),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.divider),
                 ),
                 child: Icon(icon, color: AppColors.primary, size: 20),
               ),
