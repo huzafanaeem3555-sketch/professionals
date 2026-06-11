@@ -400,8 +400,18 @@ const AdminModel = {
     const proUpdates = {};
     const userUpdates = {};
 
-    if (payload.displayName !== undefined) userUpdates.displayName = String(payload.displayName).trim();
-    if (payload.phoneNumber !== undefined) userUpdates.phoneNumber = String(payload.phoneNumber).trim();
+    if (payload.displayName !== undefined) {
+      const displayName = String(payload.displayName).trim();
+      userUpdates.displayName = displayName;
+      proUpdates.name = displayName;
+      proUpdates.displayName = displayName;
+    }
+    if (payload.phoneNumber !== undefined) {
+      const phoneNumber = String(payload.phoneNumber).trim();
+      userUpdates.phoneNumber = phoneNumber;
+      proUpdates.phoneNumber = phoneNumber;
+      proUpdates.phone = phoneNumber;
+    }
     if (payload.rating !== undefined) {
       proUpdates.rating = Number(payload.rating) || 0;
       userUpdates.rating = proUpdates.rating;
@@ -424,14 +434,17 @@ const AdminModel = {
       proUpdates.isActive = active;
       userUpdates.isActive = active;
     }
-    if (payload.serviceTypes !== undefined) {
-      proUpdates.serviceTypes = Array.isArray(payload.serviceTypes)
-        ? payload.serviceTypes.map(String).filter(Boolean)
-        : String(payload.serviceTypes).split(',').map(s => s.trim()).filter(Boolean);
+    if (payload.serviceTypes !== undefined || payload.services !== undefined) {
+      const rawServices = payload.serviceTypes !== undefined ? payload.serviceTypes : payload.services;
+      const serviceTypes = Array.isArray(rawServices)
+        ? rawServices.map(String).map(s => s.trim()).filter(Boolean)
+        : String(rawServices).split(',').map(s => s.trim()).filter(Boolean);
+      proUpdates.services = serviceTypes;
+      proUpdates.serviceTypes = serviceTypes;
     }
     if (payload.customServices !== undefined) {
       proUpdates.customServices = Array.isArray(payload.customServices)
-        ? payload.customServices.map(String).filter(Boolean)
+        ? payload.customServices.map(String).map(s => s.trim()).filter(Boolean)
         : String(payload.customServices).split(',').map(s => s.trim()).filter(Boolean);
     }
 

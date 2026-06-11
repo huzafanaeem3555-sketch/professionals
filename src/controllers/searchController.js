@@ -16,6 +16,7 @@ const SERVICE_TYPES = [
 function allServicesFor(pro) {
   return [
     ...(Array.isArray(pro.services) ? pro.services : []),
+    ...(Array.isArray(pro.serviceTypes) ? pro.serviceTypes : []),
     ...(Array.isArray(pro.customServices) ? pro.customServices : []),
   ].filter(Boolean);
 }
@@ -200,17 +201,22 @@ const SearchController = {
         await ProfessionalModel.getAll()
       );
       
-      // Filter professionals by matched services
+      // Filter professionals by current profile data. Admin edits overwrite the
+      // services/name fields, so search must always read from professionals/*.
       let filtered = allProfessionals.filter(pro => {
         if (!pro.isAvailable) return false;
         
         const proServices = allServicesFor(pro);
+        const profileText = normalizeText([
+          pro.name,
+          pro.displayName,
+          pro.description,
+          pro.location?.address,
+          ...proServices,
+        ].join(' '));
         return matchedServices.some(service =>
           proServices.some(s => serviceMatches(s, service))
-        ) || proServices.some(s => {
-          const normalized = normalizeText(s);
-          return normalized.includes(query) || query.includes(normalized);
-        });
+        ) || (profileText && (profileText.includes(query) || query.includes(profileText)));
       });
       
       // If no matches by service, try name matching
@@ -365,15 +371,24 @@ If no service matches, return empty array for services.`;
     const proServices = allServicesFor(professional).map(normalizeText);
     for (const service of matchedServices) {
       if (proServices.some(s => serviceMatches(s, service))) {
-        score += 10;
+        score += 80;
       }
+    }
+    for (const service of proServices) {
+      if (service === query) score += 140;
+      if (service.startsWith(query)) score += 110;
+      if (service.includes(query)) score += 85;
     }
     
     // Name match
-    const name = normalizeText(professional.name);
-    if (name.includes(query)) {
-      score += 5;
-    }
+    const name = normalizeText(professional.name || professional.displayName);
+    if (name === query) score += 130;
+    if (name.startsWith(query)) score += 100;
+    if (name.includes(query)) score += 70;
+    const description = normalizeText(professional.description);
+    if (description.includes(query)) score += 35;
+    const address = normalizeText(professional.location?.address);
+    if (address.includes(query)) score += 20;
     
     // Rating boost
     score += (professional.rating || 0) * 3;
