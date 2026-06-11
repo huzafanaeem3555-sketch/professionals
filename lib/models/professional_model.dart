@@ -90,12 +90,29 @@ class ProfessionalModel {
       return const [];
     }
 
+    final rawServices = json['services'] ?? json['serviceTypes'] ?? const [];
+    final rawCustomServices = json['customServices'] ?? const [];
+
     return ProfessionalModel(
       uid: (json['uid'] ?? json['phone'] ?? '').toString(),
       phone: (json['phone'] ?? json['phoneNumber'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
-      services: List<String>.from(json['services'] ?? const []),
-      customServices: List<String>.from(json['customServices'] ?? const []),
+      services: rawServices is List
+          ? rawServices.map((e) => e.toString()).toList()
+          : rawServices
+              .toString()
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+      customServices: rawCustomServices is List
+          ? rawCustomServices.map((e) => e.toString()).toList()
+          : rawCustomServices
+              .toString()
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
       location: locationData,
       description: (json['description'] ?? '').toString(),
       isAvailable: json['isAvailable'] != false,

@@ -206,9 +206,14 @@ class FirebaseService {
           prof['phone'] = uid; // fallback
         }
 
+        if (prof['services'] == null && prof['serviceTypes'] != null) {
+          prof['services'] = prof['serviceTypes'];
+        }
         final services = prof['services'];
+        final serviceTypes = prof['serviceTypes'];
         final customServices = prof['customServices'];
-        final hasServices = services is List && services.isNotEmpty;
+        final hasServices = (services is List && services.isNotEmpty) ||
+            (serviceTypes is List && serviceTypes.isNotEmpty);
         final hasCustomServices =
             customServices is List && customServices.isNotEmpty;
         if (!hasServices && !hasCustomServices) {

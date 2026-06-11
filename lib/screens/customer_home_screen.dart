@@ -806,6 +806,69 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     _suggestions = list.take(8).toList();
   }
 
+  List<_SearchSuggestion> _buildSearchMenuSuggestions() {
+    final query = _normalizeSearchText(_searchCtrl.text);
+    final suggestions = <String, _SearchSuggestion>{};
+
+    void addService(String service) {
+      final clean = service.trim();
+      if (clean.isEmpty) return;
+      final key = _serviceKey(clean);
+      if (key.isEmpty) return;
+      final label = EnglishText.sanitize(
+        _displayServiceName(clean),
+        fallback: clean.replaceAll('_', ' '),
+      );
+      final matchCount = _all
+          .where((p) => p.allServices.any((s) => _sameService(s, clean)))
+          .length;
+      if (matchCount == 0) return;
+      suggestions.putIfAbsent(
+        key,
+        () => _SearchSuggestion(
+          label: label,
+          serviceKey: clean,
+          matchCount: matchCount,
+          popularity: _serviceScore(clean),
+        ),
+      );
+    }
+
+    if (query.isNotEmpty) {
+      for (final suggestion in _suggestions) {
+        if (suggestion.serviceKey != null) addService(suggestion.serviceKey!);
+      }
+      for (final pro in _all) {
+        if (!_professionalMatchesQuery(pro, query)) continue;
+        for (final service in pro.allServices) {
+          final blob = _normalizeSearchText(
+            '$service ${_displayServiceName(service)} ${pro.name} ${pro.address}',
+          );
+          if (blob.contains(query) ||
+              query.contains(_normalizeSearchText(service))) {
+            addService(service);
+          }
+        }
+      }
+    } else {
+      for (final pro in _all) {
+        for (final service in pro.allServices) {
+          addService(service);
+        }
+      }
+    }
+
+    final list = suggestions.values.toList()
+      ..sort((a, b) {
+        final popularityDiff = b.popularity.compareTo(a.popularity);
+        if (popularityDiff != 0) return popularityDiff;
+        final countDiff = b.matchCount.compareTo(a.matchCount);
+        if (countDiff != 0) return countDiff;
+        return a.label.compareTo(b.label);
+      });
+    return list.take(query.isEmpty ? 10 : 12).toList();
+  }
+
   void _selectSuggestion(_SearchSuggestion suggestion) {
     FocusScope.of(context).unfocus();
     setState(() {
@@ -1764,32 +1827,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final baseServiceKeys =
-        AppStrings.serviceCategories.map((c) => c['key'] as String).toSet();
-    final customServiceKeys = _all
-        .expand((p) => p.customServices)
-        .where((service) =>
-            service.trim().isNotEmpty && !baseServiceKeys.contains(service))
-        .toSet()
-        .toList()
-      ..sort((a, b) {
-        final scoreDiff = _serviceScore(b).compareTo(_serviceScore(a));
-        if (scoreDiff != 0) return scoreDiff;
-        return a.compareTo(b);
-      });
-    final categoryIndex = <String, int>{
-      for (var i = 0; i < AppStrings.serviceCategories.length; i++)
-        AppStrings.serviceCategories[i]['key'] as String: i,
-    };
-    final orderedCategories =
-        List<Map<String, dynamic>>.from(AppStrings.serviceCategories)
-          ..sort((a, b) {
-            final ak = a['key'] as String;
-            final bk = b['key'] as String;
-            final scoreDiff = _serviceScore(bk).compareTo(_serviceScore(ak));
-            if (scoreDiff != 0) return scoreDiff;
-            return (categoryIndex[ak] ?? 0).compareTo(categoryIndex[bk] ?? 0);
-          });
+    final searchMenuSuggestions = _buildSearchMenuSuggestions();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -2092,56 +2130,32 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                               child: Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: [
-                                  _CategoryChip(
-                                    label: 'All Services',
-                                    selected: _filterService == null,
-                                    onTap: () => setState(() {
-                                      _filterService = null;
-                                      _showServiceMenu = false;
-                                      _applyFilter();
-                                    }),
-                                  ),
-                                  ...orderedCategories.map((c) {
-                                    final key = c['key'] as String;
-                                    final score = _serviceScore(key);
-                                    final name = EnglishText.sanitize(
-                                      c['name']?.toString(),
-                                      fallback: ServiceLabels.getName(key),
-                                    );
-                                    return _CategoryChip(
-                                      label:
-                                          '$name${score > 0 ? ' ($score)' : ''}',
-                                      selected: _filterService == key,
-                                      onTap: () => setState(() {
-                                        _filterService = key;
-                                        _showServiceMenu = false;
-                                        unawaited(_trackServiceSearch(
-                                            serviceType: key));
-                                        _applyFilter();
-                                      }),
-                                    );
-                                  }),
-                                  ...customServiceKeys.map((key) {
-                                    final label = EnglishText.sanitize(
-                                      ServiceLabels.getName(key),
-                                      fallback: 'Service',
-                                    );
-                                    final score = _serviceScore(key);
-                                    return _CategoryChip(
-                                      label:
-                                          '$label${score > 0 ? ' ($score)' : ''}',
-                                      selected: _filterService == key,
-                                      onTap: () => setState(() {
-                                        _filterService = key;
-                                        _showServiceMenu = false;
-                                        unawaited(_trackServiceSearch(
-                                            serviceType: key));
-                                        _applyFilter();
-                                      }),
-                                    );
-                                  }),
-                                ],
+                                children: searchMenuSuggestions.isEmpty
+                                    ? [
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 4, vertical: 6),
+                                          child: Text(
+                                            'Type a service name to see matching results.',
+                                            style: TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ]
+                                    : searchMenuSuggestions.map((suggestion) {
+                                        final key = suggestion.serviceKey ?? '';
+                                        final score = suggestion.popularity;
+                                        return _CategoryChip(
+                                          label:
+                                              '${suggestion.label}${score > 0 ? ' ($score)' : ''}',
+                                          selected: _filterService == key,
+                                          onTap: () => _selectSuggestion(
+                                            suggestion,
+                                          ),
+                                        );
+                                      }).toList(),
                               ),
                             ),
                           ],
