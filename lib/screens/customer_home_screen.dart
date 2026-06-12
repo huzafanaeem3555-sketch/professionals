@@ -55,7 +55,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   String? _voiceStatus;
   bool _voiceAvailable = false;
   bool _voiceListening = false;
-  bool _showServiceMenu = false;
 
   late AnimationController _animCtrl;
   static const MethodChannel _voiceChannel =
@@ -275,20 +274,24 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       final searched = list.where((p) {
         return _professionalMatchesQuery(p, q);
       }).toList();
-      if (searched.isNotEmpty || _filterService == null) {
-        list = searched;
-      }
+      list = searched;
 
       int score(ProfessionalModel p) {
         var points = 0;
-        final name = p.name.toLowerCase();
-        final services = p.allServices.join(' ').toLowerCase();
-        final address = p.address.toLowerCase();
-        if (services.startsWith(q)) points += 120;
-        if (services.contains(q)) points += 90;
-        if (name.startsWith(q)) points += 80;
-        if (name.contains(q)) points += 55;
-        if (address.contains(q)) points += 20;
+        final normalizedQuery = _normalizeSearchText(q);
+        final name = _normalizeSearchText(p.name);
+        final services = p.allServices
+            .map((service) => '$service ${_displayServiceName(service)}')
+            .join(' ');
+        final normalizedServices = _normalizeSearchText(services);
+        if (normalizedServices.startsWith(normalizedQuery)) points += 140;
+        if (normalizedServices.contains(normalizedQuery)) points += 110;
+        if (name.startsWith(normalizedQuery)) points += 80;
+        if (name.contains(normalizedQuery)) points += 55;
+        if (normalizedQuery.length >= 3 &&
+            _normalizeSearchText(p.address).contains(normalizedQuery)) {
+          points += 12;
+        }
         points += _professionalPopularityScore(p);
         if (p.isAvailable) points += 10;
         final distancePenalty = (p.distance ?? 999).clamp(0, 200).toInt();
@@ -309,7 +312,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   void _onSearchChanged(String value) {
     setState(() {
       _filterService = null;
-      _showServiceMenu = false;
       _buildSuggestions(value);
       _applyFilter();
     });
@@ -808,69 +810,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     _suggestions = list.take(8).toList();
   }
 
-  List<_SearchSuggestion> _buildSearchMenuSuggestions() {
-    final query = _normalizeSearchText(_searchCtrl.text);
-    final suggestions = <String, _SearchSuggestion>{};
-
-    void addService(String service) {
-      final clean = service.trim();
-      if (clean.isEmpty) return;
-      final key = _serviceKey(clean);
-      if (key.isEmpty) return;
-      final label = EnglishText.sanitize(
-        _displayServiceName(clean),
-        fallback: clean.replaceAll('_', ' '),
-      );
-      final matchCount = _all
-          .where((p) => p.allServices.any((s) => _sameService(s, clean)))
-          .length;
-      if (matchCount == 0) return;
-      suggestions.putIfAbsent(
-        key,
-        () => _SearchSuggestion(
-          label: label,
-          serviceKey: clean,
-          matchCount: matchCount,
-          popularity: _serviceScore(clean),
-        ),
-      );
-    }
-
-    if (query.isNotEmpty) {
-      for (final suggestion in _suggestions) {
-        if (suggestion.serviceKey != null) addService(suggestion.serviceKey!);
-      }
-      for (final pro in _all) {
-        if (!_professionalMatchesQuery(pro, query)) continue;
-        for (final service in pro.allServices) {
-          final blob = _normalizeSearchText(
-            '$service ${_displayServiceName(service)} ${pro.name} ${pro.address}',
-          );
-          if (blob.contains(query) ||
-              query.contains(_normalizeSearchText(service))) {
-            addService(service);
-          }
-        }
-      }
-    } else {
-      for (final pro in _all) {
-        for (final service in pro.allServices) {
-          addService(service);
-        }
-      }
-    }
-
-    final list = suggestions.values.toList()
-      ..sort((a, b) {
-        final popularityDiff = b.popularity.compareTo(a.popularity);
-        if (popularityDiff != 0) return popularityDiff;
-        final countDiff = b.matchCount.compareTo(a.matchCount);
-        if (countDiff != 0) return countDiff;
-        return a.label.compareTo(b.label);
-      });
-    return list.take(query.isEmpty ? 10 : 12).toList();
-  }
-
   void _selectSuggestion(_SearchSuggestion suggestion) {
     FocusScope.of(context).unfocus();
     setState(() {
@@ -892,7 +831,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   }
 
   bool _professionalMatchesQuery(ProfessionalModel p, String query) {
-    if (_matchesQuery(p.name, query) || _matchesQuery(p.address, query)) {
+    final normalizedQuery = _normalizeSearchText(query);
+    if (_matchesQuery(p.name, query)) {
       return true;
     }
     for (final service in p.allServices) {
@@ -901,6 +841,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           _matchesQuery(_displayServiceName(service), query)) {
         return true;
       }
+    }
+    if (normalizedQuery.length >= 3 && _matchesQuery(p.address, query)) {
+      return true;
     }
     return false;
   }
@@ -1903,8 +1846,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final searchMenuSuggestions = _buildSearchMenuSuggestions();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       bottomNavigationBar: _loading
@@ -2157,84 +2098,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                   color: AppColors.textSecondary, fontSize: 14),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 52,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _showServiceMenu = !_showServiceMenu;
-                                });
-                              },
-                              icon: Icon(
-                                _showServiceMenu
-                                    ? Icons.keyboard_arrow_up_rounded
-                                    : Icons.search_rounded,
-                                size: 24,
-                              ),
-                              label: Text(
-                                _filterService == null
-                                    ? 'Search Services'
-                                    : ServiceLabels.getName(_filterService!),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_showServiceMenu) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.12),
-                                ),
-                              ),
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: searchMenuSuggestions.isEmpty
-                                    ? [
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 4, vertical: 6),
-                                          child: Text(
-                                            'Type a service name to see matching results.',
-                                            style: TextStyle(
-                                              color: AppColors.textSecondary,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ]
-                                    : searchMenuSuggestions.map((suggestion) {
-                                        final key = suggestion.serviceKey ?? '';
-                                        final score = suggestion.popularity;
-                                        return _CategoryChip(
-                                          label:
-                                              '${suggestion.label}${score > 0 ? ' ($score)' : ''}',
-                                          selected: _filterService == key,
-                                          onTap: () => _selectSuggestion(
-                                            suggestion,
-                                          ),
-                                        );
-                                      }).toList(),
-                              ),
-                            ),
-                          ],
                           if (_voiceStatus != null || _voiceListening)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -2525,7 +2388,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             const Icon(Icons.search_off,
                                 size: 64, color: AppColors.textLight),
                             const SizedBox(height: 16),
-                            const Text('No professionals found',
+                            Text(
+                                _searchCtrl.text.trim().isEmpty
+                                    ? 'No professionals found'
+                                    : 'Currently Not available',
                                 style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.bold,
@@ -2586,51 +2452,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 }
 
 // â”€â”€ Category Chip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.divider,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                      color: AppColors.primary.withOpacity(0.25), blurRadius: 6)
-                ]
-              : [],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.textSecondary,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // â”€â”€ Professional Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SearchSuggestion {
   final String label;
@@ -2656,7 +2477,7 @@ class _HowToUseStrip extends StatelessWidget {
     const steps = [
       _HowToStepData(
         number: '1',
-        title: 'Search services',
+        title: 'Type service',
         icon: Icons.search_rounded,
         color: Color(0xFFFFC857),
       ),
