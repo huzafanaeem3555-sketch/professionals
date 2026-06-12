@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../utils/snackbar_helper.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../models/professional_model.dart';
 import '../utils/constants.dart';
 import '../services/api_service.dart';
@@ -455,7 +456,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
     final data = Map<String, dynamic>.from(res['data'] as Map);
     final results = data['results'];
-    if (results is! List || results.isEmpty) return false;
+    if (results is! List) return false;
 
     final models = <ProfessionalModel>[];
     for (final item in results) {
@@ -486,7 +487,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       }
       models.add(model);
     }
-    if (models.isEmpty) return false;
 
     final matchedServices = data['matchedServices'];
     final suggested = matchedServices is List && matchedServices.isNotEmpty
@@ -500,6 +500,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       if (autoApply && suggested != null && suggested.isNotEmpty) {
         _voiceStatus =
             'Showing ${_displayServiceName(suggested)} professionals.';
+      } else if (autoApply && models.isEmpty) {
+        _voiceStatus = 'No available professionals found for this search.';
       }
     });
     return true;
@@ -1286,6 +1288,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     final budgetCtrl = TextEditingController();
     final radiusCtrl = TextEditingController(text: '20');
     var urgent = false;
+    DateTime? scheduledAt;
     final post = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1348,6 +1351,78 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.divider),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Job date/time optional',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        scheduledAt == null
+                            ? 'No auto-expiry. You can delete it manually.'
+                            : DateFormat('dd MMM yyyy, h:mm a')
+                                .format(scheduledAt!),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final now = DateTime.now();
+                              final date = await showDatePicker(
+                                context: ctx,
+                                initialDate: scheduledAt ?? now,
+                                firstDate: now,
+                                lastDate: now.add(const Duration(days: 365)),
+                              );
+                              if (date == null || !ctx.mounted) return;
+                              final time = await showTimePicker(
+                                context: ctx,
+                                initialTime: TimeOfDay.fromDateTime(
+                                  scheduledAt ??
+                                      now.add(const Duration(hours: 2)),
+                                ),
+                              );
+                              if (time == null) return;
+                              setDialogState(() {
+                                scheduledAt = DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  time.hour,
+                                  time.minute,
+                                );
+                              });
+                            },
+                            icon: const Icon(Icons.event_rounded),
+                            label: const Text('Set time'),
+                          ),
+                          if (scheduledAt != null)
+                            TextButton(
+                              onPressed: () =>
+                                  setDialogState(() => scheduledAt = null),
+                              child: const Text('Clear'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1387,6 +1462,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       'priority': urgent ? 'urgent' : 'normal',
       'location': contactLocation['location'],
       'address': contactLocation['address'],
+      if (scheduledAt != null) 'scheduledAt': scheduledAt!.toIso8601String(),
     });
     if (!mounted) return;
     if (res['success'] == true) {

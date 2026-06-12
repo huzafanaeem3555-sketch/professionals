@@ -159,11 +159,11 @@ class AuthService {
     try {
       await _auth.signOut();
       await _googleSignIn.signOut();
-      await ApiService().clearToken();
-      await StorageService.clearAll();
+      await ApiService().clearBackendTokenOnly();
+      await StorageService.clearUserSession();
     } catch (error) {
       if (kDebugMode) debugPrint('[Auth] signOut warning: $error');
-      await StorageService.clearAll();
+      await StorageService.clearUserSession();
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../utils/snackbar_helper.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +30,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshData());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureAdminSession());
   }
 
   @override
@@ -38,10 +40,21 @@ class _AdminDashboardState extends State<AdminDashboard>
     super.dispose();
   }
 
-  void _refreshData() {
+  Future<void> _ensureAdminSession() async {
     final adminProv = Provider.of<AdminProvider>(context, listen: false);
-    adminProv.fetchAll();
+    if (!adminProv.isAdminLoggedIn) {
+      final restored = await adminProv.restoreSession();
+      if (!restored && mounted) {
+        Navigator.pushReplacementNamed(context, '/admin-login');
+      }
+      return;
+    }
+    await adminProv.fetchAll();
     adminProv.startRealtimePolling();
+  }
+
+  void _refreshData() {
+    unawaited(_ensureAdminSession());
   }
 
   Future<void> _deleteUser(String uid, String name) async {
@@ -1158,7 +1171,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             const AppLogo(size: 90, padding: 6),
             const SizedBox(height: 18),
             const Text(
-              'Admin data is still loading',
+              'Admin data could not load',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textPrimary,

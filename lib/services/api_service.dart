@@ -26,9 +26,17 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await StorageService.getToken();
+          final useAdminToken = options.extra['useAdminToken'] == true;
+          final skipAuth = options.extra['skipAuth'] == true;
+          final token = skipAuth
+              ? null
+              : useAdminToken
+                  ? await StorageService.getAdminToken()
+                  : await StorageService.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
+          } else {
+            options.headers.remove('Authorization');
           }
           if (kDebugMode) {
             print('🔵 [API] ${options.method} ${options.path}');
@@ -60,6 +68,13 @@ class ApiService {
     }
   }
 
+  Future<void> initializeAdminToken() async {
+    final token = await StorageService.getAdminToken();
+    if (token != null && token.isNotEmpty) {
+      _dio.options.headers['Authorization'] = 'Bearer $token';
+    }
+  }
+
   Future<void> setBackendToken(String? token) async {
     if (token != null && token.isNotEmpty) {
       _dio.options.headers['Authorization'] = 'Bearer $token';
@@ -77,6 +92,11 @@ class ApiService {
   Future<void> clearBackendTokenOnly() async {
     _dio.options.headers.remove('Authorization');
     await StorageService.clearToken();
+  }
+
+  Future<void> clearAdminTokenOnly() async {
+    _dio.options.headers.remove('Authorization');
+    await StorageService.clearAdminSession();
   }
 
   Future<String?> getCurrentToken() async {
@@ -835,19 +855,25 @@ class ApiService {
       String prompt, List<Map<String, String>> history,
       {Map<String, dynamic>? location}) async {
     try {
-      final response = await _dio.post(
-        ApiConstants.aiMessage,
-        data: {
-          'message': prompt,
-          'history': history,
-          if (location != null) 'location': location,
-        },
+      final response = await _withRetry(
+        () => _dio.post(
+          ApiConstants.aiMessage,
+          data: {
+            'message': prompt,
+            'history': history,
+            if (location != null) 'location': location,
+          },
+        ),
       );
-      return response.data;
+      return _asMapResponse(
+        response.data,
+        fallbackMessage: 'AI assistant returned an invalid response.',
+      );
     } catch (e) {
       if (kDebugMode) print('sendAIMessage failed: $e');
       return {
-        'success': true,
+        'success': false,
+        'message': 'AI assistant is currently unavailable. Try again later.',
         'data': {
           'reply':
               'Sorry, AI assistant is currently unavailable. Try again later.',
@@ -865,7 +891,10 @@ class ApiService {
           data: {'description': description},
         ),
       );
-      return response.data;
+      return _asMapResponse(
+        response.data,
+        fallbackMessage: 'AI recommendation returned an invalid response.',
+      );
     } catch (e) {
       return _handleError(e);
     }
@@ -879,7 +908,10 @@ class ApiService {
           queryParameters: {'limit': limit},
         ),
       );
-      return response.data;
+      return _asMapResponse(
+        response.data,
+        fallbackMessage: 'Search returned an invalid response.',
+      );
     } catch (e) {
       return _handleError(e);
     }
@@ -914,7 +946,10 @@ class ApiService {
           queryParameters: {'q': query.trim()},
         ),
       );
-      return response.data;
+      return _asMapResponse(
+        response.data,
+        fallbackMessage: 'Search returned an invalid response.',
+      );
     } catch (e) {
       return _handleError(e);
     }
@@ -1000,9 +1035,31 @@ class ApiService {
       final response = await _withRetry(
         () => _dio.post(ApiConstants.marketplaceJobs, data: data),
       );
+      if (response.data is Map && response.data['success'] == true) {
+        final created = response.data['data'];
+        if (created is Map) {
+          await StorageService.addCachedJobPost(
+            Map<String, dynamic>.from(created),
+          );
+        }
+      }
       return response.data;
     } catch (e) {
-      return _handleError(e);
+      final local = await StorageService.addCachedJobPost({
+        ...data,
+        'customerId': await StorageService.getUid() ?? '',
+        'customerName':
+            (await StorageService.getUserDetails())['name'] ?? 'Customer',
+      });
+      final error = await _handleError(e);
+      return {
+        'success': true,
+        'offline': true,
+        'message':
+            'Saved offline. It will stay on this phone until internet is available.',
+        'warning': error['message'],
+        'data': local,
+      };
     }
   }
 
@@ -1011,8 +1068,24 @@ class ApiService {
       final response = await _withRetry(
         () => _dio.get(ApiConstants.marketplaceJobs),
       );
+      if (response.data is Map && response.data['data'] is List) {
+        await StorageService.cacheJobPosts(
+          (response.data['data'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList(),
+        );
+      }
       return response.data;
     } catch (e) {
+      final cached = await StorageService.getCachedJobPosts();
+      if (cached.isNotEmpty) {
+        return {
+          'success': true,
+          'offline': true,
+          'data': cached,
+        };
+      }
       return _handleError(e);
     }
   }
@@ -1234,6 +1307,7 @@ class ApiService {
   Options get _adminOptions => Options(
         sendTimeout: const Duration(seconds: 45),
         receiveTimeout: const Duration(seconds: 75),
+        extra: const {'useAdminToken': true},
       );
 
   Future<Map<String, dynamic>> adminLogin(String username) async {
@@ -1242,14 +1316,19 @@ class ApiService {
         () => _dio.post(
           ApiConstants.adminLogin,
           data: {'username': username},
-          options: _adminOptions,
+          options: Options(
+            sendTimeout: const Duration(seconds: 45),
+            receiveTimeout: const Duration(seconds: 75),
+            extra: const {'skipAuth': true},
+          ),
         ),
       );
       if (response.data is Map<String, dynamic>) {
         final map = response.data as Map<String, dynamic>;
         final token = map['data']?['token']?.toString();
         if (token != null && token.isNotEmpty) {
-          await setBackendToken(token);
+          _dio.options.headers['Authorization'] = 'Bearer $token';
+          await StorageService.setAdminToken(token);
         }
       }
       return response.data;

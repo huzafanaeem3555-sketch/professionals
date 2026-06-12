@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../utils/snackbar_helper.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -607,6 +608,13 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                   .toString()
                   .trim();
           final status = (job['status'] ?? 'open').toString();
+          final assigned = status == 'assigned';
+          final assignedExpiresAt = _toInt(job['assignedExpiresAt']);
+          final assignedExpiresText = assignedExpiresAt > 0
+              ? DateFormat('dd MMM yyyy, h:mm a').format(
+                  DateTime.fromMillisecondsSinceEpoch(assignedExpiresAt),
+                )
+              : '';
           final isUrgent = job['isUrgent'] == true ||
               job['priority']?.toString() == 'urgent';
           final responded = _respondedJobIds.contains(postId);
@@ -687,6 +695,25 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                           ),
                         ),
                       ),
+                    if (assigned) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Assigned',
+                          style: TextStyle(
+                            color: AppColors.success,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -695,6 +722,16 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                 const SizedBox(height: 8),
                 Text('Budget: PKR $budget',
                     style: const TextStyle(color: AppColors.primary)),
+                if (assignedExpiresText.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Auto deletes after: $assignedExpiresText',
+                    style: const TextStyle(
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -702,7 +739,7 @@ class _ProfessionalDashboardState extends State<ProfessionalDashboard> {
                   alignment: WrapAlignment.end,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: customerPhone.isEmpty
+                      onPressed: !assigned || customerPhone.isEmpty
                           ? null
                           : () => launchContactUri(contactUriFor(
                                 method: ContactMethod.whatsapp,

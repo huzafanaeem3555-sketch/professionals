@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 /// SharedPreferences wrapper for session persistence.
 class StorageService {
@@ -15,10 +16,28 @@ class StorageService {
   static const String _keyGender = 'user_gender';
   static const String _keyVerificationStatus = 'verification_status';
   static const String _keyAdminSession = 'admin_session_active';
+  static const String _keyAdminToken = 'admin_auth_token';
+  static const String _keyGuestMode = 'guest_mode';
+  static const String _keyCachedJobPosts = 'cached_job_posts';
 
   static Future<void> setUid(String uid) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUid, uid);
+  }
+
+  static Future<void> startGuestSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final guestId = prefs.getString(_keyUid) ??
+        'guest_${DateTime.now().millisecondsSinceEpoch}';
+    await prefs.setBool(_keyGuestMode, true);
+    await prefs.setString(_keyUid, guestId);
+    await prefs.setString(_keyRole, 'customer');
+    await prefs.setString(_keyUserName, 'Guest Customer');
+  }
+
+  static Future<bool> isGuestSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyGuestMode) == true;
   }
 
   static Future<String?> getUid() async {
@@ -84,6 +103,34 @@ class StorageService {
   static Future<void> clearAdminSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAdminSession);
+    await prefs.remove(_keyAdminToken);
+  }
+
+  static Future<void> setAdminToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyAdminToken, token);
+  }
+
+  static Future<String?> getAdminToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyAdminToken);
+  }
+
+  static Future<void> clearUserSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyRole);
+    await prefs.remove(_keyProfessionalPhone);
+    await prefs.remove(_keyCustomerId);
+    await prefs.remove(_keyToken);
+    await prefs.remove(_keyUid);
+    await prefs.remove(_keyIdToken);
+    await prefs.remove(_keyUserName);
+    await prefs.remove(_keyUserEmail);
+    await prefs.remove(_keyUserPhone);
+    await prefs.remove(_keyUserPhoto);
+    await prefs.remove(_keyGender);
+    await prefs.remove(_keyVerificationStatus);
+    await prefs.remove(_keyGuestMode);
   }
 
   static Future<void> setIdToken(String idToken) async {
@@ -179,5 +226,69 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
     } catch (_) {}
+  }
+
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static bool _jobExpired(Map<String, dynamic> job) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final expiresAt = _toInt(job['expiresAt']);
+    final assignedExpiresAt = _toInt(job['assignedExpiresAt']);
+    return (expiresAt > 0 && expiresAt <= now) ||
+        (assignedExpiresAt > 0 && assignedExpiresAt <= now);
+  }
+
+  static Future<void> cacheJobPosts(List<Map<String, dynamic>> jobs) async {
+    final prefs = await SharedPreferences.getInstance();
+    final active = jobs.where((job) => !_jobExpired(job)).toList();
+    await prefs.setString(_keyCachedJobPosts, jsonEncode(active));
+  }
+
+  static Future<List<Map<String, dynamic>>> getCachedJobPosts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_keyCachedJobPosts);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      final jobs = decoded
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .where((job) => !_jobExpired(job))
+          .toList();
+      if (jobs.length != decoded.length) {
+        await cacheJobPosts(jobs);
+      }
+      return jobs;
+    } catch (_) {
+      await prefs.remove(_keyCachedJobPosts);
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> addCachedJobPost(
+    Map<String, dynamic> job,
+  ) async {
+    final jobs = await getCachedJobPosts();
+    final postId = job['postId']?.toString().isNotEmpty == true
+        ? job['postId'].toString()
+        : 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final data = {
+      ...job,
+      'postId': postId,
+      'status': job['status'] ?? 'open',
+      'createdAt': job['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      'isLocalOnly': job['isLocalOnly'] ?? true,
+    };
+    jobs.removeWhere((item) => item['postId']?.toString() == postId);
+    jobs.insert(0, data);
+    await cacheJobPosts(jobs);
+    return data;
   }
 }

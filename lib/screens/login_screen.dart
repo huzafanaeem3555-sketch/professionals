@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/storage_service.dart';
 import '../utils/constants.dart';
 import '../utils/auth_navigation.dart';
 import '../widgets/app_logo.dart';
@@ -48,6 +49,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _error = _friendlyMessage(e);
       });
     }
+  }
+
+  Future<void> _continueAsGuest() async {
+    if (_loading) return;
+    await StorageService.startGuestSession();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/customer-home', (_) => false);
   }
 
   String _friendlyMessage(Object e) {
@@ -210,6 +218,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _loading ? null : _continueAsGuest,
+                          icon: const Icon(Icons.person_outline_rounded),
+                          label: const Text(
+                            'Continue as Guest Customer',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ],
                     ),
                   ),

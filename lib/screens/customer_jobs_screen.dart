@@ -53,6 +53,13 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
         .format(DateTime.fromMillisecondsSinceEpoch(ms));
   }
 
+  String _dateTime(dynamic value) {
+    final ms = _toInt(value);
+    if (ms <= 0) return '';
+    return DateFormat('dd MMM yyyy, h:mm a')
+        .format(DateTime.fromMillisecondsSinceEpoch(ms));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -162,6 +169,26 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
                                     style: const TextStyle(
                                         color: AppColors.textSecondary),
                                   ),
+                                  if (_dateTime(job['scheduledAt'])
+                                      .isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Job time: ${_dateTime(job['scheduledAt'])}',
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                  if (status == 'assigned' &&
+                                      _dateTime(job['assignedExpiresAt'])
+                                          .isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Auto deletes: ${_dateTime(job['assignedExpiresAt'])}',
+                                      style: const TextStyle(
+                                          color: AppColors.warning,
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
                                   const SizedBox(height: 10),
                                   Row(
                                     children: [
@@ -230,6 +257,20 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
           : [];
       _loading = false;
     });
+  }
+
+  int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  String _dateTime(dynamic value) {
+    final ms = _toInt(value);
+    if (ms <= 0) return '';
+    return DateFormat('dd MMM yyyy, h:mm a')
+        .format(DateTime.fromMillisecondsSinceEpoch(ms));
   }
 
   Future<void> _selectOffer(Map<String, dynamic> offer) async {
@@ -356,6 +397,11 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
     final description = (_job['description'] ?? '').toString();
     final budget = (_job['budget'] ?? 0).toString();
     final status = (_job['status'] ?? 'open').toString();
+    final selectedName =
+        (_job['selectedProfessionalName'] ?? 'Professional').toString();
+    final selectedPhone = (_job['selectedProfessionalPhone'] ?? '').toString();
+    final assignedExpires = _dateTime(_job['assignedExpiresAt']);
+    final scheduled = _dateTime(_job['scheduledAt']);
     final isUrgent =
         _job['isUrgent'] == true || _job['priority']?.toString() == 'urgent';
 
@@ -404,12 +450,57 @@ class _CustomerJobDetailsScreenState extends State<CustomerJobDetailsScreen> {
                       style: const TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold)),
+                  if (scheduled.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text('Job time: $scheduled',
+                        style: const TextStyle(color: AppColors.textSecondary)),
+                  ],
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(description,
                         style: const TextStyle(color: AppColors.textPrimary)),
                   ],
                   const SizedBox(height: 14),
+                  if (status == 'assigned') ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.success.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Assigned to: $selectedName',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          if (selectedPhone.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'WhatsApp: $selectedPhone',
+                              style: const TextStyle(color: AppColors.success),
+                            ),
+                          ],
+                          if (assignedExpires.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Auto deletes after: $assignedExpires',
+                              style: const TextStyle(color: AppColors.warning),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,

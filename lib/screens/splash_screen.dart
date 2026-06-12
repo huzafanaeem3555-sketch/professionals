@@ -75,17 +75,29 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (!mounted) return;
 
+      final user = FirebaseAuth.instance.currentUser;
+      if (await StorageService.isGuestSession()) {
+        await AuthNavigation.routeAfterAuth(context);
+        return;
+      }
+      final savedToken = await StorageService.getToken();
+      final savedUid = await StorageService.getUid();
+      final hasUserSession = user != null ||
+          ((savedToken != null && savedToken.isNotEmpty) &&
+              (savedUid != null && savedUid.isNotEmpty));
+
       final adminSessionActive = await StorageService.isAdminSessionActive();
-      final adminToken = await StorageService.getToken();
-      if (adminSessionActive && adminToken != null && adminToken.isNotEmpty) {
+      final adminToken = await StorageService.getAdminToken();
+      if (!hasUserSession &&
+          adminSessionActive &&
+          adminToken != null &&
+          adminToken.isNotEmpty) {
+        await ApiService().initializeAdminToken();
         Navigator.pushReplacementNamed(context, '/admin-dashboard');
         return;
       }
 
-      final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        final savedToken = await StorageService.getToken();
-        final savedUid = await StorageService.getUid();
         if (savedToken == null ||
             savedToken.isEmpty ||
             savedUid == null ||

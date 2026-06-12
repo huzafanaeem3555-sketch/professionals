@@ -7,6 +7,17 @@ import '../services/storage_service.dart';
 class AuthNavigation {
   static Future<void> routeAfterAuth(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
+    final isGuest = await StorageService.isGuestSession();
+    if (isGuest) {
+      await StorageService.setSessionMeta(
+        role: 'customer',
+        gender: await StorageService.getGender() ?? 'male',
+        verificationStatus: 'verified',
+      );
+      if (!context.mounted) return;
+      Navigator.pushReplacementNamed(context, '/customer-home');
+      return;
+    }
     final savedUid = await StorageService.getUid();
     final savedToken = await StorageService.getToken();
     if (user == null &&

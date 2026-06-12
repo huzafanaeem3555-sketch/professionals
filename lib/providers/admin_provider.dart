@@ -40,13 +40,13 @@ class AdminProvider extends ChangeNotifier {
 
   Future<bool> restoreSession() async {
     final adminActive = await StorageService.isAdminSessionActive();
-    final token = await StorageService.getToken();
+    final token = await StorageService.getAdminToken();
     if (!adminActive || token == null || token.isEmpty) return false;
 
-    await _api.initializeToken();
+    await _api.initializeAdminToken();
     _isAdminLoggedIn = true;
     notifyListeners();
-    unawaited(fetchAll(showLoading: false));
+    await fetchAll(showLoading: false);
     startRealtimePolling();
     return true;
   }
@@ -69,7 +69,7 @@ class AdminProvider extends ChangeNotifier {
       if (res['success'] == true) {
         await StorageService.setAdminSessionActive(true);
         _isAdminLoggedIn = true;
-        unawaited(fetchAll(showLoading: false));
+        await fetchAll(showLoading: false);
         startRealtimePolling();
         _setError(null);
         notifyListeners();
@@ -362,7 +362,7 @@ class AdminProvider extends ChangeNotifier {
     _pollTimer?.cancel();
     _pollTimer = null;
     await StorageService.clearAdminSession();
-    await _api.clearBackendTokenOnly();
+    await _api.clearAdminTokenOnly();
     _isAdminLoggedIn = false;
     _stats = null;
     _professionals = [];

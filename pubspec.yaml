@@ -1,7 +1,7 @@
 name: service_connect
 description: Hire local professionals near you.
 publish_to: 'none'
-version: 5.0.7+13
+version: 5.0.7+14
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -39,6 +39,7 @@ dependencies:
 
   # Notifications
   flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
 
   # Text to Speech / Voice Recognition
 

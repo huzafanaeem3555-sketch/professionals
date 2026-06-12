@@ -1,9 +1,11 @@
-﻿import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 import '../utils/app_navigator.dart';
 import 'api_service.dart';
@@ -27,6 +29,10 @@ class NotificationService {
   );
 
   static Future<void> initialize() async {
+    tz.initializeTimeZones();
+    try {
+      tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
+    } catch (_) {}
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     const androidInit = AndroidInitializationSettings('ic_notification');
@@ -65,6 +71,8 @@ class NotificationService {
       return;
     }
 
+    await scheduleDailyAppOpenReminders();
+
     final token = await _fcm.getToken();
     await _saveToken(token);
 
@@ -84,6 +92,56 @@ class NotificationService {
     _fcm.onTokenRefresh.listen((newToken) {
       _saveToken(newToken);
     });
+  }
+
+  static tz.TZDateTime _nextDailyTime(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (!scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
+
+  static Future<void> scheduleDailyAppOpenReminders() async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'HirePro_channel',
+        'HirePro Alerts',
+        channelDescription:
+            'Notifications for customer and professional actions',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: 'ic_notification',
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _localNotifications.zonedSchedule(
+      id: 7001,
+      title: 'Open HirePro',
+      body: 'Check new jobs, offers, and customer messages.',
+      scheduledDate: _nextDailyTime(9, 0),
+      notificationDetails: details,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+    await _localNotifications.zonedSchedule(
+      id: 7002,
+      title: 'HirePro evening update',
+      body: 'Open the app to review today\'s jobs and responses.',
+      scheduledDate: _nextDailyTime(18, 0),
+      notificationDetails: details,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
   }
 
   static Future<void> syncTokenForCurrentUser() async {
