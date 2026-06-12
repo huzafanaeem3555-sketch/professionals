@@ -94,8 +94,12 @@ const MarketplaceController = {
   },
 
   async listJobOffers(req, res) {
-    const data = await MarketplaceModel.listJobOffers(req.params.postId);
-    return res.json({ success: true, data });
+    try {
+      const data = await MarketplaceModel.listJobOffers(req.params.postId, uid(req));
+      return res.json({ success: true, data });
+    } catch (error) {
+      return res.status(403).json({ success: false, message: error.message });
+    }
   },
 
   async selectJobOffer(req, res) {

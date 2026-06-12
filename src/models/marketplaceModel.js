@@ -28,6 +28,30 @@ function normalizeGender(value) {
   return clean(value, 'male').toLowerCase() === 'female' ? 'female' : 'male';
 }
 
+function toTimestamp(value) {
+  if (value === undefined || value === null || value === '') return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 1000000000) return numeric;
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isExpiredPost(post, now = Date.now()) {
+  const expiresAt = toTimestamp(post?.expiresAt);
+  const assignedExpiresAt = toTimestamp(post?.assignedExpiresAt);
+  return (expiresAt > 0 && expiresAt <= now) ||
+    (assignedExpiresAt > 0 && assignedExpiresAt <= now);
+}
+
+async function deleteJobPostCascade(postId) {
+  if (!postId) return;
+  await Promise.all([
+    dbDelete(`jobPosts/${postId}`).catch(() => null),
+    dbDelete(`jobPostOffers/${postId}`).catch(() => null),
+  ]);
+}
+
 function distanceKm(a, b) {
   const lat1 = toNumber(a?.lat);
   const lon1 = toNumber(a?.lng);
@@ -202,6 +226,10 @@ const MarketplaceModel = {
       : { lat: toNumber(payload.lat), lng: toNumber(payload.lng), address: clean(payload.address) };
     const radiusKm = Math.max(1, Math.min(100, toNumber(payload.radiusKm, 20)));
     const isUrgent = payload.isUrgent === true || clean(payload.priority).toLowerCase() === 'urgent';
+    const scheduledAt = toTimestamp(payload.scheduledAt || payload.scheduledTime || payload.jobDateTime);
+    if (scheduledAt > 0 && scheduledAt <= now) {
+      throw new Error('Job date/time must be in the future.');
+    }
     const post = {
       postId,
       title: clean(payload.title, clean(payload.serviceType, 'Service job')).slice(0, 120),
@@ -217,6 +245,8 @@ const MarketplaceModel = {
       isUrgent,
       priority: isUrgent ? 'urgent' : 'normal',
       location,
+      scheduledAt: scheduledAt || 0,
+      expiresAt: scheduledAt || 0,
       status: 'open',
       offerCount: 0,
       createdAt: now,
@@ -258,6 +288,12 @@ const MarketplaceModel = {
 
   async listJobPosts(viewer) {
     const posts = await dbGetAll('jobPosts') || [];
+    const now = Date.now();
+    await Promise.all(
+      posts
+        .filter(post => isExpiredPost(post, now))
+        .map(post => deleteJobPostCascade(post.postId || post._key)),
+    );
     const uid = clean(viewer?.uid);
     const user = uid ? await UserModel.getById(uid, true).catch(() => null) : null;
     const role = clean(viewer?.role || user?.role).toLowerCase();
@@ -269,11 +305,14 @@ const MarketplaceModel = {
       ...(Array.isArray(pro?.customServices) ? pro.customServices : []),
     ].map(normalizeService);
     return posts
+      .filter(post => !isExpiredPost(post, now))
       .filter(post => {
+        const status = clean(post.status, 'open');
         if (role === 'customer') return post.customerId === uid;
+        if (status === 'assigned') return post.selectedProfessionalId === uid;
         if (post.status === 'closed') return false;
         if (!pro) return true;
-        if (clean(post.status, 'open') !== 'open') return false;
+        if (status !== 'open') return false;
         if (normalizeGender(post.customerGender) !== normalizeGender(pro.gender)) return false;
         return true;
       })
@@ -292,6 +331,13 @@ const MarketplaceModel = {
   async createJobOffer(professionalId, postId, payload) {
     const post = await dbGet(`jobPosts/${postId}`);
     if (!post) throw new Error('Job post not found.');
+    if (isExpiredPost(post)) {
+      await deleteJobPostCascade(postId);
+      throw new Error('This job has expired.');
+    }
+    if (clean(post.status, 'open') !== 'open') {
+      throw new Error('This job is no longer open for offers.');
+    }
     const pro = await profileFor(professionalId);
     const offerId = uuidv4();
     const offer = {
@@ -322,16 +368,29 @@ const MarketplaceModel = {
     return offer;
   },
 
-  async listJobOffers(postId) {
+  async listJobOffers(postId, userId) {
+    const post = await dbGet(`jobPosts/${postId}`);
+    if (!post || isExpiredPost(post)) {
+      await deleteJobPostCascade(postId);
+      return [];
+    }
+    if (post.customerId !== userId && post.selectedProfessionalId !== userId) {
+      throw new Error('You cannot view offers for this job.');
+    }
     const raw = await dbGet(`jobPostOffers/${postId}`) || {};
     return Object.entries(raw)
       .map(([offerId, value]) => ({ offerId, ...(value || {}) }))
+      .filter(offer => post.customerId === userId || offer.professionalId === userId)
       .sort((a, b) => toNumber(a.price) - toNumber(b.price));
   },
 
   async counterJobOffer(customerId, postId, offerId, payload) {
     const post = await dbGet(`jobPosts/${postId}`);
     if (!post) throw new Error('Job post not found.');
+    if (isExpiredPost(post)) {
+      await deleteJobPostCascade(postId);
+      throw new Error('This job has expired.');
+    }
     if (post.customerId !== customerId) throw new Error('Only the job owner can counter an offer.');
     const offer = await dbGet(`jobPostOffers/${postId}/${offerId}`);
     if (!offer) throw new Error('Offer not found.');
@@ -356,6 +415,10 @@ const MarketplaceModel = {
   async selectJobOffer(customerId, postId, offerId) {
     const post = await dbGet(`jobPosts/${postId}`);
     if (!post) throw new Error('Job post not found.');
+    if (isExpiredPost(post)) {
+      await deleteJobPostCascade(postId);
+      throw new Error('This job has expired.');
+    }
     if (post.customerId !== customerId) throw new Error('Only the job owner can select an offer.');
     const offer = await dbGet(`jobPostOffers/${postId}/${offerId}`);
     if (!offer) throw new Error('Offer not found.');
@@ -377,7 +440,10 @@ const MarketplaceModel = {
       selectedOfferId: offerId,
       selectedProfessionalId: offer.professionalId,
       selectedProfessionalName: offer.professionalName,
+      selectedProfessionalPhone: clean(offer.professionalPhone),
       selectedPrice: toNumber(offer.price),
+      assignedAt: now,
+      assignedExpiresAt: now + 24 * 60 * 60 * 1000,
       updatedAt: now,
     };
     await dbUpdate(`jobPosts/${postId}`, updates);
@@ -405,6 +471,10 @@ const MarketplaceModel = {
       : 'open';
     const post = await dbGet(`jobPosts/${postId}`);
     if (!post) throw new Error('Job post not found.');
+    if (isExpiredPost(post)) {
+      await deleteJobPostCascade(postId);
+      throw new Error('This job has expired.');
+    }
     if (post.customerId !== userId && post.selectedProfessionalId !== userId) {
       throw new Error('You cannot update this job.');
     }
@@ -413,7 +483,10 @@ const MarketplaceModel = {
       updates.selectedOfferId = '';
       updates.selectedProfessionalId = '';
       updates.selectedProfessionalName = '';
+      updates.selectedProfessionalPhone = '';
       updates.selectedPrice = 0;
+      updates.assignedAt = 0;
+      updates.assignedExpiresAt = 0;
       const allOffers = await dbGet(`jobPostOffers/${postId}`) || {};
       await Promise.all(Object.entries(allOffers).map(([offerId, offer]) => {
         if (!offer || offer.status !== 'selected') return Promise.resolve();

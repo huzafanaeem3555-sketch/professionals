@@ -30,11 +30,92 @@ function normalizeText(value) {
     .trim();
 }
 
+function searchTokens(value) {
+  return normalizeText(value)
+    .split(' ')
+    .filter(token => token.length >= 2);
+}
+
+function editDistance(a, b) {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  const dp = Array.from({ length: a.length + 1 }, () =>
+    Array(b.length + 1).fill(0)
+  );
+  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function tokenMatches(sourceToken, queryToken) {
+  if (!sourceToken || !queryToken) return false;
+  if (sourceToken === queryToken) return true;
+
+  const minLength = Math.min(sourceToken.length, queryToken.length);
+  if (minLength < 4) return false;
+
+  if (sourceToken.startsWith(queryToken) || queryToken.startsWith(sourceToken)) {
+    return true;
+  }
+
+  if (
+    sourceToken[0] !== queryToken[0] ||
+    Math.abs(sourceToken.length - queryToken.length) > 2
+  ) {
+    return false;
+  }
+
+  const maxDistance = minLength >= 5 ? 2 : 1;
+  return editDistance(sourceToken, queryToken) <= maxDistance;
+}
+
 function serviceMatches(a, b) {
   const left = normalizeText(a);
   const right = normalizeText(b);
   if (!left || !right) return false;
-  return left.includes(right) || right.includes(left);
+  if (left === right) return true;
+  if (left.length >= 4 && right.length >= 4 && (left.includes(right) || right.includes(left))) {
+    return true;
+  }
+
+  const leftTokens = searchTokens(left);
+  const rightTokens = searchTokens(right);
+  if (rightTokens.length === 0) return false;
+  return rightTokens.every(queryToken =>
+    leftTokens.some(sourceToken => tokenMatches(sourceToken, queryToken))
+  );
+}
+
+function profileMatchesQuery(pro, query) {
+  const queryText = normalizeText(query);
+  const queryTokens = searchTokens(queryText).filter(token => token.length >= 3);
+  if (queryTokens.length === 0) return false;
+
+  const profileText = normalizeText([
+    pro.name,
+    pro.displayName,
+    pro.description,
+    pro.location?.address,
+    ...allServicesFor(pro),
+  ].join(' '));
+  if (!profileText) return false;
+  if (queryText.length >= 4 && profileText.includes(queryText)) return true;
+
+  const profileTokens = searchTokens(profileText);
+  return queryTokens.every(queryToken =>
+    profileTokens.some(profileToken => tokenMatches(profileToken, queryToken))
+  );
 }
 
 function isVisibleToViewer(viewer, professional) {
@@ -56,7 +137,7 @@ const keywordToService = {
   'wire': 'electrician',
   'fan': 'electrician',
   'light': 'electrician',
-  'carpent': 'carpenter',
+  'carpenter': 'carpenter',
   'wood': 'carpenter',
   'furniture': 'carpenter',
   'ac': 'ac mechanic',
@@ -66,21 +147,42 @@ const keywordToService = {
   'wall': 'painter',
   'clean': 'cleaner',
   'house clean': 'cleaner',
+  'carpet': 'cleaner',
+  'carpet clean': 'cleaner',
+  'carpet cleaner': 'cleaner',
+  'carpet cleaning': 'cleaner',
+  'carpet wash': 'cleaner',
+  'rug clean': 'cleaner',
+  'rug cleaning': 'cleaner',
+  'sofa clean': 'cleaner',
+  'sofa cleaning': 'cleaner',
   'tutor': 'tutor',
+  'tuition': 'tutor',
+  'home tutor': 'tutor',
+  'quran teacher': 'tutor',
+  'math tutor': 'tutor',
+  'english tutor': 'tutor',
+  'academy': 'tutor',
   'teach': 'tutor',
   'study': 'tutor',
   'drive': 'driver',
-  'car': 'driver',
+  'driver': 'driver',
+  'car driver': 'driver',
+  'taxi': 'driver',
   'chef': 'chef',
   'cook': 'chef',
   'food': 'chef',
   'beauty': 'beautician',
   'makeup': 'beautician',
   'hair': 'beautician',
-  'it': 'it technician',
   'computer': 'it technician',
   'laptop': 'it technician',
   'software': 'it technician',
+  'network': 'it technician',
+  'networking': 'it technician',
+  'wifi': 'it technician',
+  'router': 'it technician',
+  'internet': 'it technician',
   'security': 'security guard',
   'guard': 'security guard',
   'pani leak': 'plumber',
@@ -171,27 +273,28 @@ const SearchController = {
       
       const query = q.trim().toLowerCase();
       
-      // Step 1: Try AI for smart search when a provider is configured.
+      // Step 1: Prefer deterministic service matching. AI can suggest only when
+      // the local synonym map cannot classify the query.
       let matchedServices = [];
       let aiUsed = false;
+      const deterministicServices = this._keywordSearch(query);
       
-      if (groq) {
+      if (deterministicServices.length > 0) {
+        matchedServices = deterministicServices;
+      } else if (AI_PROVIDER !== 'fallback') {
         try {
           const aiResult = await this._aiSearch(query);
           if (aiResult && aiResult.services && aiResult.services.length > 0) {
-            matchedServices = aiResult.services;
+            matchedServices = aiResult.services.filter(service =>
+              SERVICE_TYPES.some(type => serviceMatches(type, service))
+            );
             aiUsed = true;
           }
         } catch (aiError) {
           console.error('AI search error:', aiError.message);
-          // Fallback to keyword matching
         }
       }
       
-      // Step 2: Fallback to keyword matching if AI fails or returns nothing
-      if (matchedServices.length === 0) {
-        matchedServices = this._keywordSearch(query);
-      }
       await ServiceAnalyticsModel.recordSearch(query, matchedServices);
       
       // Step 3: Get professionals matching the services
@@ -201,32 +304,18 @@ const SearchController = {
         await ProfessionalModel.getAll()
       );
       
-      // Filter professionals by current profile data. Admin edits overwrite the
-      // services/name fields, so search must always read from professionals/*.
       let filtered = allProfessionals.filter(pro => {
         if (!pro.isAvailable) return false;
         
         const proServices = allServicesFor(pro);
-        const profileText = normalizeText([
-          pro.name,
-          pro.displayName,
-          pro.description,
-          pro.location?.address,
-          ...proServices,
-        ].join(' '));
-        return matchedServices.some(service =>
-          proServices.some(s => serviceMatches(s, service))
-        ) || (profileText && (profileText.includes(query) || query.includes(profileText)));
+        if (matchedServices.length > 0) {
+          return matchedServices.some(service =>
+            proServices.some(s => serviceMatches(s, service))
+          );
+        }
+
+        return profileMatchesQuery(pro, query);
       });
-      
-      // If no matches by service, try name matching
-      if (filtered.length === 0) {
-        filtered = allProfessionals.filter(pro => {
-          if (!pro.isAvailable) return false;
-          const name = normalizeText(pro.name);
-          return name.includes(query) || query.includes(name);
-        });
-      }
       
       // Add relevance score and sort
       const results = filtered.map(pro => ({
@@ -254,6 +343,9 @@ const SearchController = {
       
       return res.status(200).json({
         success: true,
+        message: results.length
+          ? 'Professionals found.'
+          : 'No available professionals found for this search.',
         data: {
           query,
           aiUsed,
@@ -333,31 +425,27 @@ If no service matches, return empty array for services.`;
    */
   _keywordSearch(query) {
     const matchedServices = new Set();
+    const normalizedQuery = normalizeText(query);
+    const queryTokens = searchTokens(normalizedQuery);
     
     // Check direct service type matches
     for (const service of SERVICE_TYPES) {
-      if (service.includes(query) || query.includes(service)) {
+      if (serviceMatches(service, normalizedQuery)) {
         matchedServices.add(service);
       }
     }
     
     // Check keyword mapping
     for (const [keyword, service] of Object.entries(keywordToService)) {
-      if (query.includes(keyword)) {
+      const normalizedKeyword = normalizeText(keyword);
+      if (
+        serviceMatches(normalizedKeyword, normalizedQuery) ||
+        queryTokens.some(token => tokenMatches(normalizedKeyword, token))
+      ) {
         matchedServices.add(service);
       }
     }
-    
-    // If still no matches, add common services based on query length
-    if (matchedServices.size === 0 && query.length > 2) {
-      // Try partial matches
-      for (const service of SERVICE_TYPES) {
-        if (service.split(' ').some(word => query.includes(word) || word.includes(query))) {
-          matchedServices.add(service);
-        }
-      }
-    }
-    
+
     return Array.from(matchedServices);
   },
   
