@@ -41,6 +41,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   Set<String> _favoriteIds = {};
   int _activeBookingsCount = 0;
   String? _filterService;
+  String _submittedSearchQuery = '';
   String _areaFilter = '';
   String _myArea = '';
   bool _loading = true;
@@ -250,7 +251,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   void _applyFilter() {
     var list = List<ProfessionalModel>.from(_all);
-    final q = _searchCtrl.text.trim().toLowerCase();
+    final q = _submittedSearchQuery.trim();
     if (_lat != 0 && _lng != 0 && _distanceFilterKm > 0) {
       list =
           list.where((p) => (p.distance ?? 999) <= _distanceFilterKm).toList();
@@ -279,19 +280,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       int score(ProfessionalModel p) {
         var points = 0;
         final normalizedQuery = _normalizeSearchText(q);
+        final inferredService = _inferServiceFromSpeech(q);
         final name = _normalizeSearchText(p.name);
         final services = p.allServices
             .map((service) => '$service ${_displayServiceName(service)}')
             .join(' ');
         final normalizedServices = _normalizeSearchText(services);
+        if (inferredService != null &&
+            p.allServices.any((service) => _sameService(service, inferredService))) {
+          points += 180;
+        }
         if (normalizedServices.startsWith(normalizedQuery)) points += 140;
         if (normalizedServices.contains(normalizedQuery)) points += 110;
         if (name.startsWith(normalizedQuery)) points += 80;
         if (name.contains(normalizedQuery)) points += 55;
-        if (normalizedQuery.length >= 3 &&
-            _normalizeSearchText(p.address).contains(normalizedQuery)) {
-          points += 12;
-        }
         points += _professionalPopularityScore(p);
         if (p.isAvailable) points += 10;
         final distancePenalty = (p.distance ?? 999).clamp(0, 200).toInt();
@@ -313,7 +315,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     setState(() {
       _filterService = null;
       _buildSuggestions(value);
-      _applyFilter();
+      if (value.trim().isEmpty) {
+        _submittedSearchQuery = '';
+        _applyFilter();
+      }
     });
     _aiSuggestDebounce?.cancel();
     final q = value.trim();
@@ -325,8 +330,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
     }
     _aiSuggestDebounce = Timer(const Duration(milliseconds: 550), () async {
       unawaited(_trackServiceSearch(query: q));
-      await _applyAiServiceSearch(q);
     });
+  }
+
+  void _submitSearch() {
+    final query = _searchCtrl.text.trim();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _submittedSearchQuery = query;
+      _filterService = null;
+      _buildSuggestions(query);
+      _applyFilter();
+    });
+    if (query.isNotEmpty) {
+      unawaited(_trackServiceSearch(query: query));
+      unawaited(_applyAiServiceSearch(query));
+    }
   }
 
   Future<void> _startVoiceSearch() async {
@@ -358,6 +377,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         _searchCtrl.text = spokenText;
         _searchCtrl.selection =
             TextSelection.collapsed(offset: spokenText.length);
+        _submittedSearchQuery = spokenText;
         _filterService = null;
         _voiceListening = false;
         _voiceStatus = 'Searching for "$spokenText"...';
@@ -409,6 +429,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       setState(() {
         _aiSuggestedService = fallback;
         if (autoApply) {
+          _submittedSearchQuery = query.trim();
           _filterService = fallback;
           _voiceStatus =
               'Showing ${_displayServiceName(fallback)} professionals.';
@@ -431,6 +452,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         setState(() {
           _aiSuggestedService = suggested;
           if (autoApply) {
+            _submittedSearchQuery = query.trim();
             _filterService = suggested;
             _voiceStatus =
                 'Showing ${_displayServiceName(suggested)} professionals.';
@@ -474,6 +496,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       }
       final model = existing ?? ProfessionalModel.fromJson(raw);
       if (!_canShowProfessional(model)) continue;
+      if (!_professionalMatchesQuery(model, query)) continue;
       if (_lat != 0 &&
           _lng != 0 &&
           _distanceFilterKm > 0 &&
@@ -822,9 +845,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
         unawaited(_trackServiceSearch(serviceType: suggestion.serviceKey));
       }
       if (suggestion.professionalUid != null) {
+        _submittedSearchQuery = suggestion.label;
         _filtered =
             _all.where((p) => p.uid == suggestion.professionalUid).toList();
       } else {
+        _submittedSearchQuery = suggestion.label;
         _applyFilter();
       }
     });
@@ -832,19 +857,21 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   bool _professionalMatchesQuery(ProfessionalModel p, String query) {
     final normalizedQuery = _normalizeSearchText(query);
+    final inferredService = _inferServiceFromSpeech(query);
     if (_matchesQuery(p.name, query)) {
       return true;
     }
     for (final service in p.allServices) {
+      if (inferredService != null && _sameService(service, inferredService)) {
+        return true;
+      }
       if (_matchesQuery(service, query) ||
           _matchesQuery(service.replaceAll('_', ' '), query) ||
           _matchesQuery(_displayServiceName(service), query)) {
         return true;
       }
     }
-    if (normalizedQuery.length >= 3 && _matchesQuery(p.address, query)) {
-      return true;
-    }
+    if (normalizedQuery.isEmpty) return false;
     return false;
   }
 
@@ -2047,56 +2074,85 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                             ),
                           ),
                           const SizedBox(height: 12),
-                          TextField(
-                            controller: _searchCtrl,
-                            onChanged: _onSearchChanged,
-                            textInputAction: TextInputAction.search,
-                            decoration: InputDecoration(
-                              hintText: 'Search or speak a service...',
-                              prefixIcon: const Icon(Icons.search,
-                                  color: AppColors.primary),
-                              suffixIcon: IconButton(
-                                tooltip: _voiceListening
-                                    ? 'Stop voice search'
-                                    : 'Voice search',
-                                onPressed: _loading
-                                    ? null
-                                    : (_voiceListening
-                                        ? _stopVoiceSearch
-                                        : _startVoiceSearch),
-                                icon: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 180),
-                                  child: Icon(
-                                    _voiceListening
-                                        ? Icons.stop_circle
-                                        : Icons.mic,
-                                    key: ValueKey(_voiceListening),
-                                    color: _voiceListening
-                                        ? AppColors.error
-                                        : AppColors.primary,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchCtrl,
+                                  onChanged: _onSearchChanged,
+                                  onSubmitted: (_) => _submitSearch(),
+                                  textInputAction: TextInputAction.search,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search or speak a service...',
+                                    prefixIcon: const Icon(Icons.search,
+                                        color: AppColors.primary),
+                                    suffixIcon: IconButton(
+                                      tooltip: _voiceListening
+                                          ? 'Stop voice search'
+                                          : 'Voice search',
+                                      onPressed: _loading
+                                          ? null
+                                          : (_voiceListening
+                                              ? _stopVoiceSearch
+                                              : _startVoiceSearch),
+                                      icon: AnimatedSwitcher(
+                                        duration:
+                                            const Duration(milliseconds: 180),
+                                        child: Icon(
+                                          _voiceListening
+                                              ? Icons.stop_circle
+                                              : Icons.mic,
+                                          key: ValueKey(_voiceListening),
+                                          color: _voiceListening
+                                              ? AppColors.error
+                                              : AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                          color: AppColors.primary, width: 1.5),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 14),
+                                    hintStyle: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14),
                                   ),
                                 ),
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide.none,
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                height: 52,
+                                child: ElevatedButton.icon(
+                                  onPressed: _submitSearch,
+                                  icon:
+                                      const Icon(Icons.search_rounded, size: 18),
+                                  label: const Text('Search'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                    color: AppColors.primary, width: 1.5),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              hintStyle: const TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 14),
-                            ),
+                            ],
                           ),
                           if (_voiceStatus != null || _voiceListening)
                             Padding(
@@ -2167,6 +2223,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                               avatar: const Icon(Icons.auto_awesome, size: 16),
                               onPressed: () {
                                 setState(() {
+                                  _searchCtrl.text = _aiSuggestedService!;
+                                  _searchCtrl.selection =
+                                      TextSelection.collapsed(
+                                          offset: _aiSuggestedService!.length);
+                                  _submittedSearchQuery = _aiSuggestedService!;
                                   _filterService = _aiSuggestedService;
                                   _applyFilter();
                                 });
@@ -2348,7 +2409,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       child: Row(
                         children: [
                           Text(
-                            'Professionals Near You',
+                            _submittedSearchQuery.trim().isEmpty
+                                ? 'Professionals Near You'
+                                : 'Results for "${_submittedSearchQuery.trim()}"',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -2389,7 +2452,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                 size: 64, color: AppColors.textLight),
                             const SizedBox(height: 16),
                             Text(
-                                _searchCtrl.text.trim().isEmpty
+                                _submittedSearchQuery.trim().isEmpty
                                     ? 'No professionals found'
                                     : 'Currently Not available',
                                 style: TextStyle(
